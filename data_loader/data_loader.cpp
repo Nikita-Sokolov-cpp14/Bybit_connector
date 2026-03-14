@@ -115,11 +115,11 @@ void BybitWebSocketClient::on_handshake(beast::error_code ec) {
 // Отправка подписки на потоки данных
 void BybitWebSocketClient::subscribe_to_streams() {
     // constexpr - строка известна на этапе компиляции
-    static constexpr char subscription_msg[] =
-            "{\"op\":\"subscribe\",\"args\":["
-            "\"orderbook.1.BTCUSDT\","
-            "\"publicTrade.BTCUSDT\""
-            "]}";
+    static constexpr char subscription_msg[] = "{\"op\":\"subscribe\",\"args\":["
+                                               "\"orderbook.50.BTCUSDT\","
+                                               "\"publicTrade.BTCUSDT\""
+                                               "]}";
+    // .глубина. 1 - каждые 10 мс, 50 - каждые 20 мс, 200 - каждые 100мс, 500 - каждые 200
 
     std::cout << "Отправляем подписку: " << subscription_msg << std::endl;
 
@@ -164,7 +164,6 @@ void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_trans
 
     // Преобразуем полученные данные в строку
     std::string message = beast::buffers_to_string(buffer_.data());
-
     std::cout << "message" << std::endl;
     std::cout << message << std::endl;
     try {
