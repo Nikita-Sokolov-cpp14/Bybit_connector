@@ -74,11 +74,17 @@ std::string_view JsonParser::getFieldValue(std::string_view fieldName, std::stri
 void JsonParser::parse() {
     parseTypeMessage();
 
+    if (orderBook_ == nullptr) {
+        std::cout << " JsonParser::parse: ERROR: orderBook = nulptr" << std::endl;
+        return;
+    }
+
     switch (typeMessage_) {
         case TypeMessage_Delta:
             parseDataMessage();
             break;
         case TypeMessage_Snapshot:
+            orderBook_->clearLevels();
             parseDataMessage();
             break;
         case TypeMessage_Status:
@@ -104,32 +110,32 @@ void JsonParser::parseStatusMessage() {
 }
 
 void JsonParser::parseDataMessage() {
-    topic_ = getFieldValue(topicName, string_);
-    convertTo(getFieldValue(tsName, string_), ts_);
-    convertTo(getFieldValue(ctsName, string_), cts_);
+    orderBook_->topic = getFieldValue(topicName, string_);
+    orderBook_->ts = convertTo<uint64_t>(getFieldValue(tsName, string_));
+    orderBook_->cts = convertTo<uint64_t>(getFieldValue(ctsName, string_));
     size_t dataStartPos = string_.find(data);
     size_t dataEndPos = string_.find('}', dataStartPos);
     parseDataSection(string_.substr(dataStartPos, dataEndPos - dataStartPos));
 }
 
 void JsonParser::printData() {
-    std::cout << "topic: " << topic_ << std::endl;
+    std::cout << "topic: " << orderBook_->topic << std::endl;
     std::cout << "typeMessage: " << typeMessage_ << std::endl;
-    std::cout << "ts: " << ts_ << std::endl;
+    std::cout << "ts: " << orderBook_->ts << std::endl;
     std::cout << " === data == " << std::endl;
-    std::cout << "s: " << s_ << std::endl;
+    std::cout << "s: " << orderBook_->s << std::endl;
     std::cout << " bids " << std::endl;
-    for (const auto &val : levelsBids_) {
+    for (const auto &val : orderBook_->asks) {
         std::cout << val.first << " " << val.second << std::endl;
     }
     std::cout << " asks " << std::endl;
-    for (const auto &val : levelsBids_) {
+    for (const auto &val : orderBook_->bids) {
         std::cout << val.first << " " << val.second << std::endl;
     }
-    std::cout << "u: " << u_ << std::endl;
-    std::cout << "seq: " << seq_ << std::endl;
+    std::cout << "u: " << orderBook_->u << std::endl;
+    std::cout << "seq: " << orderBook_->seq << std::endl;
     std::cout << " === end data == " << std::endl;
-    std::cout << "cts: " << cts_ << std::endl;
+    std::cout << "cts: " << orderBook_->cts << std::endl;
 }
 
 void JsonParser::printStatus() {
@@ -140,8 +146,14 @@ void JsonParser::printStatus() {
     std::cout << "operation: " << statusMessage_.operation << std::endl;
 }
 
+void JsonParser::setOrderBook(OrderBook *orderBook) {
+    if (orderBook_ != nullptr) {
+        orderBook_ = orderBook;
+    }
+}
+
 void JsonParser::parseDataSection(std::string_view dataStr) {
-    s_ = getFieldValue(sName, dataStr);
+    orderBook_->s = getFieldValue(sName, dataStr);
     size_t startBidsArr = dataStr.find(bids) + bids.size();
     size_t endBidsArr = dataStr.find("]]", startBidsArr) + 1;
     parseArray(dataStr.substr(startBidsArr, endBidsArr - startBidsArr), TypeArray_Bids);
@@ -150,8 +162,8 @@ void JsonParser::parseDataSection(std::string_view dataStr) {
     size_t endAsksArr = dataStr.find("]]", startAsksArr) + 1;
     parseArray(dataStr.substr(startAsksArr, endAsksArr - startAsksArr), TypeArray_Asks);
 
-    convertTo(getFieldValue(uName, dataStr), u_);
-    convertTo(getFieldValue(seqName, dataStr), seq_);
+    orderBook_->u = convertTo<uint64_t>(getFieldValue(uName, dataStr));
+    orderBook_->seq = convertTo<uint64_t>(getFieldValue(seqName, dataStr));
 }
 
 void JsonParser::parseArray(std::string_view arrayStr, const TypeArray &typeArray) {
@@ -164,12 +176,18 @@ void JsonParser::parseArray(std::string_view arrayStr, const TypeArray &typeArra
         priceVolume = parsePair(arrayStr.substr(pos, commaPos - pos));
         switch (typeArray) {
             case TypeArray_Bids:
-                levelsBids_[priceVolume.first] = priceVolume.second;
+                orderBook_->bids[priceVolume.first] = priceVolume.second;
                 break;
             default:
             case TypeArray_Asks:
-                levelsAsks_[priceVolume.first] = priceVolume.second;
+                orderBook_->asks[priceVolume.first] = priceVolume.second;
                 break;
+        }
+        if (orderBook_->asks[priceVolume.first] == 0) {
+            orderBook_->asks.erase(priceVolume.first);
+        }
+        if (orderBook_->bids[priceVolume.first] == 0) {
+            orderBook_->bids.erase(priceVolume.first);
         }
         pos = commaPos + 3;
     }
@@ -180,7 +198,7 @@ std::pair<double, double> JsonParser::parsePair(std::string_view pairStr) {
     std::string_view priceStr = pairStr.substr(1, posComma - 2);
     std::string_view volumeStr = pairStr.substr(posComma + 2, pairStr.length() - posComma - 3);
     std::pair<double, double> priceVolume;
-    convertTo(priceStr, priceVolume.first);
-    convertTo(volumeStr, priceVolume.second);
+    priceVolume.first = convertTo<double>(priceStr);
+    priceVolume.second = convertTo<double>(volumeStr);
     return priceVolume;
 }

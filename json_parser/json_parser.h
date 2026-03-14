@@ -35,37 +35,22 @@ class JsonParser {
 public:
     void setString(std::string_view str);
 
-    void parseTypeMessage();
-
-    std::string_view getFieldValue(std::string_view field, std::string_view source);
-
     void parse();
-
-    void parseStatusMessage();
-
-    void parseDataMessage();
 
     void printData();
 
     void printStatus();
 
+    void setOrderBook(OrderBook *orderBook);
+
 protected:
-    enum TypeArray {
-        TypeArray_Bids = 0,
-        TypeArray_Asks
-    };
+    enum TypeArray { TypeArray_Bids = 0, TypeArray_Asks };
 
     std::string_view string_;
 
-    std::string_view topic_;
     TypeMessage typeMessage_;
-    uint64_t ts_;
-    std::string_view s_;
-    boost::container::flat_map<double, double, std::greater<double> > levelsBids_;
-    boost::container::flat_map<double, double, std::greater<double> > levelsAsks_;
-    uint64_t u_;
-    uint64_t seq_;
-    uint64_t cts_;
+
+    OrderBook *orderBook_;
 
     StatusMessage statusMessage_;
 
@@ -75,13 +60,23 @@ protected:
 
     std::pair<double, double> parsePair(std::string_view pairStr);
 
+    void parseTypeMessage();
+
+    std::string_view getFieldValue(std::string_view field, std::string_view source);
+
+    void parseStatusMessage();
+
+    void parseDataMessage();
+
     template<typename T>
-    void convertTo(std::string_view valueStr, T &value) {
+    T convertTo(std::string_view valueStr) {
+        T value;
         auto result = std::from_chars(valueStr.data(), valueStr.data() + valueStr.size(), value);
 
         if (result.ec != std::errc()) {
             std::cout << "Conversion failed for type " << typeid(T).name() << std::endl;
             value = T {};
         }
+        return value;
     }
 };

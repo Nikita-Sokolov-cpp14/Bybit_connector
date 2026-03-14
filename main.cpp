@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <chrono>
 
 #include "data_loader/data_loader.h"
 #include "json_parser/json_parser.h"
@@ -58,18 +59,24 @@ int main() {
     // }
 
     JsonParser parser;
+    OrderBook orderBook;
+    parser.setOrderBook(&orderBook);
     // parser.setString(status);
     // std::cout << parser.getTypeMessage() << std::endl;
     // parser.setString(snapshot);
     // std::cout << parser.getTypeMessage() << std::endl;
     // parser.parse();
 
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(snapshot);
+    parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    // parser.printData();
+
     parser.setString(delta);
     parser.parse();
-    parser.printData();
-
-    // parser.setString(snapshot);
-    // parser.parse();
     // parser.printData();
 
     // parser.setString("unknown");
