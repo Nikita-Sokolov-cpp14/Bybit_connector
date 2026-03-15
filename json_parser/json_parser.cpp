@@ -112,9 +112,9 @@ void JsonParser::parseStatusMessage() {
 void JsonParser::parseDataMessage() {
     orderBook_->topic = getFieldValue(topicName, string_);
     orderBook_->ts = convertTo<uint64_t>(getFieldValue(tsName, string_));
-    orderBook_->cts = convertTo<uint64_t>(getFieldValue(ctsName, string_));
     size_t dataStartPos = string_.find(data);
     size_t dataEndPos = string_.find('}', dataStartPos);
+    orderBook_->cts = convertTo<uint64_t>(getFieldValue(ctsName, string_));
     parseDataSection(string_.substr(dataStartPos, dataEndPos - dataStartPos));
 }
 
@@ -168,28 +168,30 @@ void JsonParser::parseDataSection(std::string_view dataStr) {
 
 void JsonParser::parseArray(std::string_view arrayStr, const TypeArray &typeArray) {
     std::pair<double, double> priceVolume;
-    for (size_t pos = 1; pos < arrayStr.length();) {
+    const size_t strLen = arrayStr.length();
+    for (size_t pos = 1; pos < strLen;) {
         size_t commaPos = arrayStr.find("],[", pos);
-        if (commaPos >= arrayStr.length()) {
-            commaPos = arrayStr.length() - 1;
+        if (commaPos >= strLen) {
+            commaPos = strLen - 1;
         }
         priceVolume = parsePair(arrayStr.substr(pos, commaPos - pos));
-        switch (typeArray) {
-            case TypeArray_Bids:
-                if (priceVolume.second == 0) {
-                    orderBook_->bids.erase(priceVolume.first);
-                } else {
-                    orderBook_->bids[priceVolume.first] = priceVolume.second;
-                }
-                break;
-            default:
-            case TypeArray_Asks:
-                if (priceVolume.second == 0) {
-                    orderBook_->asks.erase(priceVolume.first);
-                } else {
-                    orderBook_->asks[priceVolume.first] = priceVolume.second;
-                }
-                break;
+        // if (typeArray == TypeArray_Bids) {
+        //     if (priceVolume.second == 0) {
+        //         orderBook_->bids.erase(priceVolume.first);
+        //     } else {
+        //         orderBook_->bids[priceVolume.first] = priceVolume.second;
+        //     }
+        // } else if (typeArray == TypeArray_Asks){
+        //     if (priceVolume.second == 0) {
+        //         orderBook_->asks.erase(priceVolume.first);
+        //     } else {
+        //         orderBook_->asks[priceVolume.first] = priceVolume.second;
+        //     }
+        // }
+        if (typeArray == TypeArray_Bids) {
+            updateMap(orderBook_->bids, priceVolume.first, priceVolume.second);
+        } else if (typeArray == TypeArray_Asks){
+            updateMap(orderBook_->asks, priceVolume.first, priceVolume.second);
         }
         pos = commaPos + 3;
     }
@@ -199,8 +201,31 @@ std::pair<double, double> JsonParser::parsePair(std::string_view pairStr) {
     size_t posComma = pairStr.find(',');
     std::string_view priceStr = pairStr.substr(1, posComma - 2);
     std::string_view volumeStr = pairStr.substr(posComma + 2, pairStr.length() - posComma - 3);
-    std::pair<double, double> priceVolume;
-    priceVolume.first = convertTo<double>(priceStr);
-    priceVolume.second = convertTo<double>(volumeStr);
-    return priceVolume;
+    return std::pair<double, double> {convertToDouble(priceStr), convertToDouble(volumeStr)};
+}
+
+double JsonParser::convertToDouble(std::string_view valueStr) {
+    double result = 0.0;
+    bool beforeDot = true;
+    double exponent = 0.1;
+
+    for (char c : valueStr) {
+        if (c == '.') {
+            beforeDot = false;
+            continue;
+        }
+        if (c < '0' && c > '9') {
+            std::cout << "JsonParser::convertToDouble: Error convertation" << std::endl;
+            return 0.0;
+        }
+
+        if (beforeDot) {
+            result = result * 10 + (c - '0');
+        } else {
+            result += (c - '0') * exponent;
+            exponent *= 0.1;
+        }
+    }
+
+    return result;
 }

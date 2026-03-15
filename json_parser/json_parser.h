@@ -79,4 +79,15 @@ protected:
         }
         return value;
     }
+
+    template<typename MapType>
+    void updateMap(MapType &map, double key, double value) {
+        if (value == 0) {
+            map.erase(key);
+        } else {
+            map[key] = value;
+        }
+    }
+
+    double convertToDouble(std::string_view valueStr);
 };
