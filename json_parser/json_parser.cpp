@@ -124,11 +124,11 @@ void JsonParser::printData() {
     std::cout << "ts: " << orderBook_->ts << std::endl;
     std::cout << " === data == " << std::endl;
     std::cout << "s: " << orderBook_->s << std::endl;
-    std::cout << " bids " << std::endl;
+    std::cout << " asks " << std::endl;
     for (const auto &val : orderBook_->asks) {
         std::cout << val.first << " " << val.second << std::endl;
     }
-    std::cout << " asks " << std::endl;
+    std::cout << " bids " << std::endl;
     for (const auto &val : orderBook_->bids) {
         std::cout << val.first << " " << val.second << std::endl;
     }

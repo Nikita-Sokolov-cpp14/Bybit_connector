@@ -67,13 +67,13 @@ int main() {
     // std::cout << parser.getTypeMessage() << std::endl;
     // parser.parse();
 
-    // auto start = std::chrono::high_resolution_clock::now();
-    // parser.setString(snapshot);
-    // parser.parse(); // 180 mks или 28 мкс с флагом компилляции -02.
-    // auto end = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
-    // parser.printData();
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(snapshot);
+    parser.parse(); // 180 mks или 28 мкс с флагом компилляции -02.
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
     for (size_t i = 0; i < 10000; ++i) {
         parser.setString(snapshot);
         parser.parse();
