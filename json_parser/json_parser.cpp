@@ -176,18 +176,20 @@ void JsonParser::parseArray(std::string_view arrayStr, const TypeArray &typeArra
         priceVolume = parsePair(arrayStr.substr(pos, commaPos - pos));
         switch (typeArray) {
             case TypeArray_Bids:
-                orderBook_->bids[priceVolume.first] = priceVolume.second;
+                if (priceVolume.second == 0) {
+                    orderBook_->bids.erase(priceVolume.first);
+                } else {
+                    orderBook_->bids[priceVolume.first] = priceVolume.second;
+                }
                 break;
             default:
             case TypeArray_Asks:
-                orderBook_->asks[priceVolume.first] = priceVolume.second;
+                if (priceVolume.second == 0) {
+                    orderBook_->asks.erase(priceVolume.first);
+                } else {
+                    orderBook_->asks[priceVolume.first] = priceVolume.second;
+                }
                 break;
-        }
-        if (orderBook_->asks[priceVolume.first] == 0) {
-            orderBook_->asks.erase(priceVolume.first);
-        }
-        if (orderBook_->bids[priceVolume.first] == 0) {
-            orderBook_->bids.erase(priceVolume.first);
         }
         pos = commaPos + 3;
     }
