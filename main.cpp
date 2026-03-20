@@ -12,6 +12,7 @@
 
 #include "data_loader/data_loader.h"
 #include "json_parser/json_parser.h"
+#include "p999_latency/check_latency.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
@@ -58,38 +59,31 @@ int main() {
     //     return EXIT_FAILURE;
     // }
 
-    JsonParser parser;
-    OrderBook orderBook;
-    parser.setOrderBook(&orderBook);
-    // parser.setString(status);
-    // std::cout << parser.getTypeMessage() << std::endl;
+    // JsonParser parser;
+    // OrderBook orderBook;
+    // // orderBook.asks.reserve(50);
+    // // orderBook.bids.reserve(50);
+    // parser.setOrderBook(&orderBook);
     // parser.setString(snapshot);
-    // std::cout << parser.getTypeMessage() << std::endl;
     // parser.parse();
-
-    auto start = std::chrono::high_resolution_clock::now();
-    parser.setString(snapshot);
-    parser.parse(); // 180 mks или 28 мкс с флагом компилляции -02.
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
-    parser.printData();
-    for (size_t i = 0; i < 10000; ++i) {
-        parser.setString(snapshot);
-        parser.parse();
-    }
-
+    // parser.printData();
     // parser.setString(delta);
     // parser.parse();
     // parser.printData();
 
-    // parser.setString("unknown");
-    // parser.parse();
-    // parser.printStatus();
+    // auto start = std::chrono::high_resolution_clock::now();
+    // parser.setString(snapshot);
+    // parser.parse(); // 180 mks или 28 мкс с флагом компилляции -02.
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    // parser.printData();
+    // for (size_t i = 0; i < 10000; ++i) {
+    //     parser.setString(snapshot);
+    //     parser.parse();
+    // }
 
-    // parser.setString(status);
-    // parser.parse();
-    // parser.printStatus();
+    checkLatency();
 
     return EXIT_SUCCESS;
 }

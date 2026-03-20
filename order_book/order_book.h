@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <boost/container/flat_map.hpp>
+#include <string_view>
 
 class OrderBook {
 public:
