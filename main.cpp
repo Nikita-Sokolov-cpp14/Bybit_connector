@@ -23,10 +23,14 @@ const std::string_view snapshot = R"({"topic":"orderbook.50.BTCUSDT","type":"sna
 const std::string_view delta = R"({"topic":"orderbook.50.BTCUSDT","type":"delta","ts":1773386409407,"data":{"s":"BTCUSDT","b":[["71419.80","0"],["71418.20","0.159"],["71417.00","0"],["71416.60","1.163"],["71416.50","0"],["71415.50","0"],["71414.80","0.007"],["71413.80","0.075"],["71413.40","0.013"],["71413.30","0.270"],["71413.20","0.603"]],"a":[["71427.90","0.006"],["71428.30","0"],["71433.30","0"],["71435.40","0.001"]],"u":10132541,"seq":546137962186},"cts":1773386409404})";
 const std::string_view status = R"({"success":true,"ret_msg":"","conn_id":"d6ki1eae0cl5msgggj7g-1uoz2","req_id":"","op":"subscribe"})";
 
+// {"topic":"publicTrade.BTCUSDT","type":"snapshot","ts":1774021164273,"data":[{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"MinusTick","i":"8c931d9a-b703-5c34-9aeb-860867cf1f66","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"ZeroMinusTick","i":"307fb58f-09dc-5121-b24f-eb2f81873445","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"ZeroMinusTick","i":"e4f62be6-ee74-5a67-a9da-b3829b911246","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"ZeroMinusTick","i":"e638a9e6-ade1-541e-8e22-e6e4c04fbfc1","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.032","p":"69916.80","L":"ZeroMinusTick","i":"ddea3520-0444-515c-af09-07471b39e1e5","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.002","p":"69916.10","L":"MinusTick","i":"58766b19-9dba-5ad3-8931-f71eff90e8d8","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69915.40","L":"MinusTick","i":"f3a898c6-d91f-5860-9c77-dc31411e6d3a","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.002","p":"69915.40","L":"ZeroMinusTick","i":"597fb5be-4ef1-5cf7-846e-3f8bf88868e2","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.008","p":"69914.20","L":"MinusTick","i":"86245400-ea12-510f-a809-78e07e373378","BT":false,"RPI":false,"seq":549792210006}]}
+// {"topic":"publicTrade.BTCUSDT","type":"snapshot","ts":1774021164130,"data":[{"T":1774021164129,"s":"BTCUSDT","S":"Buy","v":"0.020","p":"69916.90","L":"ZeroMinusTick","i":"f60eae3c-d812-5c0b-ad26-8010c31c53aa","BT":false,"RPI":false,"seq":549792208812}]}
+
 int main() {
     std::cout << "hello" << std::endl;
 
     // try {
+    //     OrderBook orderBook;
     //     // Создаем I/O контекст (нужен для всех асинхронных операций)
     //     net::io_context ioc;
 
@@ -40,7 +44,7 @@ int main() {
     //     std::cout << "Запуск Bybit WebSocket клиента..." << std::endl;
 
     //     // Создаем экземпляр клиента
-    //     auto client = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx);
+    //     auto client = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook);
 
     //     // Подключаемся к Bybit
     //     // Для спота используйте: stream.bybit.com/v5/public/spot
@@ -59,11 +63,10 @@ int main() {
     //     return EXIT_FAILURE;
     // }
 
-    // JsonParser parser;
     // OrderBook orderBook;
+    // JsonParser parser(orderBook);
     // // orderBook.asks.reserve(50);
     // // orderBook.bids.reserve(50);
-    // parser.setOrderBook(&orderBook);
     // parser.setString(snapshot);
     // parser.parse();
     // parser.printData();

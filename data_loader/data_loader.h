@@ -14,6 +14,8 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include "json_parser/json_parser.h"
+#include "order_book/order_book.h"
 
 // Для установки nlohmann/json в Ubuntu: sudo apt install nlohmann-json-dev
 // В других системах можно скачать с https://github.com/nlohmann/json
@@ -28,7 +30,7 @@ using tcp = boost::asio::ip::tcp;
 class BybitWebSocketClient : public std::enable_shared_from_this<BybitWebSocketClient> {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx);
+    BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook);
 
     // Основной метод для запуска подключения
     void connect(const std::string &host, const std::string &port,
@@ -84,6 +86,7 @@ private:
     void on_reconnect_timer(beast::error_code ec);
 
 private:
+    JsonParser parser_;
     tcp::resolver resolver_; // DNS резолвер
     websocket::stream<ssl::stream<beast::tcp_stream> > ws_; // WebSocket поток с SSL
     net::steady_timer reconnect_timer_; // Таймер для переподключения
@@ -94,4 +97,6 @@ private:
     std::string port_; // Порт для переподключения
     std::string target_; // WebSocket путь
     std::string last_price_; // Последняя полученная цена
+    std::string message_;
+    std::string_view message_view_;
 };

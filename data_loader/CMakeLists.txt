@@ -14,4 +14,5 @@ target_include_directories(data_loader PUBLIC
 target_link_libraries(data_loader PRIVATE
     OpenSSL::SSL
     Boost::locale
+    json_parser
 )

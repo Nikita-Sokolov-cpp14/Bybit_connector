@@ -36,9 +36,8 @@ void calculate_percentiles(std::vector<double> &latencies) {
 }
 
 void checkLatency() {
-    JsonParser parser;
     OrderBook orderBook;
-    parser.setOrderBook(&orderBook);
+    JsonParser parser(&orderBook);
 
     constexpr size_t WARMUP = 10000; // прогрев
     constexpr size_t SAMPLES = 1000000; // основное измерение

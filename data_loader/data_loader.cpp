@@ -1,11 +1,15 @@
 #include "data_loader.h"
 
-BybitWebSocketClient::BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx) :
+BybitWebSocketClient::BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx,
+        OrderBook *const orderBook) :
+parser_(orderBook),
 resolver_(ioc), // для DNS запросов
 ws_(ioc, ssl_ctx), // WebSocket поток с SSL
 reconnect_timer_(ioc), // таймер для переподключения
 ioc_(ioc), // сохраняем ссылку на io_context
 ping_timer_(ioc) { // таймер для ping сообщений
+    std::cout << orderBook << std::endl;
+
     // Устанавливаем заголовок User-Agent (необязательно, но рекомендуется)
     ws_.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
         req.set(beast::http::field::user_agent,
@@ -163,32 +167,15 @@ void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_trans
     }
 
     // Преобразуем полученные данные в строку
-    std::string message = beast::buffers_to_string(buffer_.data());
-    std::cout << "message" << std::endl;
-    std::cout << message << std::endl;
+    message_ = beast::buffers_to_string(buffer_.data());
+    message_view_ = message_;
     try {
-        // // Парсим JSON для обработки
-        // auto j = json::parse(message);
-
-        // // Проверяем тип сообщения
-        // if (j.contains("type") && j["type"] == "snapshot") {
-        //     std::cout << "Получен snapshot стакана" << std::endl;
-        //     // Здесь можно обработать начальное состояние стакана
-        //     process_orderbook_snapshot(j);
-        // } else if (j.contains("type") && j["type"] == "delta") {
-        //     std::cout << "Получено обновление стакана (delta)" << std::endl;
-        //     // Применяем изменения к локальной копии стакана
-        //     process_orderbook_delta(j);
-        // } else if (j.contains("topic") && j["topic"] == "publicTrade.BTCUSDT") {
-        //     // Обрабатываем данные о сделках (текущая цена)
-        //     process_trade_data(j);
-        // } else {
-        //     // Просто выводим сообщение для отладки
-        //     std::cout << "Получено: " << message << std::endl;
-        // }
+        std::cout << message_view_ << std::endl;
+        parser_.setString(message_view_);
+        parser_.parse();
     } catch (const std::exception &e) {
         std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
-        std::cout << "Сырые данные: " << message << std::endl;
+        std::cout << "Сырые данные: " << message_view_ << std::endl;
     }
 
     // Продолжаем чтение следующих сообщений

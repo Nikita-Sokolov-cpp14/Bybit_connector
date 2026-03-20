@@ -33,6 +33,8 @@ struct StatusMessage {
 
 class JsonParser {
 public:
+    JsonParser(OrderBook *const orderBook);
+
     void setString(std::string_view str);
 
     void parse();
@@ -41,8 +43,6 @@ public:
 
     void printStatus();
 
-    void setOrderBook(OrderBook *orderBook);
-
 protected:
     enum TypeArray { TypeArray_Bids = 0, TypeArray_Asks };
 
@@ -50,7 +50,7 @@ protected:
 
     TypeMessage typeMessage_;
 
-    OrderBook *orderBook_;
+    OrderBook *const orderBook_;
 
     StatusMessage statusMessage_;
 

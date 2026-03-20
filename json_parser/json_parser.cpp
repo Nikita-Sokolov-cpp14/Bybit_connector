@@ -31,6 +31,10 @@ reqId(""),
 operation("") {
 }
 
+JsonParser::JsonParser(OrderBook *const orderBook) :
+orderBook_(orderBook) {
+}
+
 void JsonParser::setString(std::string_view str) {
     string_ = str;
 }
@@ -144,12 +148,6 @@ void JsonParser::printStatus() {
     std::cout << "conId: " << statusMessage_.conId << std::endl;
     std::cout << "reqId: " << statusMessage_.reqId << std::endl;
     std::cout << "operation: " << statusMessage_.operation << std::endl;
-}
-
-void JsonParser::setOrderBook(OrderBook *orderBook) {
-    if (orderBook_ != nullptr) {
-        orderBook_ = orderBook;
-    }
 }
 
 void JsonParser::parseDataSection(std::string_view dataStr) {
