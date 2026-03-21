@@ -14,8 +14,12 @@
 #include <string>
 #include <thread>
 #include <chrono>
-#include "json_parser/json_parser.h"
-#include "order_book/order_book.h"
+#include "json_parser/orderbook_json_parser.h"
+#include "json_parser/status_json_parser.h"
+#include "json_parser/public_trade_json_parser.h"
+#include "data_structures/orderbook.h"
+#include "data_structures/status_message.h"
+#include "data_structures/public_trade.h"
 
 // Для установки nlohmann/json в Ubuntu: sudo apt install nlohmann-json-dev
 // В других системах можно скачать с https://github.com/nlohmann/json
@@ -30,7 +34,8 @@ using tcp = boost::asio::ip::tcp;
 class BybitWebSocketClient : public std::enable_shared_from_this<BybitWebSocketClient> {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook);
+    BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook,
+        StatusMessage *const statusMessage, PublicTrade *const publicTrade);
 
     // Основной метод для запуска подключения
     void connect(const std::string &host, const std::string &port,
@@ -86,13 +91,16 @@ private:
     void on_reconnect_timer(beast::error_code ec);
 
 private:
-    JsonParser parser_;
+    OrderBookJsonParser orderbookParser_;
+    StatusJsonParser statusParser_;
+    PublicTradeJsonParser publicTradeJsonParser_;
     tcp::resolver resolver_; // DNS резолвер
     websocket::stream<ssl::stream<beast::tcp_stream> > ws_; // WebSocket поток с SSL
     net::steady_timer reconnect_timer_; // Таймер для переподключения
     net::steady_timer ping_timer_; // Таймер для ping
     net::io_context &ioc_; // Ссылка на io_context
     beast::flat_buffer buffer_; // Буфер для чтения данных
+    TypeMessage typeMessage_;
     std::string host_; // Хост для переподключения
     std::string port_; // Порт для переподключения
     std::string target_; // WebSocket путь

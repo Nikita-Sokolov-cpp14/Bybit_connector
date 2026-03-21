@@ -5,7 +5,7 @@ project(connector)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2") # флаг -02 повышает производительность сильно
 
 add_subdirectory(data_loader)
-add_subdirectory(order_book)
+add_subdirectory(data_structures)
 add_subdirectory(json_parser)
 add_subdirectory(p999_latency)
 
@@ -17,7 +17,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     data_loader
-    order_book
+    data_structures
     json_parser
     check_latency
 )

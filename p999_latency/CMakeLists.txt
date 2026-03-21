@@ -5,7 +5,7 @@ add_library(check_latency
 )
 
 target_link_libraries(check_latency PRIVATE
-    order_book
+    data_structures
     json_parser
 )
 

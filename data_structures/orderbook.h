@@ -19,4 +19,6 @@ public:
     uint64_t cts;
 
     void clearLevels();
+
+    void print();
 };

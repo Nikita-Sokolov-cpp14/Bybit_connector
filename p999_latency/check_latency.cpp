@@ -37,7 +37,7 @@ void calculate_percentiles(std::vector<double> &latencies) {
 
 void checkLatency() {
     OrderBook orderBook;
-    JsonParser parser(&orderBook);
+    OrderBookJsonParser parser(&orderBook);
 
     constexpr size_t WARMUP = 10000; // прогрев
     constexpr size_t SAMPLES = 1000000; // основное измерение
@@ -52,10 +52,28 @@ void checkLatency() {
     std::vector<double> latencies;
     latencies.reserve(SAMPLES);
 
+    TypeMessage typeMessage_;
     for (int i = 0; i < SAMPLES; ++i) {
         auto start = std::chrono::steady_clock::now();
-        parser.setString(snapshotStr);
-        parser.parse();
+        typeMessage_ = parseTypeMessage(snapshotStr.substr(0, maxTypeStrLen));
+        switch (typeMessage_) {
+            case TypeMessage_Orderbook:
+                parser.setString(snapshotStr);
+                parser.parse();
+                break;
+            case TypeMessage_PublicTrade:
+                // publicTradeJsonParser_.setString(snapshotStr);
+                // publicTradeJsonParser_.parse();
+                break;
+            case TypeMessage_Status:
+                // statusParser_.setString(snapshotStr);
+                // statusParser_.parse();
+                break;
+            default:
+                std::cout << "BybitWebSocketClient::on_read: Unknown message type" << std::endl;
+                std::cout << snapshotStr << std::endl;
+                break;
+        }
         auto end = std::chrono::steady_clock::now();
         double us = std::chrono::duration<double, std::micro>(end - start).count();
         latencies.push_back(us);

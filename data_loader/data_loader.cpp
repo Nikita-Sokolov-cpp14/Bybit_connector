@@ -1,13 +1,17 @@
 #include "data_loader.h"
 
 BybitWebSocketClient::BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx,
-        OrderBook *const orderBook) :
-parser_(orderBook),
+        OrderBook *const orderBook, StatusMessage *const statusMessage,
+        PublicTrade *const publicTrade) :
+orderbookParser_(orderBook),
+statusParser_(statusMessage),
+publicTradeJsonParser_(publicTrade),
 resolver_(ioc), // для DNS запросов
 ws_(ioc, ssl_ctx), // WebSocket поток с SSL
 reconnect_timer_(ioc), // таймер для переподключения
 ioc_(ioc), // сохраняем ссылку на io_context
-ping_timer_(ioc) { // таймер для ping сообщений
+ping_timer_(ioc),
+typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщений
     std::cout << orderBook << std::endl;
 
     // Устанавливаем заголовок User-Agent (необязательно, но рекомендуется)
@@ -170,9 +174,25 @@ void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_trans
     message_ = beast::buffers_to_string(buffer_.data());
     message_view_ = message_;
     try {
-        std::cout << message_view_ << std::endl;
-        parser_.setString(message_view_);
-        parser_.parse();
+        typeMessage_ = parseTypeMessage(message_view_.substr(0, maxTypeStrLen));
+        switch (typeMessage_) {
+            case TypeMessage_Orderbook:
+                orderbookParser_.setString(message_view_);
+                orderbookParser_.parse();
+                break;
+            case TypeMessage_PublicTrade:
+                publicTradeJsonParser_.setString(message_view_);
+                publicTradeJsonParser_.parse();
+                break;
+            case TypeMessage_Status:
+                statusParser_.setString(message_view_);
+                statusParser_.parse();
+                break;
+            default:
+                std::cout << "BybitWebSocketClient::on_read: Unknown message type" << std::endl;
+                // std::cout << message_view_ << std::endl;
+                break;
+        }
     } catch (const std::exception &e) {
         std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
         std::cout << "Сырые данные: " << message_view_ << std::endl;
