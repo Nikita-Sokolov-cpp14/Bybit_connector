@@ -84,18 +84,15 @@ int main() {
     // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
     // parser.printData();
 
-    // checkLatency();
-
-    PublicTrade publicTradeStruct;
-    PublicTradeJsonParser parser(&publicTradeStruct);
+    checkLatency();
 
     // auto start = std::chrono::high_resolution_clock::now();
-    parser.setString(publicTrade);
-    parser.parse();
+    // parser.setString(publicTrade);
+    // parser.parse();
     // auto end = std::chrono::high_resolution_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
-    parser.printData();
+    // parser.printData();
 
     return EXIT_SUCCESS;
 }

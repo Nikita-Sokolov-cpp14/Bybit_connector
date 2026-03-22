@@ -35,16 +35,13 @@ void calculate_percentiles(std::vector<double> &latencies) {
     std::cout << "P99.99: " << p9999 << " µs\n";
 }
 
-void checkLatency() {
-    OrderBook orderBook;
-    OrderBookJsonParser parser(&orderBook);
-
+void checkLatency(BaseJsonParser &parser, std::string_view message) {
     constexpr size_t WARMUP = 10000; // прогрев
     constexpr size_t SAMPLES = 1000000; // основное измерение
 
     std::cout << "Warming up...\n";
     for (int i = 0; i < WARMUP; ++i) {
-        parser.setString(snapshotStr);
+        parser.setString(message);
         parser.parse();
     }
 
@@ -58,7 +55,7 @@ void checkLatency() {
         typeMessage_ = parseTypeMessage(snapshotStr.substr(0, maxTypeStrLen));
         switch (typeMessage_) {
             case TypeMessage_Orderbook:
-                parser.setString(snapshotStr);
+                parser.setString(message);
                 parser.parse();
                 break;
             case TypeMessage_PublicTrade:
@@ -87,4 +84,15 @@ void checkLatency() {
             std::count_if(latencies.begin(), latencies.end(), [](double x) { return x > 20.0; });
     std::cout << "Outliers (>20 µs): " << outliers << " (" << (100.0 * outliers / SAMPLES)
               << "%)\n";
+}
+
+void checkLatency() {
+    OrderBook orderBook;
+    OrderBookJsonParser parserOrderbook(&orderBook);
+    PublicTrade publicTradeStruct;
+    PublicTradeJsonParser parserPublicTrade(&publicTradeStruct);
+    std::cout << "snapshot" << std::endl;
+    checkLatency(parserOrderbook, snapshotStr);
+    std::cout << "public trade" << std::endl;
+    checkLatency(parserPublicTrade, publicTradeStr);
 }
