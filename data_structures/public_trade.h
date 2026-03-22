@@ -1,24 +1,37 @@
 #pragma once
 
 #include <cstdint>
-#include <boost/container/flat_map.hpp>
+#include <vector>
 #include <string_view>
 
 class PublicTrade {
 public:
-    using LevelsBids = boost::container::flat_map<double, double, std::greater<double> >;
-    using LevelsAsks = boost::container::flat_map<double, double, std::less<double> >;
+    enum TickDirection {
+        TickDirection_Unknown = 0,
+        TickDirection_PlusTick,
+        TickDirection_MinusTick,
+        TickDirection_ZeroPlusTick,
+        TickDirection_ZeroMinusTick,
+    };
 
-    std::string_view topic;
+    struct Data {
+        uint64_t T;
+        std::string_view s;
+        std::string_view S;
+        double v;
+        double p;
+        TickDirection L;
+        std::string_view i;
+        bool BT;
+        bool RPI;
+        uint64_t seq;
+    };
+
+    std::string_view pairStr;
     uint64_t ts;
-    std::string_view s;
-    LevelsBids bids;
-    LevelsAsks asks;
-    uint64_t u;
-    uint64_t seq;
-    uint64_t cts;
+    std::vector<Data> data;
 
-    void clearLevels();
+    void clearData();
 
     void print();
 };

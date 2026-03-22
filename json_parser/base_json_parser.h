@@ -18,7 +18,7 @@ enum TypeMessage {
 
 TypeMessage parseTypeMessage(std::string_view str);
 
-std::string_view getFieldValue(std::string_view field, std::string_view source);
+std::string_view getFieldValue(std::string_view field, std::string_view source, size_t pos = 0);
 
 class BaseJsonParser {
 public:
@@ -55,4 +55,6 @@ protected:
     }
 
     double convertToDouble(std::string_view valueStr);
+
+    bool convertToBool(std::string_view valueStr);
 };

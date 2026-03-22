@@ -12,6 +12,7 @@
 
 #include "data_loader/data_loader.h"
 #include "json_parser/orderbook_json_parser.h"
+#include "json_parser/public_trade_json_parser.h"
 #include "p999_latency/check_latency.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
@@ -29,47 +30,45 @@ const std::string_view publicTrade = R"({"topic":"publicTrade.BTCUSDT","type":"s
 int main() {
     std::cout << "hello" << std::endl;
 
-    try {
-        OrderBook orderBook;
-        StatusMessage statusMessage;
-        PublicTrade publicTrade;
-        // Создаем I/O контекст (нужен для всех асинхронных операций)
-        net::io_context ioc;
+    // try {
+    //     OrderBook orderBook;
+    //     StatusMessage statusMessage;
+    //     PublicTrade publicTrade;
+    //     // Создаем I/O контекст (нужен для всех асинхронных операций)
+    //     net::io_context ioc;
 
-        // Создаем SSL контекст и загружаем сертификаты
-        ssl::context ssl_ctx{ssl::context::tlsv12_client};
-        ssl_ctx.set_default_verify_paths();  // загружаем системные CA сертификаты
+    //     // Создаем SSL контекст и загружаем сертификаты
+    //     ssl::context ssl_ctx{ssl::context::tlsv12_client};
+    //     ssl_ctx.set_default_verify_paths();  // загружаем системные CA сертификаты
 
-        // Верифицируем сертификат сервера (обязательно для продакшена)
-        ssl_ctx.set_verify_mode(ssl::verify_peer);
+    //     // Верифицируем сертификат сервера (обязательно для продакшена)
+    //     ssl_ctx.set_verify_mode(ssl::verify_peer);
 
-        std::cout << "Запуск Bybit WebSocket клиента..." << std::endl;
+    //     std::cout << "Запуск Bybit WebSocket клиента..." << std::endl;
 
-        // Создаем экземпляр клиента
-        auto client = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook,
-                &statusMessage, &publicTrade);
+    //     // Создаем экземпляр клиента
+    //     auto client = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook,
+    //             &statusMessage, &publicTrade);
 
-        // Подключаемся к Bybit
-        // Для спота используйте: stream.bybit.com/v5/public/spot
-        // Для линейных контрактов: stream.bybit.com/v5/public/linear
-        // Для инверсных: stream.bybit.com/v5/public/inverse
-        client->connect("stream.bybit.com", "443", "/v5/public/linear");
+    //     // Подключаемся к Bybit
+    //     // Для спота используйте: stream.bybit.com/v5/public/spot
+    //     // Для линейных контрактов: stream.bybit.com/v5/public/linear
+    //     // Для инверсных: stream.bybit.com/v5/public/inverse
+    //     client->connect("stream.bybit.com", "443", "/v5/public/linear");
 
-        std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
+    //     std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
 
-        // Запускаем обработку асинхронных операций
-        ioc.run();
+    //     // Запускаем обработку асинхронных операций
+    //     ioc.run();
 
-        std::cout << "I/O контекст остановлен." << std::endl;
-    } catch (const std::exception &e) {
-        std::cerr << "Фатальная ошибка: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+    //     std::cout << "I/O контекст остановлен." << std::endl;
+    // } catch (const std::exception &e) {
+    //     std::cerr << "Фатальная ошибка: " << e.what() << std::endl;
+    //     return EXIT_FAILURE;
+    // }
 
     // OrderBook orderBook;
     // OrderBookJsonParser parser(&orderBook);
-    // // orderBook.asks.reserve(50);
-    // // orderBook.bids.reserve(50);
     // parser.setString(snapshot);
     // parser.parse();
     // parser.printData();
@@ -84,12 +83,19 @@ int main() {
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
     // parser.printData();
-    // for (size_t i = 0; i < 10000; ++i) {
-    //     parser.setString(snapshot);
-    //     parser.parse();
-    // }
 
     // checkLatency();
+
+    PublicTrade publicTradeStruct;
+    PublicTradeJsonParser parser(&publicTradeStruct);
+
+    // auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(publicTrade);
+    parser.parse();
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
 
     return EXIT_SUCCESS;
 }

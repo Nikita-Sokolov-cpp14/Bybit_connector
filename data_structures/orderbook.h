@@ -9,7 +9,7 @@ public:
     using LevelsBids = boost::container::flat_map<double, double, std::greater<double> >;
     using LevelsAsks = boost::container::flat_map<double, double, std::less<double> >;
 
-    std::string_view topic;
+    std::string_view topic; // TODO поменять на глубину и название пары
     uint64_t ts;
     std::string_view s;
     LevelsBids bids;
@@ -17,6 +17,8 @@ public:
     uint64_t u;
     uint64_t seq;
     uint64_t cts;
+
+    OrderBook();
 
     void clearLevels();
 

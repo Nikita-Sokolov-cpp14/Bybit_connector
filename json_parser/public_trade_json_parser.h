@@ -19,4 +19,10 @@ public:
 
 private:
     PublicTrade *const publicTrade_;
+
+    void parseArray(std::string_view arrayStr);
+
+    void parseData(std::string_view dataStr);
+
+    PublicTrade::TickDirection getTickDirection(std::string_view str);
 };

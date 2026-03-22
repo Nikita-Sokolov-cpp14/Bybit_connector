@@ -33,8 +33,8 @@ TypeMessage parseTypeMessage(std::string_view str) {
     return TypeMessage_Unknown;
 }
 
-std::string_view getFieldValue(std::string_view fieldName, std::string_view source) {
-    size_t fieldPos = source.find(fieldName);
+std::string_view getFieldValue(std::string_view fieldName, std::string_view source, size_t pos) {
+    size_t fieldPos = source.find(fieldName, pos);
     size_t strLen = source.length();
     if (fieldPos >= strLen) {
         return "";
@@ -87,4 +87,11 @@ double BaseJsonParser::convertToDouble(std::string_view valueStr) {
     }
 
     return result;
+}
+
+bool BaseJsonParser::convertToBool(std::string_view valueStr) {
+    if (valueStr == "true") {
+        return true;
+    }
+    return false;
 }

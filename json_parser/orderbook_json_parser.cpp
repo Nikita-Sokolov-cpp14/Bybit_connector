@@ -55,6 +55,7 @@ void OrderBookJsonParser::parseDataMessage() {
     orderBook_->topic = getFieldValue(topicName, string_);
     orderBook_->ts = convertTo<uint64_t>(getFieldValue(tsName, string_));
     size_t dataStartPos = string_.find(data);
+    dataStartPos += data.length() + 4;
     size_t dataEndPos = string_.find('}', dataStartPos);
     orderBook_->cts = convertTo<uint64_t>(getFieldValue(ctsName, string_));
     parseDataSection(string_.substr(dataStartPos, dataEndPos - dataStartPos));

@@ -1,6 +1,19 @@
 #include "orderbook.h"
 #include <iostream>
 
+OrderBook::OrderBook() :
+topic(""),
+ts(0),
+s(""),
+bids(),
+asks(),
+u(0),
+seq(0),
+cts(0) {
+//     bids.reserve(1500);
+//     asks.reserve(1500);
+}
+
 void OrderBook::clearLevels() {
     bids.clear();
     asks.clear();
