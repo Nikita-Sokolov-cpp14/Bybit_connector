@@ -35,11 +35,10 @@ class BybitWebSocketClient : public std::enable_shared_from_this<BybitWebSocketC
 public:
     // Конструктор: инициализируем все необходимые компоненты
     BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook,
-        StatusMessage *const statusMessage, PublicTrade *const publicTrade);
+            StatusMessage *const statusMessage, PublicTrade *const publicTrade);
 
     // Основной метод для запуска подключения
-    void connect(const std::string &host, const std::string &port,
-            const std::string &target);
+    void connect(const std::string &host, const std::string &port, const std::string &target);
 
 private:
     // Обработчик результата DNS резолвинга
@@ -65,15 +64,6 @@ private:
 
     // Обработчик полученных сообщений
     void on_read(beast::error_code ec, std::size_t bytes_transferred);
-
-    // Обработка snapshot стакана
-    void process_orderbook_snapshot(const std::string &data);
-
-    // Обработка delta обновлений стакана
-    void process_orderbook_delta(const std::string &data);
-
-    // Обработка данных о сделках (текущая цена)
-    void process_trade_data(const std::string &data);
 
     // Запуск периодического PING для поддержания соединения
     void start_ping();
@@ -107,4 +97,10 @@ private:
     std::string last_price_; // Последняя полученная цена
     std::string message_;
     std::string_view message_view_;
+    std::chrono::steady_clock::time_point ping_sent_time_;
+
+    // Метод для измерения и логирования пинга
+    void measure_latency(std::chrono::steady_clock::time_point sent_time);
+
+    void on_control_frame(websocket::frame_type kind, beast::string_view payload);
 };

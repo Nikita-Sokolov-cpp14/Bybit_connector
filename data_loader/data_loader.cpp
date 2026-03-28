@@ -1,4 +1,7 @@
 #include "data_loader.h"
+#include "p999_latency/check_latency.h"
+
+DECLARE_LATENCY_MEMBERS(1000)
 
 BybitWebSocketClient::BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx,
         OrderBook *const orderBook, StatusMessage *const statusMessage,
@@ -30,6 +33,12 @@ typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщени
             false, // client_no_context_takeover - без контекста клиента
             8, // compLevel - уровень сжатия (0-9)
             4 // memLevel - уровень памяти (1-9)
+    });
+
+    // *** УСТАНАВЛИВАЕМ CONTROL_CALLBACK ***
+    // Этот callback будет вызываться каждый раз, когда приходит управляющий фрейм (PING/PONG/CLOSE)
+    ws_.control_callback([this](websocket::frame_type kind, beast::string_view payload) {
+        on_control_frame(kind, payload);
     });
 }
 
@@ -114,7 +123,7 @@ void BybitWebSocketClient::on_handshake(beast::error_code ec) {
     subscribe_to_streams();
 
     // Запускаем пинг-понг для поддержания соединения
-    // start_ping();
+    start_ping();
 
     // Начинаем читать сообщения
     do_read();
@@ -149,6 +158,7 @@ void BybitWebSocketClient::on_subscribe_sent(beast::error_code ec, std::size_t b
 
 // Асинхронное чтение сообщений
 void BybitWebSocketClient::do_read() {
+    // LATENCY_MEASURE_START()
     // Буфер для хранения полученных данных
     buffer_.clear();
 
@@ -198,68 +208,15 @@ void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_trans
         std::cout << "Сырые данные: " << message_view_ << std::endl;
     }
 
+    // LATENCY_MEASURE_END()
+    // READ_TIMER()
     // Продолжаем чтение следующих сообщений
     do_read();
 }
 
-// Обработка snapshot стакана
-void BybitWebSocketClient::process_orderbook_snapshot(const std::string &data) {
-    // if (data.contains("data")) {
-    //     auto &orderbook = data["data"];
-
-    //     if (orderbook.contains("b")) {
-    //         std::cout << "Bids (покупка):" << std::endl;
-    //         for (const auto &bid : orderbook["b"]) {
-    //             std::cout << "  Цена: " << bid[0] << ", Объем: " << bid[1] << std::endl;
-    //         }
-    //     }
-
-    //     if (orderbook.contains("a")) {
-    //         std::cout << "Asks (продажа):" << std::endl;
-    //         for (const auto &ask : orderbook["a"]) {
-    //             std::cout << "  Цена: " << ask[0] << ", Объем: " << ask[1] << std::endl;
-    //         }
-    //     }
-    // }
-}
-
-// Обработка delta обновлений стакана
-void BybitWebSocketClient::process_orderbook_delta(const std::string &data) {
-    // if (data.contains("data")) {
-    //     auto &delta = data["data"];
-
-    //     if (delta.contains("b") && !delta["b"].empty()) {
-    //         std::cout << "Изменения в bids (покупка): " << delta["b"].size() << " обновлений"
-    //                   << std::endl;
-    //     }
-
-    //     if (delta.contains("a") && !delta["a"].empty()) {
-    //         std::cout << "Изменения в asks (продажа): " << delta["a"].size() << " обновлений"
-    //                   << std::endl;
-    //     }
-    // }
-}
-
-// Обработка данных о сделках (текущая цена)
-void BybitWebSocketClient::process_trade_data(const std::string &data) {
-    // if (data.contains("data")) {
-    //     for (const auto &trade : data["data"]) {
-    //         std::string price = trade["p"];
-    //         std::string volume = trade["v"];
-    //         std::string side = trade["S"]; // "Buy" или "Sell"
-
-    //         std::cout << "Сделка: цена=" << price << ", объем=" << volume << ", сторона=" << side
-    //                   << std::endl;
-
-    //         // Здесь можно сохранять последнюю цену
-    //         last_price_ = price;
-    //     }
-    // }
-}
-
 // Запуск периодического PING для поддержания соединения
 void BybitWebSocketClient::start_ping() {
-    ping_timer_.expires_after(std::chrono::seconds(20));
+    ping_timer_.expires_after(std::chrono::seconds(5));
     ping_timer_.async_wait(
             beast::bind_front_handler(&BybitWebSocketClient::on_ping_timer, shared_from_this()));
 }
@@ -273,6 +230,7 @@ void BybitWebSocketClient::on_ping_timer(beast::error_code ec) {
 
     if (ws_.is_open()) {
         // Отправляем PING фрейм
+        ping_sent_time_ = std::chrono::steady_clock::now();
         ws_.async_ping({},
                 beast::bind_front_handler(&BybitWebSocketClient::on_ping_sent, shared_from_this()));
     }
@@ -282,7 +240,7 @@ void BybitWebSocketClient::on_ping_timer(beast::error_code ec) {
 void BybitWebSocketClient::on_ping_sent(beast::error_code ec) {
     if (!ec) {
         // Если PING отправлен успешно, планируем следующий
-        ping_timer_.expires_after(std::chrono::seconds(20));
+        ping_timer_.expires_after(std::chrono::seconds(5));
         ping_timer_.async_wait(beast::bind_front_handler(&BybitWebSocketClient::on_ping_timer,
                 shared_from_this()));
     }
@@ -313,4 +271,20 @@ void BybitWebSocketClient::on_reconnect_timer(beast::error_code ec) {
 
     std::cout << "Пытаемся переподключиться..." << std::endl;
     connect(host_, port_, target_);
+}
+
+void BybitWebSocketClient::measure_latency(std::chrono::steady_clock::time_point sent_time) {
+    auto now = std::chrono::steady_clock::now();
+    auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now - sent_time).count();
+
+    std::cout << "WebSocket PING/PONG RTT: " << latency << " ms" << std::endl;
+
+    // Здесь можно сохранять latency в вашу систему мониторинга
+    // например, в глобальную переменную или вызывать колбэк
+}
+
+void BybitWebSocketClient::on_control_frame(websocket::frame_type kind,
+        beast::string_view payload) {
+    std::cout << "on_control_frame" << std::endl;
+    measure_latency(ping_sent_time_);
 }

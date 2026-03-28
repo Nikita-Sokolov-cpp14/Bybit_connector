@@ -15,4 +15,5 @@ target_link_libraries(data_loader PRIVATE
     OpenSSL::SSL
     Boost::locale
     json_parser
+    check_latency
 )
