@@ -4,6 +4,8 @@ find_package(OpenSSL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS locale)
 
 add_library(data_loader
+    base_data_loader.cpp
+    private_data_loader.cpp
     data_loader.cpp
 )
 
