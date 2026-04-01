@@ -4,6 +4,7 @@ add_library(data_structures
     orderbook.cpp
     public_trade.cpp
     status_message.cpp
+    position.cpp
 )
 
 target_include_directories(data_structures PUBLIC

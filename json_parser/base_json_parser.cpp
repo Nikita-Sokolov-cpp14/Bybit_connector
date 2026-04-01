@@ -48,8 +48,18 @@ std::string_view getFieldValue(std::string_view fieldName, std::string_view sour
     if (value[0] == '"') {
         return value.substr(1, value.length() - 2);
     }
-
     return value;
+}
+
+Side parseSide(std::string_view sideStr) {
+    if (sideStr == "Buy") {
+        return Side_Buy;
+    } else if (sideStr == "Sell") {
+        return Side_Sell;
+    } else {
+        std::cout << "parseSide: Unknown" << std::endl;
+    }
+    return Side_Unknown;
 }
 
 void BaseJsonParser::setString(std::string_view str) {
@@ -67,8 +77,13 @@ double BaseJsonParser::convertToDouble(std::string_view valueStr) {
     double result = 0.0;
     bool beforeDot = true;
     double exponent = 0.1;
+    bool isNegative = false;
 
     for (char c : valueStr) {
+        if (c == '-') {
+            isNegative = true;
+            continue;
+        }
         if (c == '.') {
             beforeDot = false;
             continue;
@@ -84,6 +99,9 @@ double BaseJsonParser::convertToDouble(std::string_view valueStr) {
             result += (c - '0') * exponent;
             exponent *= 0.1;
         }
+    }
+    if (isNegative) {
+        result *= -1;
     }
 
     return result;

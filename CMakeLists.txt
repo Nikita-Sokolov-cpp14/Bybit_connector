@@ -8,6 +8,7 @@ add_subdirectory(data_loader)
 add_subdirectory(data_structures)
 add_subdirectory(json_parser)
 add_subdirectory(p999_latency)
+add_subdirectory(check_parsing)
 
 add_executable(${PROJECT_NAME})
 
@@ -20,4 +21,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     data_structures
     json_parser
     check_latency
+    check_parsing
 )

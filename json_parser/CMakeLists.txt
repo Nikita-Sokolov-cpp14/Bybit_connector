@@ -5,6 +5,7 @@ add_library(json_parser
     public_trade_json_parser.cpp
     orderbook_json_parser.cpp
     status_json_parser.cpp
+    position_json_parser.cpp
 )
 
 target_link_libraries(json_parser PRIVATE

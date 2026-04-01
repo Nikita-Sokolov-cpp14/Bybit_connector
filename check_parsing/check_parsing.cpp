@@ -1,4 +1,14 @@
-#include "check_latency.h"
+#include "check_parsing.h"
+
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <iomanip>
+
+#include "data_loader/data_loader.h"
+#include "json_parser/orderbook_json_parser.h"
+#include "json_parser/base_json_parser.h"
+#include "json_parser/position_json_parser.h"
 
 namespace {
 
@@ -15,99 +25,42 @@ const std::string_view wallet = R"({"id":"140894896_wallet_1774779351206","topic
 
 }
 
-void calculate_percentiles(std::vector<double> &latencies) {
-    // Сортируем для расчета перцентилей
-    std::sort(latencies.begin(), latencies.end());
-
-    size_t n = latencies.size();
-
-    // Среднее
-    double sum = std::accumulate(latencies.begin(), latencies.end(), 0.0);
-    double mean = sum / n;
-
-    // Минимум и максимум
-    double min = latencies.front();
-    double max = latencies.back();
-
-    // Перцентили
-    double p50 = latencies[static_cast<size_t>(n * 0.50)];
-    double p90 = latencies[static_cast<size_t>(n * 0.90)];
-    double p95 = latencies[static_cast<size_t>(n * 0.95)];
-    double p99 = latencies[static_cast<size_t>(n * 0.99)];
-    double p999 = latencies[static_cast<size_t>(n * 0.999)];
-    double p9999 = latencies[static_cast<size_t>(n * 0.9999)];
-
-    std::cout << std::fixed << std::setprecision(3);
-    std::cout << "=== Latency Analysis (" << n << " samples) ===\n";
-    std::cout << "Mean:   " << mean << " µs\n";
-    std::cout << "Min:    " << min << " µs\n";
-    std::cout << "Max:    " << max << " µs\n";
-    std::cout << "P50:    " << p50 << " µs\n";
-    std::cout << "P90:    " << p90 << " µs\n";
-    std::cout << "P95:    " << p95 << " µs\n";
-    std::cout << "P99:    " << p99 << " µs\n";
-    std::cout << "P99.9:  " << p999 << " µs\n";
-    std::cout << "P99.99: " << p9999 << " µs\n";
+void checkParsingPosition() {
+    PositionHFT positionHFT;
+    PositionJsonParser parser(&positionHFT);
+    parser.setString(position);
+    parser.parse();
+    parser.printData();
 }
 
-void checkLatency(BaseJsonParser &parser, std::string_view message) {
-    constexpr size_t WARMUP = 10000; // прогрев
-    constexpr size_t SAMPLES = 1000000; // основное измерение
+void checkParsing() {
+    // OrderBook orderBook;
+    // OrderBookJsonParser parser(&orderBook);
+    // parser.setString(snapshot);
+    // parser.parse();
+    // parser.printData();
+    // parser.setString(delta);
+    // parser.parse();
+    // parser.printData();
 
-    std::cout << "Warming up...\n";
-    for (int i = 0; i < WARMUP; ++i) {
-        parser.setString(message);
-        parser.parse();
-    }
+    // auto start = std::chrono::high_resolution_clock::now();
+    // parser.setString(snapshot);
+    // parser.parse(); // 180 mks или 28 мкс с флагом компилляции -02.
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    // parser.printData();
 
-    std::cout << "Measuring...\n";
-    std::vector<double> latencies;
-    latencies.reserve(SAMPLES);
+     // auto start = std::chrono::high_resolution_clock::now();
+    // parser.setString(publicTrade);
+    // parser.parse();
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    // parser.printData();
 
-    TypeMessage typeMessage_;
-    for (int i = 0; i < SAMPLES; ++i) {
-        auto start = std::chrono::steady_clock::now();
-        typeMessage_ = parseTypeMessage(snapshotStr.substr(0, maxTypeStrLen));
-        switch (typeMessage_) {
-            case TypeMessage_Orderbook:
-                parser.setString(message);
-                parser.parse();
-                break;
-            case TypeMessage_PublicTrade:
-                // publicTradeJsonParser_.setString(snapshotStr);
-                // publicTradeJsonParser_.parse();
-                break;
-            case TypeMessage_Status:
-                // statusParser_.setString(snapshotStr);
-                // statusParser_.parse();
-                break;
-            default:
-                std::cout << "BybitWebSocketClient::on_read: Unknown message type" << std::endl;
-                std::cout << snapshotStr << std::endl;
-                break;
-        }
-        auto end = std::chrono::steady_clock::now();
-        double us = std::chrono::duration<double, std::micro>(end - start).count();
-        latencies.push_back(us);
-    }
+    // OrderBook orderBook;
+    // OrderBookJsonParser parser(&orderBook);
 
-    calculate_percentiles(latencies);
-
-    // Дополнительно: анализ распределения
-    std::cout << "\n=== Distribution ===\n";
-    auto outliers =
-            std::count_if(latencies.begin(), latencies.end(), [](double x) { return x > 20.0; });
-    std::cout << "Outliers (>20 µs): " << outliers << " (" << (100.0 * outliers / SAMPLES)
-              << "%)\n";
-}
-
-void checkLatency() {
-    OrderBook orderBook;
-    OrderBookJsonParser parserOrderbook(&orderBook);
-    PublicTrade publicTradeStruct;
-    PublicTradeJsonParser parserPublicTrade(&publicTradeStruct);
-    std::cout << "snapshot" << std::endl;
-    checkLatency(parserOrderbook, snapshotStr);
-    std::cout << "public trade" << std::endl;
-    checkLatency(parserPublicTrade, publicTradeStr);
+    checkParsingPosition();
 }
