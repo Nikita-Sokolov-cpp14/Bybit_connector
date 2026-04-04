@@ -49,6 +49,15 @@ void startConnection() {
         // // Для инверсных: stream.bybit.com/v5/public/inverse
         // client->connect("stream.bybit.com", "443", "/v5/public/linear");
 
+        PositionHFT positionHFT;
+        ExecutionFast executionFast;
+        OrderHFT orderHFT;
+        WalletHFT walletHFT;
+        PrivateWebSocketClient::Messages messages(&positionHFT, &executionFast, &orderHFT,
+                &walletHFT);
+
+        auto client = std::make_shared<PrivateWebSocketClient>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
+                "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
         client->connect("stream.bybit.com", "443", "/v5/private");
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
@@ -65,10 +74,10 @@ void startConnection() {
 
 int main() {
     std::cout << "hello" << std::endl;
-    // startConnection();
+    startConnection();
 
     // checkLatency();
-    checkParsing();
+    // checkParsing();
 
     return 0;
 }

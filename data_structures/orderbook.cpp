@@ -20,9 +20,9 @@ void OrderBook::clearLevels() {
 }
 
 void OrderBook::print() {
+    std::cout << " === OrderBook === " << std::endl;
     std::cout << "topic: " << topic << std::endl;
     std::cout << "ts: " << ts << std::endl;
-    std::cout << " === data == " << std::endl;
     std::cout << "s: " << s << std::endl;
     std::cout << " asks " << std::endl;
     for (const auto &val : asks) {
@@ -34,6 +34,5 @@ void OrderBook::print() {
     }
     std::cout << "u: " << u << std::endl;
     std::cout << "seq: " << seq << std::endl;
-    std::cout << " === end data == " << std::endl;
     std::cout << "cts: " << cts << std::endl;
 }

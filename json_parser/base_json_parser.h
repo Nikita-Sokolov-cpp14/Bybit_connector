@@ -14,7 +14,11 @@ enum TypeMessage {
     TypeMessage_Unknown = 0,
     TypeMessage_Status,
     TypeMessage_Orderbook,
-    TypeMessage_PublicTrade
+    TypeMessage_PublicTrade,
+    TypeMessage_Position,
+    TypeMessage_Wallet,
+    TypeMessage_ExecutionFast,
+    TypeMessage_Order
 };
 
 TypeMessage parseTypeMessage(std::string_view str);

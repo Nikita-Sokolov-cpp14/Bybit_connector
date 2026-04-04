@@ -76,9 +76,21 @@ void checkWallet() {
     parser.printData();
 }
 
+void checkParseTypeMessage() {
+    std::cout << parseTypeMessage(snapshotStr) << std::endl;
+    std::cout << parseTypeMessage(deltaStr) << std::endl;
+    std::cout << parseTypeMessage(statusStr) << std::endl;
+    std::cout << parseTypeMessage(publicTradeStr) << std::endl;
+    std::cout << parseTypeMessage(executionFastStr) << std::endl;
+    std::cout << parseTypeMessage(positionStr) << std::endl;
+    std::cout << parseTypeMessage(orderStr) << std::endl;
+    std::cout << parseTypeMessage(walletStr) << std::endl;
+}
+
 void checkParsing() {
     // checkParsingPosition();
     // checkParsingExecutionFast();
     // checkOrder();
-    checkWallet();
+    // checkWallet();
+    checkParseTypeMessage();
 }

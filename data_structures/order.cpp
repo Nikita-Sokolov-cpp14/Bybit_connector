@@ -2,6 +2,7 @@
 #include <iostream>
 
 void OrderHFT::print() {
+    std::cout << " === OrderHFT === " << std::endl;
     std::cout << "topic " << topic << std::endl;
     std::cout << "id " << id << std::endl;
     std::cout << "creationTime " << creationTime << std::endl;

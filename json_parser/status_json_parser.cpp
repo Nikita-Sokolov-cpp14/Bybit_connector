@@ -33,6 +33,7 @@ void StatusJsonParser::parse() {
 }
 
 void StatusJsonParser::printData() {
+    std::cout << "=== Status ===" << std::endl;
     std::cout << "sucsess: " << statusMessage_->sucsess << std::endl;
     std::cout << "retMessage: " << statusMessage_->retMessage << std::endl;
     std::cout << "conId: " << statusMessage_->conId << std::endl;

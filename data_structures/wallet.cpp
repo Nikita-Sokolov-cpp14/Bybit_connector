@@ -10,6 +10,7 @@ void CoinInfoHFT::print() const {
 }
 
 void WalletHFT::print() {
+    std::cout << "=== WalletHFT ===" << std::endl;
     std::cout << "id " << id << std::endl;
     std::cout << "topic " << topic << std::endl;
     std::cout << "creationTime " << creationTime << std::endl;

@@ -2,6 +2,7 @@
 #include <iostream>
 
 void ExecutionFast::print() {
+    std::cout << " === ExecutionFast === " << std::endl;
     std::cout << "topic " << topic << std::endl;
     std::cout << "creationTime " << creationTime << std::endl;
     std::cout << "category " << category << std::endl;

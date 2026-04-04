@@ -5,6 +5,10 @@ namespace {
 const std::string_view topicName = "topic";
 const std::string_view orderbook = "orderbook";
 const std::string_view publicTrade = "publicTrade";
+const std::string_view position = "position";
+const std::string_view order = "order";
+const std::string_view executionFast = "execution.fast";
+const std::string_view wallet = "wallet";
 const std::string_view statusFieldName = "success";
 
 bool checkIsStatusStr(std::string_view str) {
@@ -23,11 +27,21 @@ TypeMessage parseTypeMessage(std::string_view str) {
     }
 
     std::string_view type = getFieldValue(topicName, str);
+    if (type == executionFast) {
+        return TypeMessage_ExecutionFast;
+    }
+
     type = type.substr(0, type.find('.'));
     if (type == orderbook) {
         return TypeMessage_Orderbook;
     } else if (type == publicTrade) {
         return TypeMessage_PublicTrade;
+    } else if (type == position) {
+        return TypeMessage_Position;
+    } else if (type == order) {
+        return TypeMessage_Order;
+    } else if (type == wallet) {
+        return TypeMessage_Wallet;
     }
     std::cout << "BaseJsonParser::parseTypeMessage: Undefined type message" << std::endl;
     return TypeMessage_Unknown;

@@ -1,17 +1,35 @@
 #pragma once
 
 #include "base_data_loader.h"
+#include "json_parser/position_json_parser.h"
+#include "json_parser/order_json_parser.h"
+#include "json_parser/wallet_json_parser.h"
+#include "json_parser/execution_fast_json_parser.h"
 
 // Класс WebSocket клиента для Bybit
 class PrivateWebSocketClient : public BaseWebSocketClient {
 public:
+    struct Messages {
+        PositionHFT *const positionHFT;
+        ExecutionFast *const executionFast;
+        OrderHFT *const orderHFT;
+        WalletHFT *const walletHFT;
+
+        Messages(PositionHFT *const positionHFT_, ExecutionFast *const executionFast_,
+                OrderHFT *const orderHFT_, WalletHFT *const walletHFT_);
+    };
+
     // Конструктор: инициализируем все необходимые компоненты
     PrivateWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-            const std::string &api_secret);
+            const std::string &api_secret, const Messages &messages);
 
 private:
     StatusMessage statusMessage_;
     StatusJsonParser statusParser_;
+    PositionJsonParser positionJsonParser_;
+    OrderJsonParser orderJsonParser_;
+    WalletJsonParser walletJsonParser_;
+    ExecutionFastJsonParser executionFastJsonParser_;
     std::string api_key_;
     std::string api_secret_;
     bool authenticated_;
