@@ -9,6 +9,9 @@
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/base_json_parser.h"
 #include "json_parser/position_json_parser.h"
+#include "json_parser/execution_fast_json_parser.h"
+#include "json_parser/order_json_parser.h"
+#include "json_parser/wallet_json_parser.h"
 
 namespace {
 
@@ -18,49 +21,64 @@ const std::string_view statusStr = R"({"success":true,"ret_msg":"","conn_id":"d6
 const std::string_view publicTradeStr = R"({"topic":"publicTrade.BTCUSDT","type":"snapshot","ts":1774021164273,"data":[{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"MinusTick","i":"8c931d9a-b703-5c34-9aeb-860867cf1f66","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"ZeroMinusTick","i":"307fb58f-09dc-5121-b24f-eb2f81873445","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"ZeroMinusTick","i":"e4f62be6-ee74-5a67-a9da-b3829b911246","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69916.80","L":"ZeroMinusTick","i":"e638a9e6-ade1-541e-8e22-e6e4c04fbfc1","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.032","p":"69916.80","L":"ZeroMinusTick","i":"ddea3520-0444-515c-af09-07471b39e1e5","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.002","p":"69916.10","L":"MinusTick","i":"58766b19-9dba-5ad3-8931-f71eff90e8d8","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.001","p":"69915.40","L":"MinusTick","i":"f3a898c6-d91f-5860-9c77-dc31411e6d3a","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.002","p":"69915.40","L":"ZeroMinusTick","i":"597fb5be-4ef1-5cf7-846e-3f8bf88868e2","BT":false,"RPI":false,"seq":549792210006},{"T":1774021164272,"s":"BTCUSDT","S":"Sell","v":"0.008","p":"69914.20","L":"MinusTick","i":"86245400-ea12-510f-a809-78e07e373378","BT":false,"RPI":false,"seq":549792210006}]})";
 
 // {"topic":"publicTrade.BTCUSDT","type":"snapshot","ts":1774021164130,"data":[{"T":1774021164129,"s":"BTCUSDT","S":"Buy","v":"0.020","p":"69916.90","L":"ZeroMinusTick","i":"f60eae3c-d812-5c0b-ad26-8010c31c53aa","BT":false,"RPI":false,"seq":549792208812}]}
-const std::string_view position = R"({"id":"140894896_position_1774779351206","topic":"position","creationTime":1774779351206,"data":[{"positionIdx":0,"tradeMode":0,"riskId":10001,"riskLimitValue":"100000","symbol":"BTCPERP","side":"Buy","size":"0.001","entryPrice":"66473.5","sessionAvgPrice":"66473.5","leverage":"10","positionValue":"66.4735","positionBalance":"0","markPrice":"66472.02","positionIM":"6.70702815","positionMM":"0.32571423","positionIMByMp":"6.70702815","positionMMByMp":"0.32571423","takeProfit":"0","stopLoss":"0","trailingStop":"0","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","curRealisedPnl":"-0.0664735","createdTime":"1774779321716","updatedTime":"1774779351201","tpslMode":"Full","liqPrice":"10736.47573672","bustPrice":"","category":"linear","positionStatus":"Normal","adlRankIndicator":2,"autoAddMargin":0,"leverageSysUpdatedTime":"","mmrSysUpdatedTime":"","seq":37449201146,"breakEvenPrice":"66606.58008008","isReduceOnly":false}]})";
-const std::string_view executionFast = R"({"topic":"execution.fast","creationTime":1774779351199,"data":[{"category":"linear","symbol":"BTCPERP","execId":"a7fc9663-3eef-5f52-a500-4d961a86f1bc","execPrice":"66473.5","execQty":"0.001","orderId":"88d84f9a-a6b5-4ff6-b746-1cc9978afca4","isMaker":false,"orderLinkId":"","side":"Buy","execTime":"1774779351198","seq":37449201146}]})";
-const std::string_view order = R"({"topic":"order","id":"140894896_BTCPERP_37449201146","creationTime":1774779351203,"data":[{"category":"linear","symbol":"BTCPERP","orderId":"88d84f9a-a6b5-4ff6-b746-1cc9978afca4","orderLinkId":"","blockTradeId":"","side":"Buy","positionIdx":0,"orderStatus":"Filled","cancelType":"UNKNOWN","rejectReason":"EC_NoError","timeInForce":"IOC","isLeverage":"","price":"69795.6","qty":"0.001","avgPrice":"66473.5","leavesQty":"0","leavesValue":"0","cumExecQty":"0.001","cumExecValue":"66.4735","cumExecFee":"0.0664735","orderType":"Market","stopOrderType":"","orderIv":"","triggerPrice":"","takeProfit":"","stopLoss":"","triggerBy":"","tpTriggerBy":"","slTriggerBy":"","triggerDirection":0,"placeType":"","lastPriceOnCreated":"66467.5","closeOnTrigger":false,"reduceOnly":false,"smpGroup":0,"smpType":"None","smpOrderId":"","slLimitPrice":"0","tpLimitPrice":"0","tpslMode":"UNKNOWN","createType":"CreateByUser","marketUnit":"","createdTime":"1774779351198","updatedTime":"1774779351201","feeCurrency":"","closedPnl":"0","parentOrderLinkId":"","slippageTolerance":"0","slippageToleranceType":"UNKNOWN","cumFeeDetail":{"USDC":"0.0664735"}}]})";
-const std::string_view wallet = R"({"id":"140894896_wallet_1774779351206","topic":"wallet","creationTime":1774779351206,"data":[{"accountIMRate":"0.3521","accountMMRate":"0.02","accountIMRateByMp":"0.3521","accountMMRateByMp":"0.02","totalEquity":"59.24728891","totalWalletBalance":"95.49571699","totalMarginBalance":"59.14951406","totalAvailableBalance":"38.32154203","totalPerpUPL":"-36.34620293","totalInitialMargin":"20.82797202","totalMaintenanceMargin":"1.18454802","totalInitialMarginByMp":"20.82797202","totalMaintenanceMarginByMp":"1.18454802","coin":[{"coin":"USDC","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"}],"accountLTV":"0.0011","accountType":"UNIFIED"}]})";
+const std::string_view positionStr = R"({"id":"140894896_position_1774779351206","topic":"position","creationTime":1774779351206,"data":[{"positionIdx":0,"tradeMode":0,"riskId":10001,"riskLimitValue":"100000","symbol":"BTCPERP","side":"Buy","size":"0.001","entryPrice":"66473.5","sessionAvgPrice":"66473.5","leverage":"10","positionValue":"66.4735","positionBalance":"0","markPrice":"66472.02","positionIM":"6.70702815","positionMM":"0.32571423","positionIMByMp":"6.70702815","positionMMByMp":"0.32571423","takeProfit":"0","stopLoss":"0","trailingStop":"0","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","curRealisedPnl":"-0.0664735","createdTime":"1774779321716","updatedTime":"1774779351201","tpslMode":"Full","liqPrice":"10736.47573672","bustPrice":"","category":"linear","positionStatus":"Normal","adlRankIndicator":2,"autoAddMargin":0,"leverageSysUpdatedTime":"","mmrSysUpdatedTime":"","seq":37449201146,"breakEvenPrice":"66606.58008008","isReduceOnly":false}]})";
+const std::string_view executionFastStr = R"({"topic":"execution.fast","creationTime":1774779351199,"data":[{"category":"linear","symbol":"BTCPERP","execId":"a7fc9663-3eef-5f52-a500-4d961a86f1bc","execPrice":"66473.5","execQty":"0.001","orderId":"88d84f9a-a6b5-4ff6-b746-1cc9978afca4","isMaker":false,"orderLinkId":"","side":"Buy","execTime":"1774779351198","seq":37449201146}]})";
+const std::string_view orderStr = R"({"topic":"order","id":"140894896_BTCPERP_37449201146","creationTime":1774779351203,"data":[{"category":"linear","symbol":"BTCPERP","orderId":"88d84f9a-a6b5-4ff6-b746-1cc9978afca4","orderLinkId":"","blockTradeId":"","side":"Buy","positionIdx":0,"orderStatus":"Filled","cancelType":"UNKNOWN","rejectReason":"EC_NoError","timeInForce":"IOC","isLeverage":"","price":"69795.6","qty":"0.001","avgPrice":"66473.5","leavesQty":"0","leavesValue":"0","cumExecQty":"0.001","cumExecValue":"66.4735","cumExecFee":"0.0664735","orderType":"Market","stopOrderType":"","orderIv":"","triggerPrice":"","takeProfit":"","stopLoss":"","triggerBy":"","tpTriggerBy":"","slTriggerBy":"","triggerDirection":0,"placeType":"","lastPriceOnCreated":"66467.5","closeOnTrigger":false,"reduceOnly":false,"smpGroup":0,"smpType":"None","smpOrderId":"","slLimitPrice":"0","tpLimitPrice":"0","tpslMode":"UNKNOWN","createType":"CreateByUser","marketUnit":"","createdTime":"1774779351198","updatedTime":"1774779351201","feeCurrency":"","closedPnl":"0","parentOrderLinkId":"","slippageTolerance":"0","slippageToleranceType":"UNKNOWN","cumFeeDetail":{"USDC":"0.0664735"}}]})";
+const std::string_view walletStr = R"({"id":"140894896_wallet_1774779351206","topic":"wallet","creationTime":1774779351206,"data":[{"accountIMRate":"0.3521","accountMMRate":"0.02","accountIMRateByMp":"0.3521","accountMMRateByMp":"0.02","totalEquity":"59.24728891","totalWalletBalance":"95.49571699","totalMarginBalance":"59.14951406","totalAvailableBalance":"38.32154203","totalPerpUPL":"-36.34620293","totalInitialMargin":"20.82797202","totalMaintenanceMargin":"1.18454802","totalInitialMarginByMp":"20.82797202","totalMaintenanceMarginByMp":"1.18454802","coin":[{"coin":"USDC","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"},{"coin":"FGHT","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"},{"coin":"ABCD","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"}],"accountLTV":"0.0011","accountType":"UNIFIED"}]})";
 
+}
+
+void checkParsingExecutionFast() {
+    ExecutionFast executionFast;
+    ExecutionFastJsonParser parser(&executionFast);
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(executionFastStr);
+    parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
 }
 
 void checkParsingPosition() {
     PositionHFT positionHFT;
     PositionJsonParser parser(&positionHFT);
-    parser.setString(position);
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(positionStr);
     parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
+}
+
+void checkOrder() {
+    OrderHFT orderHFT;
+    OrderJsonParser parser(&orderHFT);
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(orderStr);
+    parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
+}
+
+void checkWallet() {
+    WalletHFT walletHFT;
+    WalletJsonParser parser(&walletHFT);
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(walletStr);
+    parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
     parser.printData();
 }
 
 void checkParsing() {
-    // OrderBook orderBook;
-    // OrderBookJsonParser parser(&orderBook);
-    // parser.setString(snapshot);
-    // parser.parse();
-    // parser.printData();
-    // parser.setString(delta);
-    // parser.parse();
-    // parser.printData();
-
-    // auto start = std::chrono::high_resolution_clock::now();
-    // parser.setString(snapshot);
-    // parser.parse(); // 180 mks или 28 мкс с флагом компилляции -02.
-    // auto end = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
-    // parser.printData();
-
-     // auto start = std::chrono::high_resolution_clock::now();
-    // parser.setString(publicTrade);
-    // parser.parse();
-    // auto end = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    // std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
-    // parser.printData();
-
-    // OrderBook orderBook;
-    // OrderBookJsonParser parser(&orderBook);
-
-    checkParsingPosition();
+    // checkParsingPosition();
+    // checkParsingExecutionFast();
+    // checkOrder();
+    checkWallet();
 }

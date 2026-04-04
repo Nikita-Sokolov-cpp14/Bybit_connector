@@ -8,3 +8,10 @@ enum Side {
     Side_Buy,
     Side_Sell
 };
+
+enum Category {
+    Category_Unknown = 0,
+    Category_Linear,    // "linear"
+    Category_Inverse,   // "inverse"
+    Category_Option     // "option"
+};

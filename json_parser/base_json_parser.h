@@ -23,6 +23,8 @@ std::string_view getFieldValue(std::string_view field, std::string_view source, 
 
 Side parseSide(std::string_view sideStr);
 
+Category ParseCategory(std::string_view categoryStr);
+
 class BaseJsonParser {
 public:
     void setString(std::string_view str);

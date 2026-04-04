@@ -5,6 +5,9 @@ add_library(data_structures
     public_trade.cpp
     status_message.cpp
     position.cpp
+    execution_fast.cpp
+    order.cpp
+    wallet.cpp
 )
 
 target_include_directories(data_structures PUBLIC

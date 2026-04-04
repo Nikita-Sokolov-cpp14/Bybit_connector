@@ -5,17 +5,17 @@
 #include "common_data.h"
 
 
-enum class OrderStatus : uint8_t {
-    Unknown = 0,
-    Created = 1,
-    New = 2,
-    PartiallyFilled = 3,
-    Filled = 4,
-    Cancelled = 5,
-    Rejected = 6,
-    Expired = 7,
-    Deactivated = 8,
-    Triggered = 9
+enum OrderStatus {
+    OrderStatus_Unknown = 0,
+    OrderStatus_Created,
+    OrderStatus_New,
+    OrderStatus_PartiallyFilled,
+    OrderStatus_Filled,
+    OrderStatus_Cancelled,
+    OrderStatus_Rejected,
+    OrderStatus_Expired,
+    OrderStatus_Deactivated,
+    OrderStatus_Triggered
 };
 
 enum class OrderType : uint8_t {
@@ -131,13 +131,15 @@ public:
     std::string_view id;           // 2. ID сообщения
     uint64_t creationTime;         // 3. Время сообщения
 
+    Category category;
+
     // Поля из data[0] - только критические
     std::string_view symbol;       // 4. Инструмент
     std::string_view orderId;      // 5. ID ордера
     std::string_view orderLinkId;  // 6. Клиентский ID
     Side side;                     // 7. Сторона
 
-    std::string_view orderStatus;  // 8. Статус (Filled/PartiallyFilled/Cancelled)
+    OrderStatus orderStatus;  // 8. Статус (Filled/PartiallyFilled/Cancelled)
     std::string_view timeInForce;  // 9. IOC/GTC/FOK
 
     double price;                  // 11. Цена ордера

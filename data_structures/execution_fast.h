@@ -4,13 +4,6 @@
 #include <string_view>
 #include "common_data.h"
 
-enum class Category : uint8_t {
-    Unknown = 0,
-    Linear = 1,    // "linear"
-    Inverse = 2,   // "inverse"
-    Option = 3     // "option"
-};
-
 class ExecutionFast {
 public:
     std::string_view topic;

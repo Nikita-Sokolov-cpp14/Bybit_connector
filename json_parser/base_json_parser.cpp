@@ -62,6 +62,20 @@ Side parseSide(std::string_view sideStr) {
     return Side_Unknown;
 }
 
+Category ParseCategory(std::string_view categoryStr) {
+    if (categoryStr == "linear") {
+        return Category_Linear;
+    } else if (categoryStr == "inverse") {
+        return Category_Inverse;
+    } else if (categoryStr == "option") {
+        return Category_Option;
+    } else {
+        std::cout << "ParseCategory: Unknown" << std::endl;
+    }
+
+    return Category_Unknown;
+}
+
 void BaseJsonParser::setString(std::string_view str) {
     string_ = str;
 }
