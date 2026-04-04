@@ -5,7 +5,8 @@ find_package(Boost REQUIRED COMPONENTS locale)
 
 add_library(data_loader
     base_data_loader.cpp
-    private_data_loader.cpp
+    private_connector.cpp
+    private_data_handler.cpp
     data_loader.cpp
 )
 

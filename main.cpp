@@ -11,7 +11,7 @@
 #include <chrono>
 
 #include "data_loader/data_loader.h"
-#include "data_loader/private_data_loader.h"
+#include "data_loader/private_data_handler.h"
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/public_trade_json_parser.h"
 #include "p999_latency/check_latency.h"
@@ -53,10 +53,10 @@ void startConnection() {
         ExecutionFast executionFast;
         OrderHFT orderHFT;
         WalletHFT walletHFT;
-        PrivateWebSocketClient::Messages messages(&positionHFT, &executionFast, &orderHFT,
+        PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT,
                 &walletHFT);
 
-        auto client = std::make_shared<PrivateWebSocketClient>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
+        auto client = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
                 "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
         client->connect("stream.bybit.com", "443", "/v5/private");
 
