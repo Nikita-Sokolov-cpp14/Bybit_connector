@@ -8,6 +8,7 @@ add_library(data_loader
     private_connector.cpp
     private_data_handler.cpp
     data_loader.cpp
+    order_sender.cpp
 )
 
 target_include_directories(data_loader PUBLIC

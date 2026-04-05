@@ -34,7 +34,7 @@ using tcp = boost::asio::ip::tcp;
 class BaseWebSocketClient : public std::enable_shared_from_this<BaseWebSocketClient> {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    BaseWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx);
+    BaseWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, const std::string_view user_agent);
 
     // Основной метод для запуска подключения
     void connect(const std::string &host, const std::string &port, const std::string &target);
@@ -62,7 +62,7 @@ protected:
     virtual void do_read() = 0;
 
     // Обработчик полученных сообщений
-    virtual void on_read(beast::error_code ec, std::size_t bytes_transferred) =0;
+    virtual void on_read(beast::error_code ec, std::size_t bytes_transferred) = 0;
 
     // Запуск периодического PING для поддержания соединения
     void start_ping();

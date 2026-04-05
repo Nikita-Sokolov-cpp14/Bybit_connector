@@ -1,17 +1,13 @@
 #pragma once
 
 #include "base_data_loader.h"
-#include "json_parser/position_json_parser.h"
-#include "json_parser/order_json_parser.h"
-#include "json_parser/wallet_json_parser.h"
-#include "json_parser/execution_fast_json_parser.h"
 
 // Класс WebSocket клиента для Bybit
 class PrivateConnector : public BaseWebSocketClient {
 public:
     // Конструктор: инициализируем все необходимые компоненты
     PrivateConnector(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-            const std::string &api_secret);
+            const std::string &api_secret, const std::string_view user_agent);
 
 protected:
     StatusMessage statusMessage_;

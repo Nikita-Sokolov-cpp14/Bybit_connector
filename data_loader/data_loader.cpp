@@ -20,7 +20,7 @@ typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщени
     // Устанавливаем заголовок User-Agent (необязательно, но рекомендуется)
     ws_.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
         req.set(beast::http::field::user_agent,
-                std::string(BOOST_BEAST_VERSION_STRING) + " bybit-client");
+                std::string(BOOST_BEAST_VERSION_STRING) + " bybit-HFT-client");
     }));
 
     // Включаем сжатие permessage-deflate (поддерживается Bybit)

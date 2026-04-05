@@ -4,8 +4,9 @@
 DECLARE_LATENCY_MEMBERS(1000)
 
 PrivateConnector::PrivateConnector(net::io_context &ioc, ssl::context &ssl_ctx,
-        const std::string &api_key, const std::string &api_secret) :
-BaseWebSocketClient(ioc, ssl_ctx),
+        const std::string &api_key, const std::string &api_secret,
+        const std::string_view user_agent) :
+BaseWebSocketClient(ioc, ssl_ctx, user_agent),
 statusMessage_(),
 statusParser_(&statusMessage_),
 api_key_(api_key),
@@ -14,8 +15,7 @@ authenticated_(false),
 auth_timer_(ioc) {
 }
 
-std::string PrivateConnector::generate_signature(long long expires,
-        const std::string &api_secret) {
+std::string PrivateConnector::generate_signature(long long expires, const std::string &api_secret) {
     std::string message = "GET/realtime" + std::to_string(expires);
 
     // HMAC-SHA256 подпись

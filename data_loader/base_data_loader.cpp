@@ -3,7 +3,8 @@
 
 DECLARE_LATENCY_MEMBERS(1000)
 
-BaseWebSocketClient::BaseWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx) :
+BaseWebSocketClient::BaseWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx,
+        const std::string_view user_agent) :
 resolver_(ioc), // для DNS запросов
 ws_(ioc, ssl_ctx), // WebSocket поток с SSL
 reconnect_timer_(ioc), // таймер для переподключения
@@ -11,9 +12,8 @@ ioc_(ioc), // сохраняем ссылку на io_context
 ping_timer_(ioc),
 typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщений
     // Устанавливаем заголовок User-Agent (необязательно, но рекомендуется)
-    ws_.set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
-        req.set(beast::http::field::user_agent,
-                std::string(BOOST_BEAST_VERSION_STRING) + " bybit-client");
+    ws_.set_option(websocket::stream_base::decorator([user_agent](websocket::request_type &req) {
+        req.set(beast::http::field::user_agent, user_agent);
     }));
 
     // Включаем сжатие permessage-deflate (поддерживается Bybit)
@@ -130,8 +130,8 @@ void BaseWebSocketClient::on_ping_sent(beast::error_code ec) {
     if (!ec) {
         // Если PING отправлен успешно, планируем следующий
         ping_timer_.expires_after(std::chrono::seconds(5));
-        ping_timer_.async_wait(beast::bind_front_handler(&BaseWebSocketClient::on_ping_timer,
-                shared_from_this()));
+        ping_timer_.async_wait(
+                beast::bind_front_handler(&BaseWebSocketClient::on_ping_timer, shared_from_this()));
     }
 }
 
@@ -172,8 +172,7 @@ void BaseWebSocketClient::measure_latency(std::chrono::steady_clock::time_point 
     // например, в глобальную переменную или вызывать колбэк
 }
 
-void BaseWebSocketClient::on_control_frame(websocket::frame_type kind,
-        beast::string_view payload) {
+void BaseWebSocketClient::on_control_frame(websocket::frame_type kind, beast::string_view payload) {
     std::cout << "on_control_frame" << std::endl;
     measure_latency(ping_sent_time_);
 }

@@ -12,6 +12,7 @@
 
 #include "data_loader/data_loader.h"
 #include "data_loader/private_data_handler.h"
+#include "data_loader/order_sender.h"
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/public_trade_json_parser.h"
 #include "p999_latency/check_latency.h"
@@ -49,16 +50,19 @@ void startConnection() {
         // // Для инверсных: stream.bybit.com/v5/public/inverse
         // client->connect("stream.bybit.com", "443", "/v5/public/linear");
 
-        PositionHFT positionHFT;
-        ExecutionFast executionFast;
-        OrderHFT orderHFT;
-        WalletHFT walletHFT;
-        PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT,
-                &walletHFT);
+        // PositionHFT positionHFT;
+        // ExecutionFast executionFast;
+        // OrderHFT orderHFT;
+        // WalletHFT walletHFT;
+        // PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT,
+        //         &walletHFT);
+        // auto client = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
+        //         "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
+        // client->connect("stream.bybit.com", "443", "/v5/private");
 
-        auto client = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
-                "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
-        client->connect("stream.bybit.com", "443", "/v5/private");
+        auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
+                "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K");
+        orderSender->connect("stream.bybit.com", "443", "/v5/trade");
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
 
