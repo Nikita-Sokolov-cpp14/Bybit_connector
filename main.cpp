@@ -17,6 +17,7 @@
 #include "json_parser/public_trade_json_parser.h"
 #include "p999_latency/check_latency.h"
 #include "check_parsing/check_parsing.h"
+#include "check_place_orders/check_place_orders.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
@@ -60,12 +61,14 @@ void startConnection() {
         //         "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
         // client->connect("stream.bybit.com", "443", "/v5/private");
 
-        auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
-                "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K");
+        auto orderSender = std::make_shared<OrderSender>();
         orderSender->connect("stream.bybit.com", "443", "/v5/trade");
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
 
+        // std::jthread tr(addNewOrders, orderSender);
+        // std::jthread tr(cancelOrders, orderSender);
+        std::jthread tr(replaceOrders, orderSender);
         // Запускаем обработку асинхронных операций
         ioc.run();
 

@@ -18,18 +18,6 @@ enum OrderStatus {
     OrderStatus_Triggered
 };
 
-enum class OrderType : uint8_t {
-    Unknown = 0,
-    Market = 1,
-    Limit = 2,
-    StopMarket = 3,
-    StopLimit = 4,
-    TakeProfitMarket = 5,
-    TakeProfitLimit = 6,
-    StopLossMarket = 7,
-    StopLossLimit = 8
-};
-
 enum class TimeInForce : uint8_t {
     Unknown = 0,
     GTC = 1,      // Good Till Cancel

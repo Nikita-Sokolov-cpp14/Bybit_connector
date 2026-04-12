@@ -15,3 +15,15 @@ enum Category {
     Category_Inverse,   // "inverse"
     Category_Option     // "option"
 };
+
+enum OrderType {
+    OrderType_Unknown = 0,
+    OrderType_Market,
+    OrderType_Limit,
+    OrderType_StopMarket,
+    OrderType_StopLimit,
+    OrderType_TakeProfitMarket,
+    OrderType_TakeProfitLimit,
+    OrderType_StopLossMarket,
+    OrderType_StopLossLimit
+};
