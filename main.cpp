@@ -18,13 +18,15 @@
 #include "p999_latency/check_latency.h"
 #include "check_parsing/check_parsing.h"
 #include "check_place_orders/check_place_orders.h"
+#include "utils/config.h"
+#include "utils/ini_reader.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
 namespace net = boost::asio; // from <boost/asio.hpp>
 using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
-void startConnection() {
+void startConnection(const AuthConfig &authConfig, const ConnectionConfig &connectionConfig) {
     try {
         OrderBook orderBook;
         StatusMessage statusMessage;
@@ -42,33 +44,33 @@ void startConnection() {
         std::cout << "Запуск Bybit WebSocket клиента..." << std::endl;
 
         // // Создаем экземпляр клиента
-        // auto client = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook,
-        //         &statusMessage, &publicTrade, "bybit-HFT-client");
+        auto publicDataHandler = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook,
+                &statusMessage, &publicTrade, "bybit-HFT-client");
 
         // // Подключаемся к Bybit
         // // Для спота используйте: stream.bybit.com/v5/public/spot
         // // Для линейных контрактов: stream.bybit.com/v5/public/linear
         // // Для инверсных: stream.bybit.com/v5/public/inverse
-        // client->connect("stream.bybit.com", "443", "/v5/public/linear");
+        publicDataHandler->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetPublic);
 
-        // PositionHFT positionHFT;
-        // ExecutionFast executionFast;
-        // OrderHFT orderHFT;
-        // WalletHFT walletHFT;
-        // PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT,
-        //         &walletHFT);
-        // auto client = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, "1SlZRsoY5x2JPBWkDa",
-        //         "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
-        // client->connect("stream.bybit.com", "443", "/v5/private");
+        PositionHFT positionHFT;
+        ExecutionFast executionFast;
+        OrderHFT orderHFT;
+        WalletHFT walletHFT;
+        PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT, &walletHFT);
+        auto privateDataHandler = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, authConfig.apiKey,
+                authConfig.apiSecret, messages);
+        privateDataHandler->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetPrivate);
 
-        auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx,);
-        orderSender->connect("stream.bybit.com", "443", "/v5/trade");
+        auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx, authConfig.apiKey,
+                authConfig.apiSecret);
+        orderSender->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetTrade);
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
 
         // std::jthread tr(addNewOrders, orderSender);
         // std::jthread tr(cancelOrders, orderSender);
-        std::jthread tr(replaceOrders, orderSender);
+        // std::jthread tr(replaceOrders, orderSender);
         // Запускаем обработку асинхронных операций
         ioc.run();
 
@@ -81,7 +83,9 @@ void startConnection() {
 
 int main() {
     std::cout << "hello" << std::endl;
-    startConnection();
+    AuthConfig authConfig = readAuthConfig();
+    ConnectionConfig connectionConfig = readConnectionConfig();
+    startConnection(authConfig, connectionConfig);
 
     // checkLatency();
     // checkParsing();

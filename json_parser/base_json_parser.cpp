@@ -43,7 +43,7 @@ TypeMessage parseTypeMessage(std::string_view str) {
     } else if (type == wallet) {
         return TypeMessage_Wallet;
     }
-    std::cout << "BaseJsonParser::parseTypeMessage: Undefined type message" << std::endl;
+    std::cout << "BaseJsonParser::parseTypeMessage: Undefined type message " << type << std::endl;
     return TypeMessage_Unknown;
 }
 

@@ -104,7 +104,7 @@ void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_trans
                 statusParser_.parse();
                 break;
             default:
-                std::cout << "BybitWebSocketClient::on_read: Unknown message type" << std::endl;
+                std::cout << "BybitWebSocketClient::on_read: Unknown message type " << message_view_ << std::endl;
                 // std::cout << message_view_ << std::endl;
                 break;
         }

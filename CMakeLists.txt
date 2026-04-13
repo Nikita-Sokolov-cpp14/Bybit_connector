@@ -15,6 +15,7 @@ add_subdirectory(json_parser)
 add_subdirectory(p999_latency)
 add_subdirectory(check_parsing)
 add_subdirectory(check_place_orders)
+add_subdirectory(utils)
 
 add_executable(${PROJECT_NAME})
 
@@ -29,4 +30,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     check_latency
     check_parsing
     check_place_orders
+    utils
 )

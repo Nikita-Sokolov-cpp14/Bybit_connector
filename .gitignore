@@ -21,3 +21,4 @@ wise_bd
 toolchain*.cmake
 clion_compound/
 test.txt
+auth.ini

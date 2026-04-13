@@ -127,7 +127,7 @@ void PrivateDataHandler::on_read(beast::error_code ec, std::size_t bytes_transfe
                 walletJsonParser_.printData();
                 break;
             default:
-                std::cout << "BybitWebSocketClient::on_read: Unknown message type" << std::endl;
+                std::cout << "PrivateDataHandler::on_read: Unknown message type " << message_view_ << std::endl;
                 std::cout << message_view_ << std::endl;
                 break;
         }
