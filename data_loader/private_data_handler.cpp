@@ -61,11 +61,10 @@ void PrivateDataHandler::subscribe_to_streams() {
 
     std::cout << "Отправляем подписку на приватные каналы: " << sub_msg << std::endl;
 
-    auto self = shared_from_this();
+    auto self = static_cast<PrivateDataHandler*>(shared_from_this().get());
     ws_.async_write(net::buffer(sub_msg),
             [self](beast::error_code ec, std::size_t bytes_transferred) {
-                auto ptr = static_cast<PrivateDataHandler *>(self.get());
-                ptr->on_subscribe_sent(ec, bytes_transferred);
+                self->on_subscribe_sent(ec, bytes_transferred);
             });
 }
 
@@ -76,10 +75,9 @@ void PrivateDataHandler::do_read() {
     buffer_.clear();
 
     // Асинхронно читаем сообщение
-    auto self = shared_from_this();
+    auto self = static_cast<PrivateDataHandler*>(shared_from_this().get());
     ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytes_transferred) {
-        auto ptr = static_cast<PrivateDataHandler *>(self.get());
-        ptr->on_read(ec, bytes_transferred);
+        self->on_read(ec, bytes_transferred);
     });
 }
 

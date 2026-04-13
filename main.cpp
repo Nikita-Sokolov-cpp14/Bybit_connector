@@ -43,7 +43,7 @@ void startConnection() {
 
         // // Создаем экземпляр клиента
         // auto client = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook,
-        //         &statusMessage, &publicTrade);
+        //         &statusMessage, &publicTrade, "bybit-HFT-client");
 
         // // Подключаемся к Bybit
         // // Для спота используйте: stream.bybit.com/v5/public/spot
@@ -61,7 +61,7 @@ void startConnection() {
         //         "qjJBC4TwWffJQ9tz12bNSRb3yGrnf3hhf87K", messages);
         // client->connect("stream.bybit.com", "443", "/v5/private");
 
-        auto orderSender = std::make_shared<OrderSender>();
+        auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx,);
         orderSender->connect("stream.bybit.com", "443", "/v5/trade");
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;

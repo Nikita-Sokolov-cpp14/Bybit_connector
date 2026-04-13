@@ -51,9 +51,9 @@ void PrivateConnector::authenticate() {
     std::cout << "Отправляем аутентификацию..." << std::endl;
 
     // Отправляем аутентификацию
-    auto self = shared_from_this();
+    auto self = static_cast<PrivateConnector*>(shared_from_this().get());
     ws_.async_write(net::buffer(auth_msg), [self](beast::error_code ec, std::size_t bytes) {
-        static_cast<PrivateConnector *>(self.get())->on_auth_response(ec, bytes);
+        self->on_auth_response(ec, bytes);
     });
 }
 
