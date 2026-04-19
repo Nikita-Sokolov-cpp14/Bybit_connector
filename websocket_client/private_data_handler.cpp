@@ -13,8 +13,9 @@ walletHFT(walletHFT_) {
 }
 
 PrivateDataHandler::PrivateDataHandler(net::io_context &ioc, ssl::context &ssl_ctx,
-        const std::string &api_key, const std::string &api_secret, const Messages &messages) :
-PrivateConnector(ioc, ssl_ctx, api_key, api_secret, "Bybit-PrivateData/1.0"),
+        const std::string &api_key, const std::string &api_secret, const Messages &messages,
+        const std::string_view user_agent) :
+PrivateConnector(ioc, ssl_ctx, api_key, api_secret, user_agent),
 positionJsonParser_(messages.positionHFT),
 orderJsonParser_(messages.orderHFT),
 walletJsonParser_(messages.walletHFT),
@@ -42,8 +43,7 @@ void PrivateDataHandler::on_handshake(beast::error_code ec) {
 }
 
 // Обработчик отправки подписки
-void PrivateDataHandler::on_subscribe_sent(beast::error_code ec,
-        std::size_t bytes_transferred) {
+void PrivateDataHandler::on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) {
     if (ec) {
         std::cerr << "Ошибка отправки подписки: " << ec.message() << std::endl;
         schedule_reconnect();
@@ -56,12 +56,13 @@ void PrivateDataHandler::on_subscribe_sent(beast::error_code ec,
 // Отправка подписки на потоки данных
 void PrivateDataHandler::subscribe_to_streams() {
     // Подписываемся на приватные каналы
-    std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast","position","wallet"]})";
+    std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast
+                          ","position","wallet"]})";
     // можно просто execution - больше данных, но медленнее.
 
     std::cout << "Отправляем подписку на приватные каналы: " << sub_msg << std::endl;
 
-    auto self = static_cast<PrivateDataHandler*>(shared_from_this().get());
+    auto self = static_cast<PrivateDataHandler *>(shared_from_this().get());
     ws_.async_write(net::buffer(sub_msg),
             [self](beast::error_code ec, std::size_t bytes_transferred) {
                 self->on_subscribe_sent(ec, bytes_transferred);
@@ -75,7 +76,7 @@ void PrivateDataHandler::do_read() {
     buffer_.clear();
 
     // Асинхронно читаем сообщение
-    auto self = static_cast<PrivateDataHandler*>(shared_from_this().get());
+    auto self = static_cast<PrivateDataHandler *>(shared_from_this().get());
     ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytes_transferred) {
         self->on_read(ec, bytes_transferred);
     });
@@ -127,7 +128,8 @@ void PrivateDataHandler::on_read(beast::error_code ec, std::size_t bytes_transfe
                 walletJsonParser_.printData();
                 break;
             default:
-                std::cout << "PrivateDataHandler::on_read: Unknown message type " << message_view_ << std::endl;
+                std::cout << "PrivateDataHandler::on_read: Unknown message type " << message_view_
+                          << std::endl;
                 std::cout << message_view_ << std::endl;
                 break;
         }

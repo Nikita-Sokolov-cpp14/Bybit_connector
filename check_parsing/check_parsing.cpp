@@ -5,7 +5,7 @@
 #include <numeric>
 #include <iomanip>
 
-#include "data_loader/data_loader.h"
+#include "websocket_client/base_websocket_client.h"
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/base_json_parser.h"
 #include "json_parser/position_json_parser.h"

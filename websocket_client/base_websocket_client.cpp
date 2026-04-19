@@ -1,4 +1,4 @@
-#include "base_data_loader.h"
+#include "base_websocket_client.h"
 #include "p999_latency/check_latency.h"
 
 DECLARE_LATENCY_MEMBERS(1000)

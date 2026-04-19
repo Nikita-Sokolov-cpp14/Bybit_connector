@@ -11,8 +11,8 @@ const std::string_view retCodeFieldName = "retCode";
 }
 
 OrderSender::OrderSender(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-        const std::string &api_secret) :
-PrivateConnector(ioc, ssl_ctx, api_key, api_secret, "Bybit-HFT-OrderSender/1.0"),
+        const std::string &api_secret, const std::string_view user_agent) :
+PrivateConnector(ioc, ssl_ctx, api_key, api_secret, user_agent),
 order_queue_cancel_(maxQueueSize),
 order_queue_replace_(maxQueueSize),
 order_queue_new_(maxQueueSize) {

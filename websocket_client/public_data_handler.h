@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base_data_loader.h"
+#include "base_websocket_client.h"
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/status_json_parser.h"
 #include "json_parser/public_trade_json_parser.h"
@@ -9,10 +9,10 @@
 #include "data_structures/public_trade.h"
 
 // Класс WebSocket клиента для Bybit
-class BybitWebSocketClient : public BaseWebSocketClient {
+class PublicDataHandler : public BaseWebSocketClient {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook,
+    PublicDataHandler(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook,
             StatusMessage *const statusMessage, PublicTrade *const publicTrade,
             const std::string_view user_agent);
 

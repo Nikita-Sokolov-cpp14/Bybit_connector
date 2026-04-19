@@ -9,7 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2") # для профилирования
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2") # флаг -02 повышает производительность сильно
 
-add_subdirectory(data_loader)
+add_subdirectory(websocket_client)
 add_subdirectory(data_structures)
 add_subdirectory(json_parser)
 add_subdirectory(p999_latency)
@@ -24,7 +24,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    data_loader
+    websocket_client
     data_structures
     json_parser
     check_latency

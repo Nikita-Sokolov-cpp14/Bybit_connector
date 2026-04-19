@@ -1,9 +1,9 @@
-#include "data_loader.h"
+#include "public_data_handler.h"
 #include "p999_latency/check_latency.h"
 
 DECLARE_LATENCY_MEMBERS(1000)
 
-BybitWebSocketClient::BybitWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx,
+PublicDataHandler::PublicDataHandler(net::io_context &ioc, ssl::context &ssl_ctx,
         OrderBook *const orderBook, StatusMessage *const statusMessage,
         PublicTrade *const publicTrade, const std::string_view user_agent) :
 BaseWebSocketClient(ioc, ssl_ctx, user_agent),
@@ -13,7 +13,7 @@ publicTradeJsonParser_(publicTrade) {
 }
 
 // Обработчик завершения WebSocket handshake
-void BybitWebSocketClient::on_handshake(beast::error_code ec) {
+void PublicDataHandler::on_handshake(beast::error_code ec) {
     if (ec) {
         std::cerr << "Ошибка WebSocket handshake: " << ec.message() << std::endl;
         schedule_reconnect();
@@ -32,7 +32,7 @@ void BybitWebSocketClient::on_handshake(beast::error_code ec) {
 }
 
 // Отправка подписки на потоки данных
-void BybitWebSocketClient::subscribe_to_streams() {
+void PublicDataHandler::subscribe_to_streams() {
     // constexpr - строка известна на этапе компиляции
     static constexpr char subscription_msg[] = "{\"op\":\"subscribe\",\"args\":["
                                                "\"orderbook.50.BTCUSDT\","
@@ -42,14 +42,14 @@ void BybitWebSocketClient::subscribe_to_streams() {
 
     std::cout << "Отправляем подписку: " << subscription_msg << std::endl;
 
-    auto self = static_cast<BybitWebSocketClient*>(shared_from_this().get());
+    auto self = static_cast<PublicDataHandler*>(shared_from_this().get());
     ws_.async_write(net::buffer(subscription_msg), [self](beast::error_code ec, std::size_t bytes) {
         self->on_subscribe_sent(ec, bytes);
     });
 }
 
 // Обработчик отправки подписки
-void BybitWebSocketClient::on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) {
+void PublicDataHandler::on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) {
     if (ec) {
         std::cerr << "Ошибка отправки подписки: " << ec.message() << std::endl;
         schedule_reconnect();
@@ -60,20 +60,20 @@ void BybitWebSocketClient::on_subscribe_sent(beast::error_code ec, std::size_t b
 }
 
 // Асинхронное чтение сообщений
-void BybitWebSocketClient::do_read() {
+void PublicDataHandler::do_read() {
     // LATENCY_MEASURE_START()
     // Буфер для хранения полученных данных
     buffer_.clear();
 
     // Асинхронно читаем сообщение
-    auto self = static_cast<BybitWebSocketClient*>(shared_from_this().get());
+    auto self = static_cast<PublicDataHandler*>(shared_from_this().get());
     ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytes_transferred) {
         self->on_read(ec, bytes_transferred);
     });
 }
 
 // Обработчик полученных сообщений
-void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_transferred) {
+void PublicDataHandler::on_read(beast::error_code ec, std::size_t bytes_transferred) {
     if (ec) {
         if (ec == websocket::error::closed) {
             std::cout << "WebSocket соединение закрыто нормально" << std::endl;
@@ -104,7 +104,7 @@ void BybitWebSocketClient::on_read(beast::error_code ec, std::size_t bytes_trans
                 statusParser_.parse();
                 break;
             default:
-                std::cout << "BybitWebSocketClient::on_read: Unknown message type " << message_view_ << std::endl;
+                std::cout << "PublicDataHandler::on_read: Unknown message type " << message_view_ << std::endl;
                 // std::cout << message_view_ << std::endl;
                 break;
         }

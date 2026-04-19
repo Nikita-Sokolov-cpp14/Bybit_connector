@@ -10,9 +10,9 @@
 #include <string>
 #include <chrono>
 
-#include "data_loader/data_loader.h"
-#include "data_loader/private_data_handler.h"
-#include "data_loader/order_sender.h"
+#include "websocket_client/base_websocket_client.h"
+#include "websocket_client/private_data_handler.h"
+#include "websocket_client/order_sender.h"
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/public_trade_json_parser.h"
 #include "p999_latency/check_latency.h"
@@ -44,7 +44,7 @@ void startConnection(const AuthConfig &authConfig, const ConnectionConfig &conne
         std::cout << "Запуск Bybit WebSocket клиента..." << std::endl;
 
         // // Создаем экземпляр клиента
-        auto publicDataHandler = std::make_shared<BybitWebSocketClient>(ioc, ssl_ctx, &orderBook,
+        auto publicDataHandler = std::make_shared<PublicDataHandler>(ioc, ssl_ctx, &orderBook,
                 &statusMessage, &publicTrade, "bybit-HFT-client");
 
         // // Подключаемся к Bybit
@@ -59,11 +59,11 @@ void startConnection(const AuthConfig &authConfig, const ConnectionConfig &conne
         WalletHFT walletHFT;
         PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT, &walletHFT);
         auto privateDataHandler = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, authConfig.apiKey,
-                authConfig.apiSecret, messages);
+                authConfig.apiSecret, messages,  "Bybit-PrivateData/1.0");
         privateDataHandler->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetPrivate);
 
         auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx, authConfig.apiKey,
-                authConfig.apiSecret);
+                authConfig.apiSecret, "Bybit-HFT-OrderSender/1.0");
         orderSender->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetTrade);
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;

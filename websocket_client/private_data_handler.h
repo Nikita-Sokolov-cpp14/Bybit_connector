@@ -21,7 +21,7 @@ public:
 
     // Конструктор: инициализируем все необходимые компоненты
     PrivateDataHandler(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-            const std::string &api_secret, const Messages &messages);
+            const std::string &api_secret, const Messages &messages, const std::string_view user_agent);
 
 private:
     PositionJsonParser positionJsonParser_;

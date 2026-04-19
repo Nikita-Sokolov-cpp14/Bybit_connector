@@ -10,7 +10,7 @@ class OrderSender : public PrivateConnector {
 public:
     // Конструктор: инициализируем все необходимые компоненты
     OrderSender(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-            const std::string &api_secret);
+            const std::string &api_secret, const std::string_view user_agent);
 
     bool placeOrder(const OrderRequest &orderRequest);
 

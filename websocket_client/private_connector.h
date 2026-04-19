@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base_data_loader.h"
+#include "base_websocket_client.h"
 
 // Класс WebSocket клиента для Bybit
 class PrivateConnector : public BaseWebSocketClient {
