@@ -9,8 +9,8 @@
 class OrderSender : public PrivateConnector {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    OrderSender(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-            const std::string &api_secret, const std::string_view user_agent);
+    OrderSender(net::io_context &ioc, ssl::context &sslCtx, const std::string &api_key,
+            const std::string &api_secret, const std::string_view userAgent);
 
     bool placeOrder(const OrderRequest &orderRequest);
 
@@ -22,22 +22,22 @@ private:
     boost::lockfree::queue<OrderRequest, boost::lockfree::fixed_sized<true> > order_queue_new_;
 
     std::string write_buffer_;
-    std::atomic<bool> startSending_{false};
+    std::atomic<bool> startSending_ {false};
 
     // Обработчик завершения WebSocket handshake
-    void on_handshake(beast::error_code ec) override;
+    void onHandshake(beast::error_code ec) override;
 
     // Отправка подписки на потоки данных
-    void subscribe_to_streams() override;
+    void subscribeToStreams() override;
 
     // Обработчик отправки подписки
-    void on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) override;
+    void onSubscribeSent(beast::error_code ec, std::size_t bytesTransferred) override;
 
     // Асинхронное чтение сообщений
-    void do_read() override;
+    void doRead() override;
 
     // Обработчик полученных сообщений
-    void on_read(beast::error_code ec, std::size_t bytes_transferred) override;
+    void onRead(beast::error_code ec, std::size_t bytesTransferred) override;
 
     void checkStatus();
 
@@ -47,9 +47,9 @@ private:
 
     void on_write(beast::error_code ec);
 
-    void serialize_order(std::string& buffer, const OrderRequest& order);
+    void serialize_order(std::string &buffer, const OrderRequest &order);
 
-    void serialize_replace_order(std::string& buffer, const OrderRequest& order);
+    void serialize_replace_order(std::string &buffer, const OrderRequest &order);
 
-    void serialize_cancel_order(std::string& buffer, const OrderRequest& order);
+    void serialize_cancel_order(std::string &buffer, const OrderRequest &order);
 };

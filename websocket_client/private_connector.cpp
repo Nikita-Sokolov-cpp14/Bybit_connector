@@ -3,10 +3,10 @@
 
 DECLARE_LATENCY_MEMBERS(1000)
 
-PrivateConnector::PrivateConnector(net::io_context &ioc, ssl::context &ssl_ctx,
+PrivateConnector::PrivateConnector(net::io_context &ioc, ssl::context &sslCtx,
         const std::string &api_key, const std::string &api_secret,
-        const std::string_view user_agent) :
-BaseWebSocketClient(ioc, ssl_ctx, user_agent),
+        const std::string_view userAgent) :
+BaseWebSocketClient(ioc, sslCtx, userAgent),
 statusMessage_(),
 statusParser_(&statusMessage_),
 api_key_(api_key),
@@ -51,16 +51,15 @@ void PrivateConnector::authenticate() {
     std::cout << "Отправляем аутентификацию..." << std::endl;
 
     // Отправляем аутентификацию
-    auto self = static_cast<PrivateConnector*>(shared_from_this().get());
-    ws_.async_write(net::buffer(auth_msg), [self](beast::error_code ec, std::size_t bytes) {
-        self->on_auth_response(ec, bytes);
-    });
+    auto self = static_cast<PrivateConnector *>(shared_from_this().get());
+    ws_.async_write(net::buffer(auth_msg),
+            [self](beast::error_code ec, std::size_t bytes) { self->on_auth_response(ec, bytes); });
 }
 
-void PrivateConnector::on_auth_response(beast::error_code ec, std::size_t bytes_transferred) {
+void PrivateConnector::on_auth_response(beast::error_code ec, std::size_t bytesTransferred) {
     if (ec) {
         std::cerr << "Ошибка отправки аутентификации: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
@@ -71,7 +70,7 @@ void PrivateConnector::on_auth_response(beast::error_code ec, std::size_t bytes_
     auth_timer_.async_wait([this](beast::error_code ec) {
         if (!ec && !authenticated_) {
             std::cerr << "Таймаут аутентификации" << std::endl;
-            schedule_reconnect();
+            scheduleReconnect();
         }
     });
 }

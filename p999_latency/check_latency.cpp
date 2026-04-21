@@ -82,7 +82,7 @@ void checkLatency(BaseJsonParser &parser, std::string_view message) {
                 // statusParser_.parse();
                 break;
             default:
-                std::cout << "BybitWebSocketClient::on_read: Unknown message type" << std::endl;
+                std::cout << "BybitWebSocketClient::onRead: Unknown message type" << std::endl;
                 std::cout << snapshotStr << std::endl;
                 break;
         }

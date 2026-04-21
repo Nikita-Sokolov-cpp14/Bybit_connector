@@ -6,8 +6,8 @@
 class PrivateConnector : public BaseWebSocketClient {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    PrivateConnector(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-            const std::string &api_secret, const std::string_view user_agent);
+    PrivateConnector(net::io_context &ioc, ssl::context &sslCtx, const std::string &api_key,
+            const std::string &api_secret, const std::string_view userAgent);
 
 protected:
     StatusMessage statusMessage_;
@@ -27,7 +27,7 @@ private:
     std::string api_secret_;
 
     // Обработчик ответа аутентификации
-    void on_auth_response(beast::error_code ec, std::size_t bytes_transferred);
+    void on_auth_response(beast::error_code ec, std::size_t bytesTransferred);
 
     // Генерация подписи для аутентификации
     std::string generate_signature(long long expires, const std::string &api_secret);

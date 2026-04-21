@@ -10,9 +10,9 @@ const std::string_view retCodeFieldName = "retCode";
 
 }
 
-OrderSender::OrderSender(net::io_context &ioc, ssl::context &ssl_ctx, const std::string &api_key,
-        const std::string &api_secret, const std::string_view user_agent) :
-PrivateConnector(ioc, ssl_ctx, api_key, api_secret, user_agent),
+OrderSender::OrderSender(net::io_context &ioc, ssl::context &sslCtx, const std::string &api_key,
+        const std::string &api_secret, const std::string_view userAgent) :
+PrivateConnector(ioc, sslCtx, api_key, api_secret, userAgent),
 order_queue_cancel_(maxQueueSize),
 order_queue_replace_(maxQueueSize),
 order_queue_new_(maxQueueSize) {
@@ -63,7 +63,6 @@ bool OrderSender::placeOrder(const OrderRequest &orderRequest) {
     // Поток B вызывает placeOrder() с новым ордером → видит startSending_=true (еще не сброшен) → НЕ запускает отправку
     // on_write() вызывает sendNext(), который забирает новый ордер → все работает
 
-
     // Повторная проверка после сброса флага
     // startSending_.store(false, std::memory_order_release);
 
@@ -84,30 +83,30 @@ bool OrderSender::placeOrder(const OrderRequest &orderRequest) {
 }
 
 // Обработчик завершения WebSocket handshake
-void OrderSender::on_handshake(beast::error_code ec) {
+void OrderSender::onHandshake(beast::error_code ec) {
     if (ec) {
         std::cerr << "Ошибка WebSocket handshake: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
     std::cout << "WebSocket соединение установлено!" << std::endl;
 
     // // Запускаем пинг-понг для поддержания соединения
-    // start_ping();
+    startPing();
 
     // // Начинаем читать сообщения
-    do_read();
+    doRead();
 
     // // Подписываемся на потоки данных Bybit
     authenticate();
 }
 
 // Обработчик отправки подписки
-void OrderSender::on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) {
+void OrderSender::onSubscribeSent(beast::error_code ec, std::size_t bytesTransferred) {
     if (ec) {
         std::cerr << "Ошибка отправки подписки: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
@@ -115,60 +114,63 @@ void OrderSender::on_subscribe_sent(beast::error_code ec, std::size_t bytes_tran
 }
 
 // Отправка подписки на потоки данных
-void OrderSender::subscribe_to_streams() {
+void OrderSender::subscribeToStreams() {
     // Подписываемся на приватные каналы
-    std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast","position","wallet"]})";
+    std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast
+                          ","position","wallet"]})";
     // можно просто execution - больше данных, но медленнее.
 
     std::cout << "Отправляем подписку на приватные каналы: " << sub_msg << std::endl;
 
-    auto self = shared_from_this();
+    auto self = static_cast<OrderSender *>(shared_from_this().get());
     ws_.async_write(net::buffer(sub_msg),
-            [self](beast::error_code ec, std::size_t bytes_transferred) {
-                auto ptr = static_cast<OrderSender *>(self.get());
-                ptr->on_subscribe_sent(ec, bytes_transferred);
+            [self](beast::error_code ec, std::size_t bytesTransferred) {
+                self->onSubscribeSent(ec, bytesTransferred);
             });
 }
 
 // Асинхронное чтение сообщений
-void OrderSender::do_read() {
+void OrderSender::doRead() {
     // LATENCY_MEASURE_START()
     // Буфер для хранения полученных данных
     buffer_.clear();
 
     // Асинхронно читаем сообщение
-    auto self = shared_from_this();
-    ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytes_transferred) {
-        auto ptr = static_cast<OrderSender *>(self.get());
-        ptr->on_read(ec, bytes_transferred);
+    auto self = static_cast<OrderSender *>(shared_from_this().get());
+    ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytesTransferred) {
+        self->onRead(ec, bytesTransferred);
     });
 }
 
 // Обработчик полученных сообщений
-void OrderSender::on_read(beast::error_code ec, std::size_t bytes_transferred) {
+void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
     if (ec) {
         if (ec == websocket::error::closed) {
             std::cout << "WebSocket соединение закрыто нормально" << std::endl;
+        } else if (ec == net::error::operation_aborted) {
+            // Операция была отменена - вероятно, из-за закрытия соединения
+            std::cout << "Операция чтения отменена" << std::endl;
+            return;  // Не планируем переподключение, оно уже запланировано
         } else {
             std::cerr << "Ошибка чтения: " << ec.message() << std::endl;
         }
 
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
     // Преобразуем полученные данные в строку
     message_ = beast::buffers_to_string(buffer_.data());
-    message_view_ = message_;
+    messageView_ = message_;
 
     try {
 
         // TODO есть еще ответ об успешном размещении ордера. Добавить обработку
         // {"retCode":0,"retMsg":"OK","op":"order.create","data":{"orderId":"xxx"}}
-        std::cout << " получено сообщение " << message_view_ << std::endl;
-        std::string_view retCode = getFieldValue("retCode", message_view_);
-        std::string_view retMsg = getFieldValue("retMsg", message_view_);
-        std::string_view connId = getFieldValue("connId", message_view_);
+        std::cout << " получено сообщение " << messageView_ << std::endl;
+        std::string_view retCode = getFieldValue("retCode", messageView_);
+        std::string_view retMsg = getFieldValue("retMsg", messageView_);
+        std::string_view connId = getFieldValue("connId", messageView_);
 
         if (retCode == "0" && retMsg == "OK") {
             statusMessage_.sucsess = true;
@@ -178,13 +180,13 @@ void OrderSender::on_read(beast::error_code ec, std::size_t bytes_transferred) {
         }
     } catch (const std::exception &e) {
         std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
-        std::cout << "Сырые данные: " << message_view_ << std::endl;
+        std::cout << "Сырые данные: " << messageView_ << std::endl;
     }
 
     // // LATENCY_MEASURE_END()
     // // READ_TIMER()
     // // Продолжаем чтение следующих сообщений
-    do_read();
+    doRead();
 }
 
 void OrderSender::checkStatus() {
@@ -197,7 +199,7 @@ void OrderSender::checkStatus() {
             sendNext();
         } else {
             std::cerr << "Ошибка аутентификации!" << std::endl;
-            schedule_reconnect();
+            scheduleReconnect();
             return;
         }
     } else {
@@ -229,41 +231,38 @@ void OrderSender::sendNext() {
 }
 
 void OrderSender::sendOrder(const OrderRequest &order) {
-    switch (order.typeOrderRequest)
-    {
-    case TypeOrderRequest_New:
+    switch (order.typeOrderRequest) {
+        case TypeOrderRequest_New:
             serialize_order(write_buffer_, order);
-        break;
-    case TypeOrderRequest_Cancel:
+            break;
+        case TypeOrderRequest_Cancel:
             serialize_cancel_order(write_buffer_, order);
-        break;
-    case TypeOrderRequest_Replace:
+            break;
+        case TypeOrderRequest_Replace:
             serialize_replace_order(write_buffer_, order);
-        break;
-    default:
-        std::cout << "OrderSender::sendOrder: Unknown order type" << std::endl;
-        return;
+            break;
+        default:
+            std::cout << "OrderSender::sendOrder: Unknown order type" << std::endl;
+            return;
     }
 
     std::cout << "отправка ордера " << write_buffer_ << std::endl;
     // у cancel и replace свои реализации.
 
-    auto self = shared_from_this();
-    ws_.async_write(net::buffer(write_buffer_),
-        [self](beast::error_code ec, std::size_t) {
-            auto ptr = static_cast<OrderSender *>(self.get());
-            ptr->on_write(ec);
-        });
+    auto self = static_cast<OrderSender *>(shared_from_this().get());
+    ws_.async_write(net::buffer(write_buffer_), [self](beast::error_code ec, std::size_t) {
+        self->on_write(ec);
+    });
 }
 
-void OrderSender::serialize_order(std::string& buffer, const OrderRequest& order) {
+void OrderSender::serialize_order(std::string &buffer, const OrderRequest &order) {
     buffer.clear();
-    buffer.reserve(512);  // Немного больше места для всех полей
+    buffer.reserve(512); // Немного больше места для всех полей
 
     // Получаем текущий timestamp в миллисекундах
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()
-    ).count();
+            std::chrono::system_clock::now().time_since_epoch())
+                       .count();
 
     // Начало JSON: операция и req_id
     buffer += "{\"req_id\":";
@@ -275,7 +274,7 @@ void OrderSender::serialize_order(std::string& buffer, const OrderRequest& order
     buffer += "},\"op\":\"order.create\",\"args\":[{";
 
     // Обязательные поля
-    buffer += "\"category\":\"linear\",";           // или "spot" для спота
+    buffer += "\"category\":\"linear\","; // или "spot" для спота
     buffer += "\"symbol\":\"";
     buffer += order.symbol;
     buffer += "\",\"side\":\"";
@@ -327,7 +326,7 @@ void OrderSender::serialize_order(std::string& buffer, const OrderRequest& order
     }
 
     // Time in Force (опционально, но рекомендуется)
-    buffer += ",\"timeInForce\":\"GTC\"";  // GTC, IOC, FOK, PostOnly
+    buffer += ",\"timeInForce\":\"GTC\""; // GTC, IOC, FOK, PostOnly
 
     // positionIdx - для хедж-режима (0 = one-way, 1 = buy side, 2 = sell side)
     buffer += ",\"positionIdx\":0";
@@ -348,13 +347,13 @@ void OrderSender::serialize_order(std::string& buffer, const OrderRequest& order
     buffer += "}]}";
 }
 
-void OrderSender::serialize_cancel_order(std::string& buffer, const OrderRequest& order) {
+void OrderSender::serialize_cancel_order(std::string &buffer, const OrderRequest &order) {
     buffer.clear();
     buffer.reserve(256);
 
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()
-    ).count();
+            std::chrono::system_clock::now().time_since_epoch())
+                       .count();
 
     // Начало JSON: операция и req_id
     buffer += "{\"req_id\":";
@@ -367,17 +366,17 @@ void OrderSender::serialize_cancel_order(std::string& buffer, const OrderRequest
     buffer += ",\"args\":[{\"category\":\"linear\",\"symbol\":\"";
     buffer += order.symbol;
     buffer += "\",\"orderId\":\"";
-    buffer += order.order_id;  // Тот самый ID от биржи!
+    buffer += order.order_id; // Тот самый ID от биржи!
     buffer += "\"}]}";
 }
 
-void OrderSender::serialize_replace_order(std::string& buffer, const OrderRequest& order) {
+void OrderSender::serialize_replace_order(std::string &buffer, const OrderRequest &order) {
     buffer.clear();
     buffer.reserve(512);
 
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()
-    ).count();
+            std::chrono::system_clock::now().time_since_epoch())
+                       .count();
 
     buffer += "{\"req_id\":";
     buffer += std::to_string(order.req_id);
@@ -389,7 +388,7 @@ void OrderSender::serialize_replace_order(std::string& buffer, const OrderReques
     buffer += ",\"args\":[{\"category\":\"linear\",\"symbol\":\"";
     buffer += order.symbol;
     buffer += "\",\"orderId\":\"";
-    buffer += order.order_id;  // ID ордера от биржи
+    buffer += order.order_id; // ID ордера от биржи
     buffer += "\"";
 
     if (order.price > 0) {
@@ -411,7 +410,7 @@ void OrderSender::on_write(beast::error_code ec) {
     if (ec) {
         std::cerr << "Order send error: " << ec.message() << std::endl;
         startSending_.store(false, std::memory_order_release);
-        schedule_reconnect();
+        scheduleReconnect();
     }
 
     std::cout << "ордер отправлен" << std::endl;

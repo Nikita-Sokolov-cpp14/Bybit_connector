@@ -35,36 +35,39 @@ void startConnection(const AuthConfig &authConfig, const ConnectionConfig &conne
         net::io_context ioc;
 
         // Создаем SSL контекст и загружаем сертификаты
-        ssl::context ssl_ctx {ssl::context::tlsv12_client};
-        ssl_ctx.set_default_verify_paths(); // загружаем системные CA сертификаты
+        ssl::context sslCtx {ssl::context::tlsv12_client};
+        sslCtx.set_default_verify_paths(); // загружаем системные CA сертификаты
 
         // Верифицируем сертификат сервера (обязательно для продакшена)
-        ssl_ctx.set_verify_mode(ssl::verify_peer);
+        sslCtx.set_verify_mode(ssl::verify_peer);
 
         std::cout << "Запуск Bybit WebSocket клиента..." << std::endl;
 
         // // Создаем экземпляр клиента
-        auto publicDataHandler = std::make_shared<PublicDataHandler>(ioc, ssl_ctx, &orderBook,
+        auto publicDataHandler = std::make_shared<PublicDataHandler>(ioc, sslCtx, &orderBook,
                 &statusMessage, &publicTrade, "bybit-HFT-client");
 
         // // Подключаемся к Bybit
         // // Для спота используйте: stream.bybit.com/v5/public/spot
         // // Для линейных контрактов: stream.bybit.com/v5/public/linear
         // // Для инверсных: stream.bybit.com/v5/public/inverse
-        publicDataHandler->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetPublic);
+        publicDataHandler->connect(connectionConfig.host, connectionConfig.port,
+                connectionConfig.targetPublic);
 
         PositionHFT positionHFT;
         ExecutionFast executionFast;
         OrderHFT orderHFT;
         WalletHFT walletHFT;
         PrivateDataHandler::Messages messages(&positionHFT, &executionFast, &orderHFT, &walletHFT);
-        auto privateDataHandler = std::make_shared<PrivateDataHandler>(ioc, ssl_ctx, authConfig.apiKey,
-                authConfig.apiSecret, messages,  "Bybit-PrivateData/1.0");
-        privateDataHandler->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetPrivate);
+        auto privateDataHandler = std::make_shared<PrivateDataHandler>(ioc, sslCtx,
+                authConfig.apiKey, authConfig.apiSecret, messages, "Bybit-PrivateData/1.0");
+        privateDataHandler->connect(connectionConfig.host, connectionConfig.port,
+                connectionConfig.targetPrivate);
 
-        auto orderSender = std::make_shared<OrderSender>(ioc, ssl_ctx, authConfig.apiKey,
+        auto orderSender = std::make_shared<OrderSender>(ioc, sslCtx, authConfig.apiKey,
                 authConfig.apiSecret, "Bybit-HFT-OrderSender/1.0");
-        orderSender->connect(connectionConfig.host, connectionConfig.port, connectionConfig.targetTrade);
+        orderSender->connect(connectionConfig.host, connectionConfig.port,
+                connectionConfig.targetTrade);
 
         std::cout << "Запускаем I/O контекст. Нажмите Ctrl+C для выхода." << std::endl;
 

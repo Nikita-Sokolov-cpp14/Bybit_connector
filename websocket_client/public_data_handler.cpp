@@ -3,36 +3,36 @@
 
 DECLARE_LATENCY_MEMBERS(1000)
 
-PublicDataHandler::PublicDataHandler(net::io_context &ioc, ssl::context &ssl_ctx,
+PublicDataHandler::PublicDataHandler(net::io_context &ioc, ssl::context &sslCtx,
         OrderBook *const orderBook, StatusMessage *const statusMessage,
-        PublicTrade *const publicTrade, const std::string_view user_agent) :
-BaseWebSocketClient(ioc, ssl_ctx, user_agent),
+        PublicTrade *const publicTrade, const std::string_view userAgent) :
+BaseWebSocketClient(ioc, sslCtx, userAgent),
 orderbookParser_(orderBook),
 statusParser_(statusMessage),
 publicTradeJsonParser_(publicTrade) {
 }
 
 // Обработчик завершения WebSocket handshake
-void PublicDataHandler::on_handshake(beast::error_code ec) {
+void PublicDataHandler::onHandshake(beast::error_code ec) {
     if (ec) {
         std::cerr << "Ошибка WebSocket handshake: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
     std::cout << "WebSocket соединение установлено!" << std::endl;
     // Подписываемся на потоки данных Bybit
-    subscribe_to_streams();
+    subscribeToStreams();
 
     // Запускаем пинг-понг для поддержания соединения
-    start_ping();
+    startPing();
 
     // Начинаем читать сообщения
-    do_read();
+    doRead();
 }
 
 // Отправка подписки на потоки данных
-void PublicDataHandler::subscribe_to_streams() {
+void PublicDataHandler::subscribeToStreams() {
     // constexpr - строка известна на этапе компиляции
     static constexpr char subscription_msg[] = "{\"op\":\"subscribe\",\"args\":["
                                                "\"orderbook.50.BTCUSDT\","
@@ -42,17 +42,16 @@ void PublicDataHandler::subscribe_to_streams() {
 
     std::cout << "Отправляем подписку: " << subscription_msg << std::endl;
 
-    auto self = static_cast<PublicDataHandler*>(shared_from_this().get());
-    ws_.async_write(net::buffer(subscription_msg), [self](beast::error_code ec, std::size_t bytes) {
-        self->on_subscribe_sent(ec, bytes);
-    });
+    auto self = static_cast<PublicDataHandler *>(shared_from_this().get());
+    ws_.async_write(net::buffer(subscription_msg),
+            [self](beast::error_code ec, std::size_t bytes) { self->onSubscribeSent(ec, bytes); });
 }
 
 // Обработчик отправки подписки
-void PublicDataHandler::on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) {
+void PublicDataHandler::onSubscribeSent(beast::error_code ec, std::size_t bytesTransferred) {
     if (ec) {
         std::cerr << "Ошибка отправки подписки: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
@@ -60,61 +59,66 @@ void PublicDataHandler::on_subscribe_sent(beast::error_code ec, std::size_t byte
 }
 
 // Асинхронное чтение сообщений
-void PublicDataHandler::do_read() {
+void PublicDataHandler::doRead() {
     // LATENCY_MEASURE_START()
     // Буфер для хранения полученных данных
     buffer_.clear();
 
     // Асинхронно читаем сообщение
-    auto self = static_cast<PublicDataHandler*>(shared_from_this().get());
-    ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytes_transferred) {
-        self->on_read(ec, bytes_transferred);
+    auto self = static_cast<PublicDataHandler *>(shared_from_this().get());
+    ws_.async_read(buffer_, [self](beast::error_code ec, std::size_t bytesTransferred) {
+        self->onRead(ec, bytesTransferred);
     });
 }
 
 // Обработчик полученных сообщений
-void PublicDataHandler::on_read(beast::error_code ec, std::size_t bytes_transferred) {
+void PublicDataHandler::onRead(beast::error_code ec, std::size_t bytesTransferred) {
     if (ec) {
         if (ec == websocket::error::closed) {
             std::cout << "WebSocket соединение закрыто нормально" << std::endl;
+        } else if (ec == net::error::operation_aborted) {
+            // Операция была отменена - вероятно, из-за закрытия соединения
+            std::cout << "Операция чтения отменена" << std::endl;
+            return;  // Не планируем переподключение, оно уже запланировано
         } else {
             std::cerr << "Ошибка чтения: " << ec.message() << std::endl;
         }
 
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
     // Преобразуем полученные данные в строку
     message_ = beast::buffers_to_string(buffer_.data());
-    message_view_ = message_;
+    messageView_ = message_;
     try {
-        typeMessage_ = parseTypeMessage(message_view_.substr(0, maxTypeStrLen));
+        typeMessage_ = parseTypeMessage(messageView_.substr(0, maxTypeStrLen));
         switch (typeMessage_) {
             case TypeMessage_Orderbook:
-                orderbookParser_.setString(message_view_);
+                orderbookParser_.setString(messageView_);
                 orderbookParser_.parse();
                 break;
             case TypeMessage_PublicTrade:
-                publicTradeJsonParser_.setString(message_view_);
+                publicTradeJsonParser_.setString(messageView_);
                 publicTradeJsonParser_.parse();
                 break;
             case TypeMessage_Status:
-                statusParser_.setString(message_view_);
+                statusParser_.setString(messageView_);
                 statusParser_.parse();
                 break;
             default:
-                std::cout << "PublicDataHandler::on_read: Unknown message type " << message_view_ << std::endl;
-                // std::cout << message_view_ << std::endl;
+                std::cout << "PublicDataHandler::onRead: Unknown message type " << messageView_
+                          << std::endl;
+                // std::cout << messageView_ << std::endl;
                 break;
         }
     } catch (const std::exception &e) {
         std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
-        std::cout << "Сырые данные: " << message_view_ << std::endl;
+        std::cout << "Сырые данные: " << messageView_ << std::endl;
     }
 
     // LATENCY_MEASURE_END()
     // READ_TIMER()
     // Продолжаем чтение следующих сообщений
-    do_read();
+    doRead();
 }

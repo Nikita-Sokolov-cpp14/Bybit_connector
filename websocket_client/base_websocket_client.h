@@ -30,73 +30,142 @@ namespace net = boost::asio;
 namespace ssl = boost::asio::ssl;
 using tcp = boost::asio::ip::tcp;
 
-// Класс WebSocket клиента для Bybit
+/**
+ * @brief Базовый класс для создания websocket соединения.
+ * @details Наследуется от enable_shared_from_this, чтобы работали асинхронные операции
+ * (колбэки).
+ */
 class BaseWebSocketClient : public std::enable_shared_from_this<BaseWebSocketClient> {
 public:
-    // Конструктор: инициализируем все необходимые компоненты
-    BaseWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx, const std::string_view user_agent);
+    /**
+     * @brief Конструктор
+     * @param ioc Основной обработчик (планировщик) задач io_context.
+     * @param sslCtx Защищенный поток SSL.
+     * @param userAgent Заголовок всех пакетов.
+     */
+    BaseWebSocketClient(net::io_context &ioc, ssl::context &sslCtx,
+            const std::string_view userAgent);
 
-    // Основной метод для запуска подключения
+    /**
+     * @brief Подключиться с парметрами.
+     * @details Основной метод подключения.
+     * @param host Хост
+     * @param port Порт.
+     * @param target Таргет.
+     */
     void connect(const std::string &host, const std::string &port, const std::string &target);
 
 protected:
-    // Обработчик результата DNS резолвинга
-    void on_resolve(beast::error_code ec, tcp::resolver::results_type results);
+    /**
+     * @brief Обработчик результатов DNS.
+     * @details Передается в async_resolve как колбэк.
+     * @param ec Код ошибки.
+     * @param results Результаты.
+     */
+    void onResolve(beast::error_code ec, tcp::resolver::results_type results);
 
-    // Обработчик успешного TCP подключения
-    void on_connect(beast::error_code ec, tcp::resolver::results_type::endpoint_type);
+    /**
+     * @brief Обработчик успешного TCP подключения.
+     * @details Передается в async_resolve как колбэк.
+     * @param ec Код ошибки.
+     * @param tcp::resolver::results_type::endpoint_type ?
+     */
+    void onConnect(beast::error_code ec, tcp::resolver::results_type::endpoint_type);
 
-    // Обработчик завершения SSL handshake
-    void on_ssl_handshake(beast::error_code ec);
+    /**
+     * @brief Обработчик завершения SSL handshake.
+     * @details Передается в async_resolve как колбэк.
+     * @param ec Код ошибки.
+     */
+    void onSslHandshake(beast::error_code ec);
 
-    // Обработчик завершения WebSocket handshake
-    virtual void on_handshake(beast::error_code ec) = 0;
+    /**
+     * @brief Обработчик завершения WebSocket handshake.
+     * @details Передается в async_resolve как колбэк.
+     * @param ec Код ошибки.
+     */
+    virtual void onHandshake(beast::error_code ec) = 0;
 
-    // Отправка подписки на потоки данных
-    virtual void subscribe_to_streams() = 0;
+    /**
+     * @brief Отправить подписку на потоки данных.
+     */
+    virtual void subscribeToStreams() = 0;
 
-    // Обработчик отправки подписки
-    virtual void on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) = 0;
+    /**
+     * @brief Обработчик отправки подписки.
+     * @param ec Код ошибки.
+     * @param bytesTransferred Число полученных байт.
+     */
+    virtual void onSubscribeSent(beast::error_code ec, std::size_t bytesTransferred) = 0;
 
-    // Асинхронное чтение сообщений
-    virtual void do_read() = 0;
+    /**
+     * @brief Асинхронно прочитать сообщение.
+     */
+    virtual void doRead() = 0;
 
-    // Обработчик полученных сообщений
-    virtual void on_read(beast::error_code ec, std::size_t bytes_transferred) = 0;
+    /**
+     * @brief Обработчик полученных сообщений.
+     * @param ec Код ошибки.
+     * @param bytesTransferred Число полученных байт.
+     */
+    virtual void onRead(beast::error_code ec, std::size_t bytesTransferred) = 0;
 
-    // Запуск периодического PING для поддержания соединения
-    void start_ping();
+    /**
+     * @brief Запуск периодического PING для поддержания соединения.
+     */
+    void startPing();
 
-    // Обработчик таймера PING
-    void on_ping_timer(beast::error_code ec);
+    /**
+     * @brief бработчик таймера PING.
+     * @param ec Код ошибки.
+     */
+    void onPingTimer(beast::error_code ec);
 
-    // Обработчик отправки PING
-    void on_ping_sent(beast::error_code ec);
+    /**
+     * @brief Обработчик отправки PING.
+     * @param ec Код ошибки.
+     */
+    void onPingSent(beast::error_code ec);
 
-    // Планирование переподключения при ошибке
-    void schedule_reconnect();
+    /**
+     * @brief Планирование переподключения при ошибке.
+     */
+    void scheduleReconnect();
 
-    // Обработчик таймера переподключения
-    void on_reconnect_timer(beast::error_code ec);
+    /**
+     * @brief Обработчик таймера переподключения.
+     * @param ec Код ошибки.
+     */
+    void onReconnectTimer(beast::error_code ec);
 
 protected:
     tcp::resolver resolver_; // DNS резолвер
     websocket::stream<ssl::stream<beast::tcp_stream> > ws_; // WebSocket поток с SSL
-    net::steady_timer reconnect_timer_; // Таймер для переподключения
-    net::steady_timer ping_timer_; // Таймер для ping
+    net::steady_timer reconnectTimer_; // Таймер для переподключения
+    net::steady_timer pingTimer_; // Таймер для ping
+    std::atomic<bool> waitPing_; //!< Ожидается ли ответ на пинг.
     net::io_context &ioc_; // Ссылка на io_context
     beast::flat_buffer buffer_; // Буфер для чтения данных
-    TypeMessage typeMessage_;
+    TypeMessage typeMessage_; //!< Тип сообщения.
     std::string host_; // Хост для переподключения
     std::string port_; // Порт для переподключения
     std::string target_; // WebSocket путь
-    std::string last_price_; // Последняя полученная цена
-    std::string message_;
-    std::string_view message_view_;
-    std::chrono::steady_clock::time_point ping_sent_time_;
+    std::string lastPrice_; // Последняя полученная цена
+    std::string message_; //!< Полученное сообщение.
+    std::string_view messageView_; //!< Полученно
+    std::chrono::steady_clock::time_point pingSentTime_;
 
-    // Метод для измерения и логирования пинга
-    void measure_latency(std::chrono::steady_clock::time_point sent_time);
+    /**
+     * @brief Вычислить пинг.
+     * @param sentTime Время отправки пинг запроса на сервер.
+     */
+    void measureLatency(std::chrono::steady_clock::time_point sentTime);
 
-    void on_control_frame(websocket::frame_type kind, beast::string_view payload);
+    /**
+     * @brief Обработчик управляющего фрейма.
+     * @details Вызывается каждый раз, когда приходит управляющий фрейм (PING/PONG/CLOSE).
+     * @param kind Тип.
+     * @param payload Строка с ответом.
+     */
+    void onControlFrame(websocket::frame_type kind, beast::string_view payload);
 };

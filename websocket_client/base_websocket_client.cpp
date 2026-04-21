@@ -3,17 +3,18 @@
 
 DECLARE_LATENCY_MEMBERS(1000)
 
-BaseWebSocketClient::BaseWebSocketClient(net::io_context &ioc, ssl::context &ssl_ctx,
-        const std::string_view user_agent) :
+BaseWebSocketClient::BaseWebSocketClient(net::io_context &ioc, ssl::context &sslCtx,
+        const std::string_view userAgent) :
 resolver_(ioc), // для DNS запросов
-ws_(ioc, ssl_ctx), // WebSocket поток с SSL
-reconnect_timer_(ioc), // таймер для переподключения
+ws_(ioc, sslCtx), // WebSocket поток с SSL
+reconnectTimer_(ioc), // таймер для переподключения
 ioc_(ioc), // сохраняем ссылку на io_context
-ping_timer_(ioc),
+pingTimer_(ioc),
+waitPing_(false),
 typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщений
     // Устанавливаем заголовок User-Agent (необязательно, но рекомендуется)
-    ws_.set_option(websocket::stream_base::decorator([user_agent](websocket::request_type &req) {
-        req.set(beast::http::field::user_agent, user_agent);
+    ws_.set_option(websocket::stream_base::decorator([userAgent](websocket::request_type &req) {
+        req.set(beast::http::field::user_agent, userAgent);
     }));
 
     // Включаем сжатие permessage-deflate (поддерживается Bybit)
@@ -28,10 +29,8 @@ typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщени
             4 // memLevel - уровень памяти (1-9)
     });
 
-    // *** УСТАНАВЛИВАЕМ CONTROL_CALLBACK ***
-    // Этот callback будет вызываться каждый раз, когда приходит управляющий фрейм (PING/PONG/CLOSE)
     ws_.control_callback([this](websocket::frame_type kind, beast::string_view payload) {
-        on_control_frame(kind, payload);
+        onControlFrame(kind, payload);
     });
 }
 
@@ -46,14 +45,14 @@ void BaseWebSocketClient::connect(const std::string &host, const std::string &po
 
     // Асинхронно разрешаем DNS имя хоста
     resolver_.async_resolve(host, port,
-            beast::bind_front_handler(&BaseWebSocketClient::on_resolve, shared_from_this()));
+            beast::bind_front_handler(&BaseWebSocketClient::onResolve, shared_from_this()));
 }
 
 // Обработчик результата DNS резолвинга
-void BaseWebSocketClient::on_resolve(beast::error_code ec, tcp::resolver::results_type results) {
+void BaseWebSocketClient::onResolve(beast::error_code ec, tcp::resolver::results_type results) {
     if (ec) {
         std::cerr << "Ошибка резолвинга: " << ec.message() << std::endl;
-        schedule_reconnect(); // Планируем переподключение
+        scheduleReconnect(); // Планируем переподключение
         return;
     }
 
@@ -61,15 +60,15 @@ void BaseWebSocketClient::on_resolve(beast::error_code ec, tcp::resolver::result
 
     // Асинхронно подключаемся к полученному адресу
     beast::get_lowest_layer(ws_).async_connect(results,
-            beast::bind_front_handler(&BaseWebSocketClient::on_connect, shared_from_this()));
+            beast::bind_front_handler(&BaseWebSocketClient::onConnect, shared_from_this()));
 }
 
 // Обработчик успешного TCP подключения
-void BaseWebSocketClient::on_connect(beast::error_code ec,
+void BaseWebSocketClient::onConnect(beast::error_code ec,
         tcp::resolver::results_type::endpoint_type) {
     if (ec) {
         std::cerr << "Ошибка подключения: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
@@ -79,20 +78,20 @@ void BaseWebSocketClient::on_connect(beast::error_code ec,
     if (!SSL_set_tlsext_host_name(ws_.next_layer().native_handle(), host_.c_str())) {
         beast::error_code ec {static_cast<int>(::ERR_get_error()), net::error::get_ssl_category()};
         std::cerr << "Ошибка установки SNI: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
     // Выполняем SSL handshake
     ws_.next_layer().async_handshake(ssl::stream_base::client,
-            beast::bind_front_handler(&BaseWebSocketClient::on_ssl_handshake, shared_from_this()));
+            beast::bind_front_handler(&BaseWebSocketClient::onSslHandshake, shared_from_this()));
 }
 
 // Обработчик завершения SSL handshake
-void BaseWebSocketClient::on_ssl_handshake(beast::error_code ec) {
+void BaseWebSocketClient::onSslHandshake(beast::error_code ec) {
     if (ec) {
         std::cerr << "Ошибка SSL handshake: " << ec.message() << std::endl;
-        schedule_reconnect();
+        scheduleReconnect();
         return;
     }
 
@@ -100,18 +99,18 @@ void BaseWebSocketClient::on_ssl_handshake(beast::error_code ec) {
 
     // Выполняем WebSocket handshake
     ws_.async_handshake(host_, target_,
-            beast::bind_front_handler(&BaseWebSocketClient::on_handshake, shared_from_this()));
+            beast::bind_front_handler(&BaseWebSocketClient::onHandshake, shared_from_this()));
 }
 
 // Запуск периодического PING для поддержания соединения
-void BaseWebSocketClient::start_ping() {
-    ping_timer_.expires_after(std::chrono::seconds(5));
-    ping_timer_.async_wait(
-            beast::bind_front_handler(&BaseWebSocketClient::on_ping_timer, shared_from_this()));
+void BaseWebSocketClient::startPing() {
+    pingTimer_.expires_after(std::chrono::seconds(5));
+    pingTimer_.async_wait(
+            beast::bind_front_handler(&BaseWebSocketClient::onPingTimer, shared_from_this()));
 }
 
 // Обработчик таймера PING
-void BaseWebSocketClient::on_ping_timer(beast::error_code ec) {
+void BaseWebSocketClient::onPingTimer(beast::error_code ec) {
     if (ec) {
         // Таймер был отменен
         return;
@@ -119,24 +118,24 @@ void BaseWebSocketClient::on_ping_timer(beast::error_code ec) {
 
     if (ws_.is_open()) {
         // Отправляем PING фрейм
-        ping_sent_time_ = std::chrono::steady_clock::now();
+        pingSentTime_ = std::chrono::steady_clock::now();
         ws_.async_ping({},
-                beast::bind_front_handler(&BaseWebSocketClient::on_ping_sent, shared_from_this()));
+                beast::bind_front_handler(&BaseWebSocketClient::onPingSent, shared_from_this()));
     }
 }
 
 // Обработчик отправки PING
-void BaseWebSocketClient::on_ping_sent(beast::error_code ec) {
+void BaseWebSocketClient::onPingSent(beast::error_code ec) {
     if (!ec) {
         // Если PING отправлен успешно, планируем следующий
-        ping_timer_.expires_after(std::chrono::seconds(5));
-        ping_timer_.async_wait(
-                beast::bind_front_handler(&BaseWebSocketClient::on_ping_timer, shared_from_this()));
+        pingTimer_.expires_after(std::chrono::seconds(5));
+        pingTimer_.async_wait(
+                beast::bind_front_handler(&BaseWebSocketClient::onPingTimer, shared_from_this()));
     }
 }
 
 // Планирование переподключения при ошибке
-void BaseWebSocketClient::schedule_reconnect() {
+void BaseWebSocketClient::scheduleReconnect() {
     // std::cout << "Планируем переподключение через 5 секунд..." << std::endl;
 
     // // Закрываем текущее соединение, если оно открыто
@@ -152,7 +151,7 @@ void BaseWebSocketClient::schedule_reconnect() {
 }
 
 // Обработчик таймера переподключения
-void BaseWebSocketClient::on_reconnect_timer(beast::error_code ec) {
+void BaseWebSocketClient::onReconnectTimer(beast::error_code ec) {
     if (ec) {
         std::cerr << "Ошибка таймера переподключения: " << ec.message() << std::endl;
         return;
@@ -162,17 +161,16 @@ void BaseWebSocketClient::on_reconnect_timer(beast::error_code ec) {
     connect(host_, port_, target_);
 }
 
-void BaseWebSocketClient::measure_latency(std::chrono::steady_clock::time_point sent_time) {
+void BaseWebSocketClient::measureLatency(std::chrono::steady_clock::time_point sentTime) {
     auto now = std::chrono::steady_clock::now();
-    auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now - sent_time).count();
+    auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now - sentTime).count();
 
     std::cout << "WebSocket PING/PONG RTT: " << latency << " ms" << std::endl;
-
-    // Здесь можно сохранять latency в вашу систему мониторинга
-    // например, в глобальную переменную или вызывать колбэк
 }
 
-void BaseWebSocketClient::on_control_frame(websocket::frame_type kind, beast::string_view payload) {
-    std::cout << "on_control_frame" << std::endl;
-    measure_latency(ping_sent_time_);
+void BaseWebSocketClient::onControlFrame(websocket::frame_type kind, beast::string_view payload) {
+    if (kind == boost::beast::websocket::frame_type::pong) {
+        measureLatency(pingSentTime_);
+        waitPing_ = false;
+    }
 }

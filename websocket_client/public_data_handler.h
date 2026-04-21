@@ -12,25 +12,25 @@
 class PublicDataHandler : public BaseWebSocketClient {
 public:
     // Конструктор: инициализируем все необходимые компоненты
-    PublicDataHandler(net::io_context &ioc, ssl::context &ssl_ctx, OrderBook *const orderBook,
+    PublicDataHandler(net::io_context &ioc, ssl::context &sslCtx, OrderBook *const orderBook,
             StatusMessage *const statusMessage, PublicTrade *const publicTrade,
-            const std::string_view user_agent);
+            const std::string_view userAgent);
 
 private:
     // Обработчик завершения WebSocket handshake
-    void on_handshake(beast::error_code ec) override;
+    void onHandshake(beast::error_code ec) override;
 
     // Отправка подписки на потоки данных
-    void subscribe_to_streams() override;
+    void subscribeToStreams() override;
 
     // Обработчик отправки подписки
-    void on_subscribe_sent(beast::error_code ec, std::size_t bytes_transferred) override;
+    void onSubscribeSent(beast::error_code ec, std::size_t bytesTransferred) override;
 
     // Асинхронное чтение сообщений
-    void do_read() override;
+    void doRead() override;
 
     // Обработчик полученных сообщений
-    void on_read(beast::error_code ec, std::size_t bytes_transferred) override;
+    void onRead(beast::error_code ec, std::size_t bytesTransferred) override;
 
 private:
     OrderBookJsonParser orderbookParser_;
