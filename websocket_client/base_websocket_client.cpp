@@ -1,5 +1,6 @@
 #include "base_websocket_client.h"
 #include "p999_latency/check_latency.h"
+#include <thread>
 
 DECLARE_LATENCY_MEMBERS(1000)
 
@@ -10,7 +11,7 @@ ws_(ioc, sslCtx), // WebSocket поток с SSL
 reconnectTimer_(ioc), // таймер для переподключения
 ioc_(ioc), // сохраняем ссылку на io_context
 pingTimer_(ioc),
-waitPing_(false),
+isWaitPing_(false),
 typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщений
     // Устанавливаем заголовок User-Agent (необязательно, но рекомендуется)
     ws_.set_option(websocket::stream_base::decorator([userAgent](websocket::request_type &req) {
@@ -116,7 +117,12 @@ void BaseWebSocketClient::onPingTimer(beast::error_code ec) {
         return;
     }
 
+    if (isWaitPing_.load()) {
+        scheduleReconnect();
+    }
+
     if (ws_.is_open()) {
+        isWaitPing_.store(true);
         // Отправляем PING фрейм
         pingSentTime_ = std::chrono::steady_clock::now();
         ws_.async_ping({},
@@ -136,18 +142,43 @@ void BaseWebSocketClient::onPingSent(beast::error_code ec) {
 
 // Планирование переподключения при ошибке
 void BaseWebSocketClient::scheduleReconnect() {
-    // std::cout << "Планируем переподключение через 5 секунд..." << std::endl;
+    bool expected = false;
+    if (!isReconnecting_.compare_exchange_strong(expected, true)) {
+        std::cout << "Already reconnecting, ignoring duplicate request" << std::endl;
+        return;  // Уже переподключаемся - выходим
+    }
 
-    // // Закрываем текущее соединение, если оно открыто
-    // if (ws_.is_open()) {
-    //     beast::error_code ec;
-    //     ws_.close(websocket::close_code::normal, ec);
-    // }
+    // Закрываем текущее соединение, если оно открыто
+    if (ws_.is_open()) {
+        std::cout << "Планируем переподключение через 5 секунд..." << std::endl;
+        // Планируем переподключение
+        reconnectTimer_.expires_after(std::chrono::seconds(5));
+        // Это может вызвать ошибки в других операциях, но соединение будет закрыто
+        reconnectTimer_.async_wait(
+                beast::bind_front_handler(&BaseWebSocketClient::onClose, shared_from_this()));
+    } else {
+        std::cout << "соединение уже закрыто" << std::endl;
+        // Это может вызвать ошибки в других операциях, но соединение будет закрыто
+        onClose(beast::error_code());
+    }
+}
 
-    // // Планируем переподключение
-    // reconnect_timer_.expires_after(std::chrono::seconds(5));
-    // reconnect_timer_.async_wait(beast::bind_front_handler(&BaseWebSocketClient::on_reconnect_timer,
-    //         shared_from_this()));
+void BaseWebSocketClient::onClose(beast::error_code ec) {
+    if (ec) {
+        std::cerr << "Ошибка таймера переподключения: " << ec.message() << std::endl;
+    }
+
+    pingTimer_.cancel();
+    reconnectTimer_.cancel();
+
+    // Получаем нижний слой (tcp socket)
+    auto &lowest_layer = beast::get_lowest_layer(ws_);
+
+    // Закрываем TCP сокет напрямую
+    lowest_layer.close();
+    std::cout << "Соединение закрыто" << std::endl;
+    
+    isReconnecting_.store(false);
 }
 
 // Обработчик таймера переподключения
@@ -158,7 +189,7 @@ void BaseWebSocketClient::onReconnectTimer(beast::error_code ec) {
     }
 
     std::cout << "Пытаемся переподключиться..." << std::endl;
-    connect(host_, port_, target_);
+    // connect(host_, port_, target_);
 }
 
 void BaseWebSocketClient::measureLatency(std::chrono::steady_clock::time_point sentTime) {
@@ -171,6 +202,6 @@ void BaseWebSocketClient::measureLatency(std::chrono::steady_clock::time_point s
 void BaseWebSocketClient::onControlFrame(websocket::frame_type kind, beast::string_view payload) {
     if (kind == boost::beast::websocket::frame_type::pong) {
         measureLatency(pingSentTime_);
-        waitPing_ = false;
+        isWaitPing_.store(false);
     }
 }

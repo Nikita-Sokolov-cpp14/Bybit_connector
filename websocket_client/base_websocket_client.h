@@ -143,7 +143,6 @@ protected:
     websocket::stream<ssl::stream<beast::tcp_stream> > ws_; // WebSocket поток с SSL
     net::steady_timer reconnectTimer_; // Таймер для переподключения
     net::steady_timer pingTimer_; // Таймер для ping
-    std::atomic<bool> waitPing_; //!< Ожидается ли ответ на пинг.
     net::io_context &ioc_; // Ссылка на io_context
     beast::flat_buffer buffer_; // Буфер для чтения данных
     TypeMessage typeMessage_; //!< Тип сообщения.
@@ -154,6 +153,8 @@ protected:
     std::string message_; //!< Полученное сообщение.
     std::string_view messageView_; //!< Полученно
     std::chrono::steady_clock::time_point pingSentTime_;
+    std::atomic<bool> isWaitPing_;  //!< Ожидается ли ответ на пинг.
+    std::atomic<bool> isReconnecting_{false};
 
     /**
      * @brief Вычислить пинг.
@@ -168,4 +169,6 @@ protected:
      * @param payload Строка с ответом.
      */
     void onControlFrame(websocket::frame_type kind, beast::string_view payload);
+
+    void onClose(beast::error_code ec);
 };
