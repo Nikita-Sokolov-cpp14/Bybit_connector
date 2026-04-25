@@ -65,4 +65,6 @@ private:
     std::unique_ptr<std::jthread> orderSenderThread_;
 
     ssl::context createSSLContext();
+
+    void setPublicReconnectCallback();
 };

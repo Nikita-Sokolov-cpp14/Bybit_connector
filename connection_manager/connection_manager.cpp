@@ -18,6 +18,7 @@ void ConnectionManager::connect() {
         publicDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
                 connectionConfig_.targetPublic);
     });
+    setPublicReconnectCallback();
 
     net::post(privateIoc_, [this]() {
         privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
@@ -40,10 +41,15 @@ void ConnectionManager::reconnectOrderSender() {
 }
 
 void ConnectionManager::reconnectPublicHandler() {
+    std::cout << "1 " << publicDataHandler_.use_count() << std::endl;
+
     std::shared_ptr<PublicDataHandler> newPublicHandler = std::make_shared<PublicDataHandler>(
             publicIoc_, sslCtx_, &orderBook_, &statusMessage_, &publicTrade_, "bybit-HFT-client");
 
     publicDataHandler_ = std::move(newPublicHandler);
+    setPublicReconnectCallback();
+
+    std::cout << "2 " << publicDataHandler_.use_count() << std::endl;
 }
 
 void ConnectionManager::reconnectPrivateHandler() {
@@ -56,9 +62,21 @@ void ConnectionManager::reconnectPrivateHandler() {
 
 ssl::context ConnectionManager::createSSLContext() {
     ssl::context ctx(ssl::context::tlsv12_client);
-    ctx.set_default_verify_paths();  // загружаем системные CA сертификаты
+    ctx.set_default_verify_paths(); // загружаем системные CA сертификаты
     // Верифицируем сертификат сервера (обязательно для продакшена)
     ctx.set_verify_mode(ssl::verify_peer);
     // ctx.set_options(ssl::context::no_compression); // Для HFT
     return ctx;
+}
+
+void ConnectionManager::setPublicReconnectCallback() {
+    publicDataHandler_->setReconnectCallback([this]() {
+        std::cout << "in callback publicDataHandler_ " << std::endl;
+        net::post(publicIoc_, [this]() {
+            reconnectPublicHandler();
+            // После создания нового хендлера - подключаем его
+            publicDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
+                    connectionConfig_.targetPublic);
+        });
+    });
 }

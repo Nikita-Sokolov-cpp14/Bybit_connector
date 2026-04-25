@@ -49,6 +49,10 @@ void BaseWebSocketClient::connect(const std::string &host, const std::string &po
             beast::bind_front_handler(&BaseWebSocketClient::onResolve, shared_from_this()));
 }
 
+void BaseWebSocketClient::setReconnectCallback(std::function<void()> callback) {
+    reconnectCallback_ = callback;
+}
+
 // Обработчик результата DNS резолвинга
 void BaseWebSocketClient::onResolve(beast::error_code ec, tcp::resolver::results_type results) {
     if (ec) {
@@ -145,22 +149,19 @@ void BaseWebSocketClient::scheduleReconnect() {
     bool expected = false;
     if (!isReconnecting_.compare_exchange_strong(expected, true)) {
         std::cout << "Already reconnecting, ignoring duplicate request" << std::endl;
-        return;  // Уже переподключаемся - выходим
+        return; // Уже переподключаемся - выходим
     }
 
     // Закрываем текущее соединение, если оно открыто
-    if (ws_.is_open()) {
-        std::cout << "Планируем переподключение через 5 секунд..." << std::endl;
-        // Планируем переподключение
-        reconnectTimer_.expires_after(std::chrono::seconds(5));
-        // Это может вызвать ошибки в других операциях, но соединение будет закрыто
-        reconnectTimer_.async_wait(
-                beast::bind_front_handler(&BaseWebSocketClient::onClose, shared_from_this()));
-    } else {
+    if (!ws_.is_open()) {
         std::cout << "соединение уже закрыто" << std::endl;
-        // Это может вызвать ошибки в других операциях, но соединение будет закрыто
-        onClose(beast::error_code());
     }
+    std::cout << "Планируем переподключение через 5 секунд..." << std::endl;
+    // Планируем переподключение
+    reconnectTimer_.expires_after(std::chrono::seconds(5));
+    // Это может вызвать ошибки в других операциях, но соединение будет закрыто
+    reconnectTimer_.async_wait(
+            beast::bind_front_handler(&BaseWebSocketClient::onClose, shared_from_this()));
 }
 
 void BaseWebSocketClient::onClose(beast::error_code ec) {
@@ -177,8 +178,12 @@ void BaseWebSocketClient::onClose(beast::error_code ec) {
     // Закрываем TCP сокет напрямую
     lowest_layer.close();
     std::cout << "Соединение закрыто" << std::endl;
-    
+
     isReconnecting_.store(false);
+    if (reconnectCallback_) {
+        std::cout << "Вызываем колбэк переподключения" << std::endl;
+        reconnectCallback_();
+    }
 }
 
 // Обработчик таймера переподключения

@@ -55,6 +55,9 @@ public:
      */
     void connect(const std::string &host, const std::string &port, const std::string &target);
 
+    // Устанавливаем колбэк на переподключение
+    void setReconnectCallback(std::function<void()> callback);
+
 protected:
     /**
      * @brief Обработчик результатов DNS.
@@ -155,6 +158,8 @@ protected:
     std::chrono::steady_clock::time_point pingSentTime_;
     std::atomic<bool> isWaitPing_;  //!< Ожидается ли ответ на пинг.
     std::atomic<bool> isReconnecting_{false};
+
+    std::function<void()> reconnectCallback_; // Колбэк для переподключения
 
     /**
      * @brief Вычислить пинг.
