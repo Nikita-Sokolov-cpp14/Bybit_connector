@@ -135,12 +135,6 @@ protected:
      */
     void scheduleReconnect();
 
-    /**
-     * @brief Обработчик таймера переподключения.
-     * @param ec Код ошибки.
-     */
-    void onReconnectTimer(beast::error_code ec);
-
 protected:
     tcp::resolver resolver_; // DNS резолвер
     websocket::stream<ssl::stream<beast::tcp_stream> > ws_; // WebSocket поток с SSL

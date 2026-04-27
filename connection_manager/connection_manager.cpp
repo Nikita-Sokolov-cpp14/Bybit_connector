@@ -41,15 +41,11 @@ void ConnectionManager::reconnectOrderSender() {
 }
 
 void ConnectionManager::reconnectPublicHandler() {
-    std::cout << "1 " << publicDataHandler_.use_count() << std::endl;
-
     std::shared_ptr<PublicDataHandler> newPublicHandler = std::make_shared<PublicDataHandler>(
             publicIoc_, sslCtx_, &orderBook_, &statusMessage_, &publicTrade_, "bybit-HFT-client");
 
     publicDataHandler_ = std::move(newPublicHandler);
     setPublicReconnectCallback();
-
-    std::cout << "2 " << publicDataHandler_.use_count() << std::endl;
 }
 
 void ConnectionManager::reconnectPrivateHandler() {

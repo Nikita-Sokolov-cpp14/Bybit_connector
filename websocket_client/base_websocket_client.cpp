@@ -56,12 +56,12 @@ void BaseWebSocketClient::setReconnectCallback(std::function<void()> callback) {
 // Обработчик результата DNS резолвинга
 void BaseWebSocketClient::onResolve(beast::error_code ec, tcp::resolver::results_type results) {
     if (ec) {
-        std::cerr << "Ошибка резолвинга: " << ec.message() << std::endl;
+        std::cerr << "onResolve: Ошибка резолвинга: " << ec.message() << std::endl;
         scheduleReconnect(); // Планируем переподключение
         return;
     }
 
-    std::cout << "DNS разрешен, устанавливаем соединение..." << std::endl;
+    std::cout << "onResolve: DNS разрешен, устанавливаем соединение..." << std::endl;
 
     // Асинхронно подключаемся к полученному адресу
     beast::get_lowest_layer(ws_).async_connect(results,
@@ -154,9 +154,9 @@ void BaseWebSocketClient::scheduleReconnect() {
 
     // Закрываем текущее соединение, если оно открыто
     if (!ws_.is_open()) {
-        std::cout << "соединение уже закрыто" << std::endl;
+        std::cout << "scheduleReconnect: соединение уже закрыто" << std::endl;
     }
-    std::cout << "Планируем переподключение через 5 секунд..." << std::endl;
+    std::cout << "scheduleReconnect: Планируем переподключение через 5 секунд..." << std::endl;
     // Планируем переподключение
     reconnectTimer_.expires_after(std::chrono::seconds(5));
     // Это может вызвать ошибки в других операциях, но соединение будет закрыто
@@ -177,24 +177,12 @@ void BaseWebSocketClient::onClose(beast::error_code ec) {
 
     // Закрываем TCP сокет напрямую
     lowest_layer.close();
-    std::cout << "Соединение закрыто" << std::endl;
+    std::cout << "onClose: Соединение закрыто" << std::endl;
 
     isReconnecting_.store(false);
     if (reconnectCallback_) {
-        std::cout << "Вызываем колбэк переподключения" << std::endl;
         reconnectCallback_();
     }
-}
-
-// Обработчик таймера переподключения
-void BaseWebSocketClient::onReconnectTimer(beast::error_code ec) {
-    if (ec) {
-        std::cerr << "Ошибка таймера переподключения: " << ec.message() << std::endl;
-        return;
-    }
-
-    std::cout << "Пытаемся переподключиться..." << std::endl;
-    // connect(host_, port_, target_);
 }
 
 void BaseWebSocketClient::measureLatency(std::chrono::steady_clock::time_point sentTime) {

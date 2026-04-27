@@ -75,13 +75,13 @@ void PublicDataHandler::doRead() {
 void PublicDataHandler::onRead(beast::error_code ec, std::size_t bytesTransferred) {
     if (ec) {
         if (ec == websocket::error::closed) {
-            std::cout << "WebSocket соединение закрыто нормально" << std::endl;
+            std::cout << "onRead: WebSocket соединение закрыто нормально" << std::endl;
         } else if (ec == net::error::operation_aborted) {
             // Операция была отменена - вероятно, из-за закрытия соединения
-            std::cout << "Операция чтения отменена" << std::endl;
+            std::cout << "onRead: Операция чтения отменена" << std::endl;
             return;  // Не планируем переподключение, оно уже запланировано
         } else {
-            std::cerr << "Ошибка чтения: " << ec.message() << std::endl;
+            std::cerr << "onRead: Ошибка чтения: " << ec.message() << std::endl;
         }
 
         scheduleReconnect();
