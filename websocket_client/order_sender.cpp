@@ -15,7 +15,8 @@ OrderSender::OrderSender(net::io_context &ioc, ssl::context &sslCtx, const std::
 PrivateConnector(ioc, sslCtx, api_key, api_secret, userAgent),
 order_queue_cancel_(maxQueueSize),
 order_queue_replace_(maxQueueSize),
-order_queue_new_(maxQueueSize) {
+order_queue_new_(maxQueueSize),
+orderOperationParser_(&orderOperation_) {
 }
 
 bool OrderSender::placeOrder(const OrderRequest &orderRequest) {
@@ -117,7 +118,7 @@ void OrderSender::onSubscribeSent(beast::error_code ec, std::size_t bytesTransfe
 void OrderSender::subscribeToStreams() {
     // Подписываемся на приватные каналы
     std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast
-                          ","position","wallet"]})";
+            ","position","wallet"]})";
     // можно просто execution - больше данных, но медленнее.
 
     std::cout << "Отправляем подписку на приватные каналы: " << sub_msg << std::endl;
@@ -150,7 +151,7 @@ void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
         } else if (ec == net::error::operation_aborted) {
             // Операция была отменена - вероятно, из-за закрытия соединения
             std::cout << "onRead: Операция чтения отменена" << std::endl;
-            return;  // Не планируем переподключение, оно уже запланировано
+            return; // Не планируем переподключение, оно уже запланировано
         } else {
             std::cerr << "onRead: Ошибка чтения: " << ec.message() << std::endl;
         }
@@ -164,19 +165,24 @@ void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
     messageView_ = message_;
 
     try {
+        orderOperationParser_.setString(messageView_);
+        orderOperationParser_.parse();
 
-        // TODO есть еще ответ об успешном размещении ордера. Добавить обработку
-        // {"retCode":0,"retMsg":"OK","op":"order.create","data":{"orderId":"xxx"}}
-        std::cout << " получено сообщение " << messageView_ << std::endl;
-        std::string_view retCode = getFieldValue("retCode", messageView_);
-        std::string_view retMsg = getFieldValue("retMsg", messageView_);
-        std::string_view connId = getFieldValue("connId", messageView_);
-
-        if (retCode == "0" && retMsg == "OK") {
-            statusMessage_.sucsess = true;
-            statusMessage_.conId = connId;
-            statusMessage_.operation = "auth";
-            checkStatus();
+        switch (orderOperation_.op) {
+            case TypeOrderOperation_Auth:
+                checkStatus();
+                break;
+            //! TODO: Подумать, что делать при получении ответа на размещение ордера
+            case TypeOrderOperation_Cancel:
+                break;
+            case TypeOrderOperation_Create:
+                break;
+            case TypeOrderOperation_Amend:
+                break;
+            default:
+                std::cout << "OrderSender::onRead: Unknown message type " << std::endl;
+                std::cout << messageView_ << std::endl;
+                break;
         }
     } catch (const std::exception &e) {
         std::cerr << "Ошибка парсинга JSON: " << e.what() << std::endl;
@@ -190,20 +196,15 @@ void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
 }
 
 void OrderSender::checkStatus() {
-    if (statusMessage_.operation == "auth") {
-        if ((statusMessage_.sucsess == true)) {
-            std::cout << "Аутентификация успешна!" << std::endl;
-            authenticated_ = true;
-            auth_timer_.cancel(); // Отменяем таймаут
-
-            sendNext();
-        } else {
-            std::cerr << "Ошибка аутентификации!" << std::endl;
-            scheduleReconnect();
-            return;
-        }
+    if (orderOperation_.retCode == 0) {
+        std::cout << "Аутентификация успешна!" << std::endl;
+        authenticated_ = true;
+        auth_timer_.cancel(); // Отменяем таймаут
+        sendNext();
     } else {
-        std::cout << "other operation: " << statusMessage_.operation << std::endl;
+        std::cerr << "Ошибка аутентификации!" << std::endl;
+        scheduleReconnect();
+        return;
     }
 }
 
@@ -250,9 +251,8 @@ void OrderSender::sendOrder(const OrderRequest &order) {
     // у cancel и replace свои реализации.
 
     auto self = static_cast<OrderSender *>(shared_from_this().get());
-    ws_.async_write(net::buffer(write_buffer_), [self](beast::error_code ec, std::size_t) {
-        self->on_write(ec);
-    });
+    ws_.async_write(net::buffer(write_buffer_),
+            [self](beast::error_code ec, std::size_t) { self->on_write(ec); });
 }
 
 void OrderSender::serialize_order(std::string &buffer, const OrderRequest &order) {
@@ -365,8 +365,17 @@ void OrderSender::serialize_cancel_order(std::string &buffer, const OrderRequest
     buffer += "},\"op\":\"order.cancel\"";
     buffer += ",\"args\":[{\"category\":\"linear\",\"symbol\":\"";
     buffer += order.symbol;
-    buffer += "\",\"orderId\":\"";
-    buffer += order.order_id; // Тот самый ID от биржи!
+    if (order.typeOrderId_ == TypeOrderId_OrderId) {
+        buffer += "\",\"orderId\":\"";
+        buffer += order.order_id; // order_id
+    } else if (order.typeOrderId_ == TypeOrderId_OrderLinkId) {
+        buffer += "\",\"orderLinkId\":\"";
+        buffer += order.order_link_id; // order_link_id
+    } else {
+        //! TODO: Подумать, что отправлять, если тип не определен
+        buffer += "\",\"orderId\":\"";
+        buffer += order.order_id; // неизвестно
+    }
     buffer += "\"}]}";
 }
 
@@ -387,8 +396,17 @@ void OrderSender::serialize_replace_order(std::string &buffer, const OrderReques
     buffer += "},\"op\":\"order.amend\"";
     buffer += ",\"args\":[{\"category\":\"linear\",\"symbol\":\"";
     buffer += order.symbol;
-    buffer += "\",\"orderId\":\"";
-    buffer += order.order_id; // ID ордера от биржи
+    if (order.typeOrderId_ == TypeOrderId_OrderId) {
+        buffer += "\",\"orderId\":\"";
+        buffer += order.order_id; // order_id
+    } else if (order.typeOrderId_ == TypeOrderId_OrderLinkId) {
+        buffer += "\",\"orderLinkId\":\"";
+        buffer += order.order_link_id; // order_link_id
+    } else {
+        //! TODO: Подумать, что отправлять, если тип не определен
+        buffer += "\",\"orderId\":\"";
+        buffer += order.order_id; // неизвестно
+    }
     buffer += "\"";
 
     if (order.price > 0) {

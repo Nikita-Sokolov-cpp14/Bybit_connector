@@ -2,6 +2,8 @@
 
 #include "private_connector.h"
 #include "data_structures/order_request.h"
+#include "data_structures/order_operation.h"
+#include "json_parser/order_operation_json_parser.h"
 
 #include <boost/lockfree/queue.hpp>
 
@@ -23,6 +25,9 @@ private:
 
     std::string write_buffer_;
     std::atomic<bool> startSending_ {false};
+
+    OrderOperation orderOperation_;
+    OrderOperationParser orderOperationParser_;
 
     // Обработчик завершения WebSocket handshake
     void onHandshake(beast::error_code ec) override;

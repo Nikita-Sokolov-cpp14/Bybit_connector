@@ -1,7 +1,8 @@
 #pragma once
 
 #include "websocket_client/order_sender.h"
+#include "connection_manager/connection_manager.h"
 
-void addNewOrders(std::shared_ptr<OrderSender> orderSender);
-void cancelOrders(std::shared_ptr<OrderSender> orderSender);
-void replaceOrders(std::shared_ptr<OrderSender> orderSender);
+void addNewOrders(ConnectionManager &connectionManager);
+void cancelOrders(ConnectionManager &connectionManager);
+void replaceOrders(ConnectionManager &connectionManager);

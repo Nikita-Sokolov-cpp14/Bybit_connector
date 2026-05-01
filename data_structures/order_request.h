@@ -12,6 +12,12 @@ enum TypeOrderRequest {
     TypeOrderRequest_New
 };
 
+enum TypeOrderId {
+    TypeOrderId_Unknown = 0,
+    TypeOrderId_OrderId,
+    TypeOrderId_OrderLinkId
+};
+
 // enum TimeInForce {
 //     TimeInForce_Unknown = 0,
 //     TimeInForce_GTC, // Висит до исполнения или отмены	Основной режим для HFT
@@ -24,7 +30,9 @@ enum TypeOrderRequest {
 
 struct OrderRequest {
     uint64_t req_id; // свой ID для трекинга
+    TypeOrderId typeOrderId_; // С помощью чего управлять ордером: order_id ли order_link_id?
     char order_id[64];         // ID ордера ОТ БИРЖИ (для cancel/replace, пусто для new)
+    char order_link_id[64];         // ID ордера ОТ БИРЖИ (для cancel/replace, пусто для new)
     // char category[16]; // TODO добавить
     char symbol[16];
     Side side;

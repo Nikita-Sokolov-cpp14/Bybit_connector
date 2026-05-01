@@ -7,6 +7,7 @@ add_library(check_place_orders
 target_link_libraries(check_place_orders PRIVATE
     data_structures
     websocket_client
+    connection_manager
 )
 
 target_include_directories(check_place_orders PUBLIC

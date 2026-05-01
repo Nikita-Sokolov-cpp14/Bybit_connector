@@ -9,6 +9,7 @@ add_library(json_parser
     execution_fast_json_parser.cpp
     order_json_parser.cpp
     wallet_json_parser.cpp
+    order_operation_json_parser.cpp
 )
 
 target_link_libraries(json_parser PRIVATE

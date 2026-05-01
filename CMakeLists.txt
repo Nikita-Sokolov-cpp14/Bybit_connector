@@ -14,9 +14,9 @@ add_subdirectory(data_structures)
 add_subdirectory(json_parser)
 add_subdirectory(p999_latency)
 add_subdirectory(check_parsing)
+add_subdirectory(connection_manager)
 add_subdirectory(check_place_orders)
 add_subdirectory(utils)
-add_subdirectory(connection_manager)
 
 add_executable(${PROJECT_NAME})
 

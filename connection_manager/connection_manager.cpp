@@ -65,6 +65,14 @@ void ConnectionManager::reconnectPrivateHandler() {
     setPrivateReconnectCallback();
 }
 
+bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
+    //! TODO: Добавить проверку на переподключение.
+    if (!orderSender_) {
+        return false;
+    }
+    return orderSender_->placeOrder(orderRequest);
+}
+
 ssl::context ConnectionManager::createSSLContext() {
     ssl::context ctx(ssl::context::tlsv12_client);
     ctx.set_default_verify_paths(); // загружаем системные CA сертификаты

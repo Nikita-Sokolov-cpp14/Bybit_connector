@@ -15,11 +15,9 @@
 #include "websocket_client/base_websocket_client.h"
 #include "websocket_client/private_data_handler.h"
 #include "websocket_client/order_sender.h"
+#include "websocket_client/public_data_handler.h"
 #include "json_parser/orderbook_json_parser.h"
 #include "json_parser/public_trade_json_parser.h"
-#include "p999_latency/check_latency.h"
-#include "check_parsing/check_parsing.h"
-#include "check_place_orders/check_place_orders.h"
 #include "utils/config.h"
 #include "utils/ini_reader.h"
 
@@ -37,6 +35,8 @@ public:
     void reconnectOrderSender();
     void reconnectPublicHandler();
     void reconnectPrivateHandler();
+
+    bool placeOrder(const OrderRequest &orderRequest);
 
 private:
     AuthConfig authConfig_;

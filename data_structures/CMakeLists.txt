@@ -9,6 +9,7 @@ add_library(data_structures
     order.cpp
     wallet.cpp
     order_request.cpp
+    order_operation.cpp
 )
 
 target_include_directories(data_structures PUBLIC

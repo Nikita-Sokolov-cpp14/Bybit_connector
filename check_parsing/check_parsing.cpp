@@ -12,6 +12,7 @@
 #include "json_parser/execution_fast_json_parser.h"
 #include "json_parser/order_json_parser.h"
 #include "json_parser/wallet_json_parser.h"
+#include "json_parser/order_operation_json_parser.h"
 
 namespace {
 
@@ -26,7 +27,18 @@ const std::string_view executionFastStr = R"({"topic":"execution.fast","creation
 const std::string_view orderStr = R"({"topic":"order","id":"140894896_BTCPERP_37449201146","creationTime":1774779351203,"data":[{"category":"linear","symbol":"BTCPERP","orderId":"88d84f9a-a6b5-4ff6-b746-1cc9978afca4","orderLinkId":"","blockTradeId":"","side":"Buy","positionIdx":0,"orderStatus":"Filled","cancelType":"UNKNOWN","rejectReason":"EC_NoError","timeInForce":"IOC","isLeverage":"","price":"69795.6","qty":"0.001","avgPrice":"66473.5","leavesQty":"0","leavesValue":"0","cumExecQty":"0.001","cumExecValue":"66.4735","cumExecFee":"0.0664735","orderType":"Market","stopOrderType":"","orderIv":"","triggerPrice":"","takeProfit":"","stopLoss":"","triggerBy":"","tpTriggerBy":"","slTriggerBy":"","triggerDirection":0,"placeType":"","lastPriceOnCreated":"66467.5","closeOnTrigger":false,"reduceOnly":false,"smpGroup":0,"smpType":"None","smpOrderId":"","slLimitPrice":"0","tpLimitPrice":"0","tpslMode":"UNKNOWN","createType":"CreateByUser","marketUnit":"","createdTime":"1774779351198","updatedTime":"1774779351201","feeCurrency":"","closedPnl":"0","parentOrderLinkId":"","slippageTolerance":"0","slippageToleranceType":"UNKNOWN","cumFeeDetail":{"USDC":"0.0664735"}}]})";
 const std::string_view walletStr = R"({"id":"140894896_wallet_1774779351206","topic":"wallet","creationTime":1774779351206,"data":[{"accountIMRate":"0.3521","accountMMRate":"0.02","accountIMRateByMp":"0.3521","accountMMRateByMp":"0.02","totalEquity":"59.24728891","totalWalletBalance":"95.49571699","totalMarginBalance":"59.14951406","totalAvailableBalance":"38.32154203","totalPerpUPL":"-36.34620293","totalInitialMargin":"20.82797202","totalMaintenanceMargin":"1.18454802","totalInitialMarginByMp":"20.82797202","totalMaintenanceMarginByMp":"1.18454802","coin":[{"coin":"USDC","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"},{"coin":"FGHT","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"},{"coin":"ABCD","equity":"-0.0679535","usdValue":"-0.06794174","walletBalance":"-0.0664735","availableToWithdraw":"","availableToBorrow":"","borrowAmount":"0.0679535","accruedInterest":"0.00000022","totalOrderIM":"0","totalPositionIM":"6.70702815","totalPositionMM":"0.32571423","unrealisedPnl":"-0.00148","cumRealisedPnl":"-0.0664735","bonus":"0","collateralSwitch":true,"marginCollateral":true,"locked":"0","spotHedgingQty":"0","spotBorrow":"0"}],"accountLTV":"0.0011","accountType":"UNIFIED"}]})";
 
-// {"retCode":0,"retMsg":"OK","op":"auth","connId":"d5eb5uvv0k7ung2osdtg-gjmut"}
+
+const std::string_view orderAuthOperation = R"({"retCode":0,"retMsg":"OK","op":"auth","connId":"d7o6bkeg28sdp2hl5gl0-wjdc"})";
+
+const std::string_view orderCreateOperation = R"({"retCode":0,"retMsg":"OK","op":"order.create","data":{"orderId":"c117c95a-9f37-4ed9-817d-498cf33c698f","orderLinkId":"50002"},"retExtInfo":{},"header":{"X-Bapi-Limit-Status":"9","X-Bapi-Limit-Reset-Timestamp":"1777645418348","Traceid":"14d60443b34e767947fcf77798917c24","Timenow":"1777645418350","X-Bapi-Limit":"10"},"connId":"d7o6681g56t3ns1dhibg-x77y"})";
+// {"retCode":110072,"retMsg":"OrderLinkedID is duplicate","op":"order.create","data":{},"retExtInfo":{},"header":{"X-Bapi-Limit-Reset-Timestamp":"1777649456011","Traceid":"37daa8d92c3e0a5b221af23830b4f0b4","Timenow":"1777649456012","X-Bapi-Limit":"10","X-Bapi-Limit-Status":"9"},"connId":"d7o672he8n8vp1fvudog-xnua"}
+
+const std::string_view orderCancelOperation = R"({"retCode":0,"retMsg":"OK","op":"order.cancel","data":{"orderId":"6a61cf11-bbfe-4734-ab68-12e42d0b0106","orderLinkId":"50202"},"retExtInfo":{},"header":{"X-Bapi-Limit":"10","X-Bapi-Limit-Status":"9","X-Bapi-Limit-Reset-Timestamp":"1777649591578","Traceid":"067ee4696603e57531fcfab156a803c1","Timenow":"1777649591579"},"connId":"d7o6a6695866rq3j1o5g-xlme"})";
+// {"retCode":0,"retMsg":"OK","op":"order.cancel","data":{"orderId":"351db093-40f0-4dbc-825e-ea993a37e516","orderLinkId":"50102"},"retExtInfo":{},"header":{"X-Bapi-Limit":"10","X-Bapi-Limit-Status":"9","X-Bapi-Limit-Reset-Timestamp":"1777648661580","Traceid":"24248a2085315759304d729f6ed821e7","Timenow":"1777648661581"},"connId":"d7o6a6695866rq3j1o5g-xhqz"}
+
+const std::string_view orderAmendOperation = R"({"retCode":0,"retMsg":"OK","op":"order.amend","data":{"orderId":"b24f16df-71bf-4708-b1e8-34be8a50b94f","orderLinkId":"50302"},"retExtInfo":{},"header":{"Traceid":"44baaffb6a87fcd371a1595debcf9c9e","Timenow":"1777650770012","X-Bapi-Limit":"10","X-Bapi-Limit-Status":"9","X-Bapi-Limit-Reset-Timestamp":"1777650770010"},"connId":"d7o66h5ec3om5v44btlg-xu0n"})";
+// {"retCode":0,"retMsg":"OK","op":"order.amend","data":{"orderId":"ea685326-dee9-4451-8873-7c6306a9e47c","orderLinkId":"50402"},"retExtInfo":{},"header":{"Traceid":"00aa7cc205b4a72c262f3f8b5ed4b9c1","Timenow":"1777651181350","X-Bapi-Limit":"10","X-Bapi-Limit-Status":"9","X-Bapi-Limit-Reset-Timestamp":"1777651181349"},"connId":"d7o69246g6h3ddqrkqs0-xtmd"}
+// {"retCode":110001,"retMsg":"order not exists or too late to replace","op":"order.amend","data":{},"retExtInfo":{},"header":{"X-Bapi-Limit":"10","X-Bapi-Limit-Status":"9","X-Bapi-Limit-Reset-Timestamp":"1777651115921","Traceid":"62783a29a44741201c52c4f8fa631fe3","Timenow":"1777651115923"},"connId":"d7o6bbbb8go76dgn3tng-xr54"}
 
 }
 
@@ -89,10 +101,44 @@ void checkParseTypeMessage() {
     std::cout << parseTypeMessage(walletStr) << std::endl;
 }
 
+void checkOrderOperationParsing() {
+    OrderOperation orderOperation;
+    OrderOperationParser parser(&orderOperation);
+
+    parser.setString(orderAuthOperation);
+    parser.parse();
+    parser.printData();
+
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(orderCreateOperation);
+    parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
+
+    start = std::chrono::high_resolution_clock::now();
+    parser.setString(orderCancelOperation);
+    parser.parse();
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
+
+    start = std::chrono::high_resolution_clock::now();
+    parser.setString(orderAmendOperation);
+    parser.parse();
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
+}
+
 void checkParsing() {
     // checkParsingPosition();
     // checkParsingExecutionFast();
     // checkOrder();
     // checkWallet();
-    checkParseTypeMessage();
+    // checkParseTypeMessage();
+    checkOrderOperationParsing();
 }
