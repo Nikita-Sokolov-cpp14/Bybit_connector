@@ -33,6 +33,12 @@ typeMessage_(TypeMessage_Unknown) { // таймер для ping сообщени
     ws_.control_callback([this](websocket::frame_type kind, beast::string_view payload) {
         onControlFrame(kind, payload);
     });
+
+    std::cout << "BaseWebSocketClient constructor" << std::endl;
+}
+
+BaseWebSocketClient::~BaseWebSocketClient() {
+    std::cout << "BaseWebSocketClient destructor" << std::endl;
 }
 
 // Основной метод для запуска подключения
@@ -118,11 +124,13 @@ void BaseWebSocketClient::startPing() {
 void BaseWebSocketClient::onPingTimer(beast::error_code ec) {
     if (ec) {
         // Таймер был отменен
+        std::cout << "onPingTimer: таймер был отменен" << std::endl;
         return;
     }
 
     if (isWaitPing_.load()) {
         scheduleReconnect();
+        return;
     }
 
     if (ws_.is_open()) {
@@ -148,14 +156,11 @@ void BaseWebSocketClient::onPingSent(beast::error_code ec) {
 void BaseWebSocketClient::scheduleReconnect() {
     bool expected = false;
     if (!isReconnecting_.compare_exchange_strong(expected, true)) {
-        std::cout << "Already reconnecting, ignoring duplicate request" << std::endl;
+        std::cout << "scheduleReconnect: Already reconnecting, ignoring duplicate request"
+                  << std::endl;
         return; // Уже переподключаемся - выходим
     }
 
-    // Закрываем текущее соединение, если оно открыто
-    if (!ws_.is_open()) {
-        std::cout << "scheduleReconnect: соединение уже закрыто" << std::endl;
-    }
     std::cout << "scheduleReconnect: Планируем переподключение через 5 секунд..." << std::endl;
     // Планируем переподключение
     reconnectTimer_.expires_after(std::chrono::seconds(5));
@@ -166,18 +171,23 @@ void BaseWebSocketClient::scheduleReconnect() {
 
 void BaseWebSocketClient::onClose(beast::error_code ec) {
     if (ec) {
-        std::cerr << "Ошибка таймера переподключения: " << ec.message() << std::endl;
+        std::cerr << "onClose: Ошибка таймера переподключения: " << ec.message() << std::endl;
     }
 
     pingTimer_.cancel();
     reconnectTimer_.cancel();
 
-    // Получаем нижний слой (tcp socket)
-    auto &lowest_layer = beast::get_lowest_layer(ws_);
+    // Закрываем текущее соединение, если оно открыто
+    if (ws_.is_open()) {
+        // Получаем нижний слой (tcp socket)
+        auto &lowest_layer = beast::get_lowest_layer(ws_);
 
-    // Закрываем TCP сокет напрямую
-    lowest_layer.close();
-    std::cout << "onClose: Соединение закрыто" << std::endl;
+        // Закрываем TCP сокет напрямую
+        lowest_layer.close();
+        std::cout << "onClose: Соединение закрыто" << std::endl;
+    } else {
+        std::cout << "onClose: соединение уже закрыто" << std::endl;
+    }
 
     isReconnecting_.store(false);
     if (reconnectCallback_) {

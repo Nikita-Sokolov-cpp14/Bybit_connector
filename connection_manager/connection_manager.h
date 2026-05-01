@@ -67,4 +67,6 @@ private:
     ssl::context createSSLContext();
 
     void setPublicReconnectCallback();
+
+    void setPrivateReconnectCallback();
 };

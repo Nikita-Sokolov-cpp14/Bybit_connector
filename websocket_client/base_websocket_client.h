@@ -46,6 +46,8 @@ public:
     BaseWebSocketClient(net::io_context &ioc, ssl::context &sslCtx,
             const std::string_view userAgent);
 
+    ~BaseWebSocketClient();
+
     /**
      * @brief Подключиться с парметрами.
      * @details Основной метод подключения.
@@ -150,8 +152,8 @@ protected:
     std::string message_; //!< Полученное сообщение.
     std::string_view messageView_; //!< Полученно
     std::chrono::steady_clock::time_point pingSentTime_;
-    std::atomic<bool> isWaitPing_;  //!< Ожидается ли ответ на пинг.
-    std::atomic<bool> isReconnecting_{false};
+    std::atomic<bool> isWaitPing_; //!< Ожидается ли ответ на пинг.
+    std::atomic<bool> isReconnecting_ {false};
 
     std::function<void()> reconnectCallback_; // Колбэк для переподключения
 

@@ -24,15 +24,16 @@ void ConnectionManager::connect() {
         privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
                 connectionConfig_.targetPrivate);
     });
+    setPrivateReconnectCallback();
 
-    net::post(orderSenderIoc_, [this]() {
-        orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
-                connectionConfig_.targetTrade);
-    });
+    // net::post(orderSenderIoc_, [this]() {
+    //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
+    //             connectionConfig_.targetTrade);
+    // });
 
     publicThread_ = std::make_unique<std::jthread>([this]() { publicIoc_.run(); });
     privateThread_ = std::make_unique<std::jthread>([this]() { privateIoc_.run(); });
-    orderSenderThread_ = std::make_unique<std::jthread>([this]() { orderSenderIoc_.run(); });
+    // orderSenderThread_ = std::make_unique<std::jthread>([this]() { orderSenderIoc_.run(); });
 }
 
 void ConnectionManager::reconnectOrderSender() {
@@ -54,6 +55,7 @@ void ConnectionManager::reconnectPrivateHandler() {
                     authConfig_.apiSecret, messages_, "Bybit-PrivateData/1.0");
 
     privateDataHandler_ = std::move(newPrivateDataHandler);
+    setPrivateReconnectCallback();
 }
 
 ssl::context ConnectionManager::createSSLContext() {
@@ -67,12 +69,23 @@ ssl::context ConnectionManager::createSSLContext() {
 
 void ConnectionManager::setPublicReconnectCallback() {
     publicDataHandler_->setReconnectCallback([this]() {
-        std::cout << "in callback publicDataHandler_ " << std::endl;
+        std::cout << "setPublicReconnectCallback: in callback publicDataHandler_ " << std::endl;
         net::post(publicIoc_, [this]() {
             reconnectPublicHandler();
             // После создания нового хендлера - подключаем его
             publicDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
                     connectionConfig_.targetPublic);
+        });
+    });
+}
+
+void ConnectionManager::setPrivateReconnectCallback() {
+    privateDataHandler_->setReconnectCallback([this]() {
+        std::cout << "setPrivateReconnectCallback: in callback privateDataHandler_ " << std::endl;
+        net::post(privateIoc_, [this]() {
+            reconnectPrivateHandler();
+            privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
+                    connectionConfig_.targetPrivate);
         });
     });
 }
