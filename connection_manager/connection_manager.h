@@ -69,4 +69,6 @@ private:
     void setPublicReconnectCallback();
 
     void setPrivateReconnectCallback();
+
+    void setOrderSenderReconnectCallback();
 };

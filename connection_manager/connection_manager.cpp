@@ -26,19 +26,26 @@ void ConnectionManager::connect() {
     });
     setPrivateReconnectCallback();
 
-    // net::post(orderSenderIoc_, [this]() {
-    //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
-    //             connectionConfig_.targetTrade);
-    // });
+    net::post(orderSenderIoc_, [this]() {
+        orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
+                connectionConfig_.targetTrade);
+    });
+    setOrderSenderReconnectCallback();
 
     publicThread_ = std::make_unique<std::jthread>([this]() { publicIoc_.run(); });
     privateThread_ = std::make_unique<std::jthread>([this]() { privateIoc_.run(); });
-    // orderSenderThread_ = std::make_unique<std::jthread>([this]() { orderSenderIoc_.run(); });
+    orderSenderThread_ = std::make_unique<std::jthread>([this]() { orderSenderIoc_.run(); });
 }
 
 void ConnectionManager::reconnectOrderSender() {
     std::shared_ptr<OrderSender> newOrderSender = std::make_shared<OrderSender>(orderSenderIoc_,
             sslCtx_, authConfig_.apiKey, authConfig_.apiSecret, "Bybit-HFT-OrderSender/1.0");
+
+    //! TODO: Очередь ордеров на отправку пропадает. А нужна ли она в новом подключении?
+    // Подумать, нужно ли переносить очередь ордеров.
+
+    orderSender_ = std::move(newOrderSender);
+    setOrderSenderReconnectCallback();
 }
 
 void ConnectionManager::reconnectPublicHandler() {
@@ -86,6 +93,17 @@ void ConnectionManager::setPrivateReconnectCallback() {
             reconnectPrivateHandler();
             privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
                     connectionConfig_.targetPrivate);
+        });
+    });
+}
+
+void ConnectionManager::setOrderSenderReconnectCallback() {
+    orderSender_->setReconnectCallback([this]() {
+        std::cout << "setOrderSenderReconnectCallback: in callback orderSender_ " << std::endl;
+        net::post(orderSenderIoc_, [this]() {
+            reconnectOrderSender();
+            orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
+                    connectionConfig_.targetTrade);
         });
     });
 }
