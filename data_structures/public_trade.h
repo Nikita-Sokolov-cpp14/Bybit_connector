@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <string_view>
+#include <mutex>
 
 class PublicTrade {
 public:
@@ -30,6 +31,10 @@ public:
     std::string_view pairStr;
     uint64_t ts;
     std::vector<Data> data;
+
+    //! TODO: Стакан обновляется не чаще 1000 раз в секунду.
+    // Чтобы пока не заморачиваться сделан mutex
+    std::mutex mt;
 
     void clearData();
 

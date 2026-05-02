@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <boost/container/flat_map.hpp>
 #include <string_view>
+#include <mutex>
 
 class OrderBook {
 public:
@@ -17,6 +18,10 @@ public:
     uint64_t u;
     uint64_t seq;
     uint64_t cts;
+
+    //! TODO: Стакан обновляется не чаще 1000 раз в секунду.
+    // Чтобы пока не заморачиваться сделан mutex
+    std::mutex mt;
 
     OrderBook();
 
