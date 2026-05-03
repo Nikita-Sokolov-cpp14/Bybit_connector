@@ -68,12 +68,18 @@ void OrderBookJsonParser::printData() {
 void OrderBookJsonParser::parseDataSection(std::string_view dataStr) {
     orderBook_->s = getFieldValue(sName, dataStr);
     size_t startBidsArr = dataStr.find(bids) + bids.size();
-    size_t endBidsArr = dataStr.find("]]", startBidsArr) + 1;
-    parseArray(dataStr.substr(startBidsArr, endBidsArr - startBidsArr), TypeArray_Bids);
+    size_t endBidsArr = dataStr.find("],\"a", startBidsArr);
+    std::string_view arrayStr = dataStr.substr(startBidsArr, endBidsArr - startBidsArr);
+    if (arrayStr != "") {
+        parseArray(arrayStr, TypeArray_Bids);
+    }
 
     size_t startAsksArr = dataStr.find(asks) + asks.size();
-    size_t endAsksArr = dataStr.find("]]", startAsksArr) + 1;
-    parseArray(dataStr.substr(startAsksArr, endAsksArr - startAsksArr), TypeArray_Asks);
+    size_t endAsksArr = dataStr.find("],\"u", startAsksArr);
+    arrayStr = dataStr.substr(startAsksArr, endAsksArr - startAsksArr);
+    if (arrayStr != "") {
+        parseArray(arrayStr, TypeArray_Asks);
+    }
 
     orderBook_->u = convertTo<uint64_t>(getFieldValue(uName, dataStr));
     orderBook_->seq = convertTo<uint64_t>(getFieldValue(seqName, dataStr));
