@@ -1,4 +1,5 @@
 #include "connection_manager.h"
+#include "trading_strategy/base_trading_strategy.h"
 
 ConnectionManager::ConnectionManager() :
 authConfig_(readAuthConfig()),
@@ -19,6 +20,7 @@ void ConnectionManager::connect() {
                 connectionConfig_.targetPublic);
     });
     setPublicReconnectCallback();
+    setupDataCallbacks();
 
     net::post(privateIoc_, [this]() {
         privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
@@ -54,6 +56,7 @@ void ConnectionManager::reconnectPublicHandler() {
 
     publicDataHandler_ = std::move(newPublicHandler);
     setPublicReconnectCallback();
+    setupDataCallbacks();
 }
 
 void ConnectionManager::reconnectPrivateHandler() {
@@ -71,6 +74,10 @@ bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
         return false;
     }
     return orderSender_->placeOrder(orderRequest);
+}
+
+void ConnectionManager::subscribeStrategy(BaseTradingStrategy *tradingStrategy) {
+    tradingStrategy_ = tradingStrategy;
 }
 
 ssl::context ConnectionManager::createSSLContext() {
@@ -114,4 +121,30 @@ void ConnectionManager::setOrderSenderReconnectCallback() {
                     connectionConfig_.targetTrade);
         });
     });
+}
+
+void ConnectionManager::notifyOrderbookUpdate() {
+    //! TODO: Придумать решение без mutex
+    std::lock_guard lg(orderBook_.mt);
+    // orderBook_.print();
+    // if (tradingStrategy_) {
+    //     tradingStrategy_->setOrderbook(orderBook_);
+    // }
+}
+
+void ConnectionManager::notifyTradeUpdate() {
+    //! TODO: Придумать решение без mutex
+    std::lock_guard lg(publicTrade_.mt);
+    // if (tradingStrategy_) {
+    //     tradingStrategy_->setPublicTrade(publicTrade_);
+    // }
+}
+
+void ConnectionManager::setupDataCallbacks() {
+    // Устанавливаем колбэки в PublicDataHandler
+    publicDataHandler_->setDataCallbacks(
+            // Колбэк для OrderBook
+            [this]() { notifyOrderbookUpdate(); },
+            // Колбэк для PublicTrade
+            [this]() { notifyTradeUpdate(); });
 }

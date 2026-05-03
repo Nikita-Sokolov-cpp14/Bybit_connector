@@ -16,6 +16,10 @@ public:
             StatusMessage *const statusMessage, PublicTrade *const publicTrade,
             const std::string_view userAgent);
 
+    using ParserCallback = std::function<void()>;
+
+    void setDataCallbacks(ParserCallback obCallback, ParserCallback tradeCallback);
+
 private:
     // Обработчик завершения WebSocket handshake
     void onHandshake(beast::error_code ec) override;
@@ -36,4 +40,6 @@ private:
     OrderBookJsonParser orderbookParser_;
     StatusJsonParser statusParser_;
     PublicTradeJsonParser publicTradeJsonParser_;
+    ParserCallback orderbookCallback_;
+    ParserCallback tradeCallback_;
 };

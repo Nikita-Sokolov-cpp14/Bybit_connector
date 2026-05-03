@@ -21,6 +21,8 @@
 #include "utils/config.h"
 #include "utils/ini_reader.h"
 
+class BaseTradingStrategy;
+
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
 namespace net = boost::asio; // from <boost/asio.hpp>
@@ -37,6 +39,8 @@ public:
     void reconnectPrivateHandler();
 
     bool placeOrder(const OrderRequest &orderRequest);
+
+    void subscribeStrategy(BaseTradingStrategy *tradingStrategy);
 
 private:
     AuthConfig authConfig_;
@@ -63,6 +67,7 @@ private:
     std::unique_ptr<std::jthread> publicThread_;
     std::unique_ptr<std::jthread> privateThread_;
     std::unique_ptr<std::jthread> orderSenderThread_;
+    BaseTradingStrategy *tradingStrategy_;
 
     ssl::context createSSLContext();
 
@@ -71,4 +76,10 @@ private:
     void setPrivateReconnectCallback();
 
     void setOrderSenderReconnectCallback();
+
+    void notifyOrderbookUpdate();
+    void notifyTradeUpdate();
+
+    // Настройка колбэков для PublicDataHandler
+    void setupDataCallbacks();
 };

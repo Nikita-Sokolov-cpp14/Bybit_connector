@@ -42,6 +42,21 @@ const std::string_view orderAmendOperation = R"({"retCode":0,"retMsg":"OK","op":
 
 }
 
+void checkParsingOrderbook() {
+    OrderBook orderBook;
+    OrderBookJsonParser parser(&orderBook);
+    auto start = std::chrono::high_resolution_clock::now();
+    parser.setString(snapshotStr);
+    parser.parse();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Время выполнения: " << duration.count() << " mcs" << std::endl;
+    parser.printData();
+    parser.setString(deltaStr);
+    parser.parse();
+    parser.printData();
+}
+
 void checkParsingExecutionFast() {
     ExecutionFast executionFast;
     ExecutionFastJsonParser parser(&executionFast);
@@ -135,10 +150,11 @@ void checkOrderOperationParsing() {
 }
 
 void checkParsing() {
+    checkParsingOrderbook();
     // checkParsingPosition();
     // checkParsingExecutionFast();
     // checkOrder();
     // checkWallet();
     // checkParseTypeMessage();
-    checkOrderOperationParsing();
+    // checkOrderOperationParsing();
 }

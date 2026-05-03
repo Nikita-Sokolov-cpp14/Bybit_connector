@@ -5,12 +5,20 @@
 #include "p999_latency/check_latency.h"
 #include "check_parsing/check_parsing.h"
 #include "check_place_orders/check_place_orders.h"
+#include "trading_strategy/imbalance_and_large/imbalance_and_large.h"
 
 int main() {
     std::cout << "hello" << std::endl;
     try {
         ConnectionManager connectionManager;
+        std::unique_ptr<BaseTradingStrategy> strategy = std::make_unique<ImbalanceAndLarde>();
+        connectionManager.subscribeStrategy(strategy.get());
+
+        strategy->setConnectionManager(&connectionManager);
+        // strategy->start(); // Запускает торговый поток
+
         connectionManager.connect();
+
         // std::jthread tr(addNewOrders, std::ref(connectionManager));
         // std::jthread tr(cancelOrders, std::ref(connectionManager));
         // std::jthread tr(replaceOrders, std::ref(connectionManager));

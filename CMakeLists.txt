@@ -17,6 +17,7 @@ add_subdirectory(check_parsing)
 add_subdirectory(connection_manager)
 add_subdirectory(check_place_orders)
 add_subdirectory(utils)
+add_subdirectory(trading_strategy)
 
 add_executable(${PROJECT_NAME})
 
@@ -33,4 +34,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     check_place_orders
     utils
     connection_manager
+    trading_strategy
 )

@@ -1,6 +1,8 @@
 #include "public_data_handler.h"
 #include "p999_latency/check_latency.h"
 
+#include <mutex>
+
 DECLARE_LATENCY_MEMBERS(1000)
 
 PublicDataHandler::PublicDataHandler(net::io_context &ioc, ssl::context &sslCtx,
@@ -10,6 +12,11 @@ BaseWebSocketClient(ioc, sslCtx, userAgent),
 orderbookParser_(orderBook),
 statusParser_(statusMessage),
 publicTradeJsonParser_(publicTrade) {
+}
+
+void PublicDataHandler::setDataCallbacks(ParserCallback obCallback, ParserCallback tradeCallback) {
+    orderbookCallback_ = obCallback;
+    tradeCallback_ = tradeCallback;
 }
 
 // Обработчик завершения WebSocket handshake
@@ -97,10 +104,16 @@ void PublicDataHandler::onRead(beast::error_code ec, std::size_t bytesTransferre
             case TypeMessage_Orderbook:
                 orderbookParser_.setString(messageView_);
                 orderbookParser_.parse();
+                if (orderbookCallback_) {
+                    orderbookCallback_();
+                }
                 break;
             case TypeMessage_PublicTrade:
                 publicTradeJsonParser_.setString(messageView_);
                 publicTradeJsonParser_.parse();
+                if (orderbookCallback_) {
+                    tradeCallback_();
+                }
                 break;
             case TypeMessage_Status:
                 statusParser_.setString(messageView_);
