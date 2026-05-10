@@ -3,7 +3,10 @@
 #include "public_trade.h"
 
 void PublicTrade::clearData() {
-    data.clear();
+    //! TODO: Вызывается при парсинге для создания нового вектора.
+    // Это нужно, поскольку в торговой стратегии происходит std::move() данных и нужно
+    // по новой создать пустой вектор.
+    data = VectorData();
 }
 
 void PublicTrade::print() const {

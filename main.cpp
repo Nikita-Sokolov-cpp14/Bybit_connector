@@ -11,10 +11,8 @@ int main() {
     std::cout << "hello" << std::endl;
     try {
         ConnectionManager connectionManager;
-        ImbalanceAndLarde strategy;
+        ImbalanceAndLarge strategy(&connectionManager);
         connectionManager.subscribeStrategy(&strategy);
-
-        strategy.setConnectionManager(&connectionManager);
         // strategy->start(); // Запускает торговый поток
 
         connectionManager.connect();

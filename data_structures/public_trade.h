@@ -28,9 +28,11 @@ public:
         uint64_t seq;
     };
 
+    using VectorData = std::vector<Data>;
+
     std::string_view pairStr;
     uint64_t ts;
-    std::vector<Data> data;
+    VectorData data;
 
     //! TODO: Стакан обновляется не чаще 1000 раз в секунду.
     // Чтобы пока не заморачиваться сделан mutex
