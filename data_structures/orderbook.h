@@ -27,5 +27,5 @@ public:
 
     void clearLevels();
 
-    void print();
+    void print() const;
 };

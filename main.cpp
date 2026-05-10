@@ -11,10 +11,10 @@ int main() {
     std::cout << "hello" << std::endl;
     try {
         ConnectionManager connectionManager;
-        std::unique_ptr<BaseTradingStrategy> strategy = std::make_unique<ImbalanceAndLarde>();
-        connectionManager.subscribeStrategy(strategy.get());
+        ImbalanceAndLarde strategy;
+        connectionManager.subscribeStrategy(&strategy);
 
-        strategy->setConnectionManager(&connectionManager);
+        strategy.setConnectionManager(&connectionManager);
         // strategy->start(); // Запускает торговый поток
 
         connectionManager.connect();

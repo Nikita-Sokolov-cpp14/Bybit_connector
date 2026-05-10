@@ -6,7 +6,7 @@ void PublicTrade::clearData() {
     data.clear();
 }
 
-void PublicTrade::print() {
+void PublicTrade::print() const {
     std::cout << "=== publicTrade === " << std::endl;
     std::cout << "pair " << pairStr << std::endl;
     std::cout << "ts " << ts << std::endl;

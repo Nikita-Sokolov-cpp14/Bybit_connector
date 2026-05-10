@@ -38,5 +38,5 @@ public:
 
     void clearData();
 
-    void print();
+    void print() const;
 };

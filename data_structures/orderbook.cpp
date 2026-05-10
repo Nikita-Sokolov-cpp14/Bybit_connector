@@ -19,7 +19,7 @@ void OrderBook::clearLevels() {
     asks.clear();
 }
 
-void OrderBook::print() {
+void OrderBook::print() const {
     std::cout << " === OrderBook === " << std::endl;
     std::cout << "topic: " << topic << std::endl;
     std::cout << "ts: " << ts << std::endl;
