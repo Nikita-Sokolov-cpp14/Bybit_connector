@@ -15,8 +15,6 @@ target_link_libraries(connection_manager PRIVATE
     websocket_client
     data_structures
     json_parser
-    check_latency
-    check_parsing
-    check_place_orders
+    trading_strategy
     utils
 )

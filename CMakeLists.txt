@@ -33,6 +33,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     check_parsing
     check_place_orders
     utils
-    connection_manager
     trading_strategy
+    connection_manager
 )

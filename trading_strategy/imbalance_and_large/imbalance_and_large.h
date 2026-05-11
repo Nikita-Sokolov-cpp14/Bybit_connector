@@ -14,10 +14,10 @@
 
 class ImbalanceAndLarge : public BaseTradingStrategy {
 public:
-    ImbalanceAndLarge(ConnectionManager* connManager);
+    ImbalanceAndLarge();
 
-    virtual void setOrderbook(const OrderBook &orderbook) override;
-    virtual void setPublicTradeData(PublicTrade::VectorData &&publicTradeData) override;
+    void setOrderbook(const OrderBook &orderbook) override;
+    void setPublicTradeData(PublicTrade::VectorData &&publicTradeData) override;
 
 protected:
     void onMarketUpdate() override;

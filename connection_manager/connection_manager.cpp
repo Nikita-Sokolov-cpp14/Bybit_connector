@@ -11,7 +11,30 @@ publicDataHandler_(std::make_shared<PublicDataHandler>(publicIoc_, sslCtx_, &ord
 privateDataHandler_(std::make_shared<PrivateDataHandler>(privateIoc_, sslCtx_, authConfig_.apiKey,
         authConfig_.apiSecret, messages_, "Bybit-PrivateData/1.0")),
 orderSender_(std::make_shared<OrderSender>(orderSenderIoc_, sslCtx_, authConfig_.apiKey,
-        authConfig_.apiSecret, "Bybit-HFT-OrderSender/1.0")) {
+        authConfig_.apiSecret, "Bybit-HFT-OrderSender/1.0")),
+tradingStrategy_(nullptr) {
+    std::cout << "ConnectionManager constructor " << std::endl;
+}
+
+ConnectionManager::~ConnectionManager() {
+    std::cout << "ConnectionManager destructor " << std::endl;
+
+    publicIoc_.stop();
+    privateIoc_.stop();
+    orderSenderIoc_.stop();
+
+    if (publicThread_ && publicThread_->joinable()) {
+        publicThread_->join();
+    }
+    if (privateThread_ && privateThread_->joinable()) {
+        privateThread_->join();
+    }
+    if (orderSenderThread_ && orderSenderThread_->joinable()) {
+        orderSenderThread_->join();
+    }
+
+    // Обнулить указатель
+    tradingStrategy_ = nullptr;
 }
 
 void ConnectionManager::connect() {

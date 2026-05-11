@@ -7,8 +7,6 @@ add_library(trading_strategy
 
 target_link_libraries(trading_strategy PRIVATE
     data_structures
-    connection_manager
-    websocket_client
 )
 
 target_include_directories(trading_strategy PUBLIC

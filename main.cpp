@@ -10,8 +10,10 @@
 int main() {
     std::cout << "hello" << std::endl;
     try {
+        std::cout << "start" << std::endl;
+
+        ImbalanceAndLarge strategy;
         ConnectionManager connectionManager;
-        ImbalanceAndLarge strategy(&connectionManager);
         connectionManager.subscribeStrategy(&strategy);
         // strategy->start(); // Запускает торговый поток
 
@@ -20,6 +22,11 @@ int main() {
         // std::jthread tr(addNewOrders, std::ref(connectionManager));
         // std::jthread tr(cancelOrders, std::ref(connectionManager));
         // std::jthread tr(replaceOrders, std::ref(connectionManager));
+
+        std::cout << "Press Enter to stop..." << std::endl;
+        std::cin.get();
+
+        std::cout << "end section" << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Фатальная ошибка: " << e.what() << std::endl;
         return 1;

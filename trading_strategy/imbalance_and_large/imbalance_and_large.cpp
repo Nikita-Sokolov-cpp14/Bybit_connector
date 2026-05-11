@@ -4,8 +4,7 @@
 
 #include "settings.h"
 
-ImbalanceAndLarge::ImbalanceAndLarge(ConnectionManager* connManager) :
-BaseTradingStrategy(connManager),
+ImbalanceAndLarge::ImbalanceAndLarge() :
 disbalance_(0),
 orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
@@ -22,7 +21,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
 
 void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
     //! TODO: После этой опреации у publicTrade больше нет данных.
-    publicTrades_.push_back(publicTradeData);
+    publicTrades_.push_back(std::move(publicTradeData));
     publicTradeIsUpdate_.store(true);
 }
 

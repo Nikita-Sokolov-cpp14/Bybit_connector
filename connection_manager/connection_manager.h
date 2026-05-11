@@ -20,8 +20,7 @@
 #include "json_parser/public_trade_json_parser.h"
 #include "utils/config.h"
 #include "utils/ini_reader.h"
-
-class BaseTradingStrategy;
+#include "trading_strategy/base_trading_strategy.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
@@ -31,6 +30,7 @@ using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 class ConnectionManager {
 public:
     ConnectionManager();
+    ~ConnectionManager();
 
     void connect();
 
@@ -41,6 +41,12 @@ public:
     bool placeOrder(const OrderRequest &orderRequest);
 
     void subscribeStrategy(BaseTradingStrategy *tradingStrategy);
+
+    // Запретить копирование
+    ConnectionManager(const ConnectionManager &) = delete;
+    ConnectionManager &operator=(const ConnectionManager &) = delete;
+    ConnectionManager(ConnectionManager &&) = delete;
+    ConnectionManager &operator=(ConnectionManager &&) = delete;
 
 private:
     AuthConfig authConfig_;

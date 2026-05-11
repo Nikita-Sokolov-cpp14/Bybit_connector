@@ -1,9 +1,5 @@
 #include "base_trading_strategy.h"
 
-BaseTradingStrategy::BaseTradingStrategy(ConnectionManager *connManager) :
-connectionManager_(connManager) {
-}
-
 BaseTradingStrategy::~BaseTradingStrategy() {
     stop();
 }
