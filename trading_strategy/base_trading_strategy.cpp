@@ -5,9 +5,19 @@ BaseTradingStrategy::~BaseTradingStrategy() {
 }
 
 void BaseTradingStrategy::start() {
+    if (running_) {
+        return;
+    }
+    running_ = true;
+    strategyThread_ = std::make_unique<std::jthread>([this]() { work(); });
 }
 
 void BaseTradingStrategy::stop() {
+    running_ = false;
+    dataCV_.notify_all();
+    if (strategyThread_ && strategyThread_->joinable()) {
+        strategyThread_->join();
+    }
 }
 
 bool BaseTradingStrategy::sendOrder(const OrderRequest &request) {
@@ -15,4 +25,22 @@ bool BaseTradingStrategy::sendOrder(const OrderRequest &request) {
 }
 
 void BaseTradingStrategy::work() {
+    while (running_) {
+        // Ждем новые данные
+        std::unique_lock lock(dataMutex_);
+        dataCV_.wait(lock, [this] { return newData_.load(); });
+        lock.unlock();
+
+        if (!running_)
+            break;
+
+        newData_ = false;
+
+        // Вызываем торговую логику
+        try {
+            onMarketUpdate();
+        } catch (const std::exception &e) {
+            std::cerr << "Strategy error: " << e.what() << std::endl;
+        }
+    }
 }

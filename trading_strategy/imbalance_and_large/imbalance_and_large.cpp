@@ -17,12 +17,19 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     const double midPrice = (orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0;
     midPrices_.push_back(midPrice);
     orderbookIsUpdate_.store(true);
+    newData_.store(true);
+    dataCV_.notify_all();
 }
 
 void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
     //! TODO: После этой опреации у publicTrade больше нет данных.
+    //! TODO: Нужно успеть обработать обновление сделок до прихода новых.
+    // Предполагается, что onMarketUpdate работает меньше 1 мс. За это время новая
+    // информация не поступит.
     publicTrades_.push_back(std::move(publicTradeData));
     publicTradeIsUpdate_.store(true);
+    newData_.store(true);
+    dataCV_.notify_all();
 }
 
 void ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
@@ -38,6 +45,11 @@ void ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
 
     for (auto it = orderbook.bids.begin(); it < orderbook.bids.begin() + depthBids; ++it) {
         sumVolBids += it->second;
+    }
+
+    if (sumVolAsks == 0) {
+        disbalance_.store(1.0);
+        return;
     }
 
     disbalance_.store(sumVolBids / sumVolAsks);

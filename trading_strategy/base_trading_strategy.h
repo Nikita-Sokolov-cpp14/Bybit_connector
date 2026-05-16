@@ -31,6 +31,9 @@ public:
     bool sendOrder(const OrderRequest &request);
 
 protected:
+    std::condition_variable dataCV_;
+    std::atomic<bool> newData_ {false};
+
     // Чисто виртуальный метод - торговая логика
     virtual void onMarketUpdate() {
         std::cout << "BaseTradingStrategy::onMarketUpdate" << std::endl;
@@ -42,8 +45,6 @@ private:
 
     // Данные
     mutable std::mutex dataMutex_;
-    std::condition_variable dataCV_;
-    std::atomic<bool> newData_ {false};
     std::atomic<bool> running_ {false};
     std::unique_ptr<std::jthread> strategyThread_;
 
