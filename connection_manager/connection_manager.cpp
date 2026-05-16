@@ -101,7 +101,6 @@ bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
 
 void ConnectionManager::subscribeStrategy(BaseTradingStrategy *tradingStrategy) {
     tradingStrategy_ = tradingStrategy;
-    tradingStrategy_->start();
 }
 
 ssl::context ConnectionManager::createSSLContext() {

@@ -15,7 +15,7 @@ int main() {
         ImbalanceAndLarge strategy;
         ConnectionManager connectionManager;
         connectionManager.subscribeStrategy(&strategy);
-        // strategy->start(); // Запускает торговый поток
+        strategy.start(); // Запускает торговый поток
 
         connectionManager.connect();
 

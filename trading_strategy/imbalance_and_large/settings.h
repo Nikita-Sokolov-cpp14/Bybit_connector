@@ -10,4 +10,7 @@ static const size_t disbalanceDepthCalc = 20;
 static const size_t historyMidPriceSize = 50;
 static const size_t historyPublicTradeSize = 50;
 
+static const double buyDisbalance = 2.0;
+static const double sellDisbalance = 0.5;
+
 }

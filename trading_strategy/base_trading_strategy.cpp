@@ -34,7 +34,7 @@ void BaseTradingStrategy::work() {
         if (!running_)
             break;
 
-        newData_ = false;
+        newData_.store(false);
 
         // Вызываем торговую логику
         try {
