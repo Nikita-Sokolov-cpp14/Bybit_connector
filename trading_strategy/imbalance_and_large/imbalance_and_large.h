@@ -5,7 +5,7 @@
 #include <atomic>
 #include <boost/circular_buffer.hpp>
 #include <optional>
-#include <numeric> 
+#include <numeric>
 
 // struct TradeRecord {
 //     uint64_t timestamp;  // Время сделки (у тебя уже есть поле T)
@@ -49,6 +49,7 @@ private:
     std::optional<Side> signalLargeDisbalance_;
     std::optional<Side> signalTrade_;
     std::optional<Side> signalTotal_;
+    std::atomic<size_t> countInverseSignal_;
 
     void checkSignalTrades();
     void checkSignalDisbalance();

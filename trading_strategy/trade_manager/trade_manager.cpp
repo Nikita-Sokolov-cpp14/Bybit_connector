@@ -2,6 +2,18 @@
 
 #include "settings.h"
 
+namespace {
+
+double totalProfit = 0;
+double totalProfitPercent = 0;
+int totalCount = 0;
+int stopLossCount = 0;
+int takeProfitCount = 0;
+int inverseSignalCount = 0;
+int timeoutCount = 0;
+
+} // namespace
+
 TradeManager::TradeManager() :
 orderSender_(),
 currentTradeSide_(std::nullopt),
@@ -26,6 +38,7 @@ void TradeManager::makeTrade(const double price, const Side &side) {
 
         return;
     }
+    std::cout << "time = " << std::chrono::steady_clock::now().time_since_epoch() << " ";
     startTrade = std::chrono::steady_clock::now();
     openPrice = price;
 
@@ -59,13 +72,17 @@ bool TradeManager::hasOpenSellTrade() const {
 }
 
 void TradeManager::closeBuyTrade() {
-    std::cout << " TradeManager::closeBuyTrade " << std::endl;
+    std::cout << " TradeManager::closeBuyTrade "
+              << " time = " << std::chrono::steady_clock::now().time_since_epoch() << std::endl;
+    inverseSignalCount++;
     closeTrade(currentPrice);
     currentTradeSide_ = std::nullopt;
 }
 
 void TradeManager::closeSellTrade() {
-    std::cout << " TradeManager::closeSellTrade " << std::endl;
+    std::cout << " TradeManager::closeSellTrade "
+              << " time = " << std::chrono::steady_clock::now().time_since_epoch() << std::endl;
+    inverseSignalCount++;
     closeTrade(currentPrice);
     currentTradeSide_ = std::nullopt;
 }
@@ -90,6 +107,7 @@ void TradeManager::checkCurrentPrice(const double price) {
 
     if (std::chrono::steady_clock::now() - startTrade > settings::tradeTimeOut) {
         std::cout << "close by timeout " << std::endl;
+        timeoutCount++;
         closeTrade(price);
         return;
     }
@@ -98,6 +116,7 @@ void TradeManager::checkCurrentPrice(const double price) {
         case Side_Buy:
             if (price < currentTrade_.stopLossPrice) {
                 std::cout << "closeTrade: Buy stop loss" << std::endl;
+                stopLossCount++;
                 closeTrade(price);
                 return;
             }
@@ -106,6 +125,7 @@ void TradeManager::checkCurrentPrice(const double price) {
             if (price > currentTrade_.stopLossPrice) {
                 std::cout << "closeTrade: Sell stop loss" << std::endl;
                 closeTrade(price);
+                stopLossCount++;
                 return;
             }
             break;
@@ -124,14 +144,14 @@ void TradeManager::closeTrade(const double endPrice) {
     }
     double profitPercent = profit / endPrice;
 
-    static double totalProfit;
-    static double totalProfitPercent;
-    static int totalCount;
     totalCount++;
     totalProfit += profit;
     totalProfitPercent += profitPercent;
-    std::cout << "profit: " << profit << " = " << profitPercent << " %" << std::endl;
+    std::cout << "time = " << std::chrono::steady_clock::now().time_since_epoch();
+    std::cout << " profit: " << profit << " = " << profitPercent << " %" << std::endl;
     std::cout << "totalCount: " << totalCount << " totalProfit: " << totalProfit
-              << " totalProfitPercent: " << totalProfitPercent << std::endl;
+              << " stopLossCount: " << stopLossCount << " takeProfitCount: " << takeProfitCount
+              << " inverseSignalCount: " << inverseSignalCount << " timeoutCount: " << timeoutCount
+              << std::endl;
     currentTradeSide_ = std::nullopt;
 }

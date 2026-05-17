@@ -16,6 +16,7 @@ static const double sellDisbalance = 0.5;
 
 static const double inverseBuyDisbalance = 4.0;
 static const double inverseSellDisbalance = 0.25;
+static const size_t countInverseSignal = 5;
 
 static const size_t averrageDisbalanceCount = 5;
 
