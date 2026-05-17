@@ -25,7 +25,8 @@ int main() {
 
         std::cout << "Press Enter to stop..." << std::endl;
         std::cin.get();
-
+        
+        strategy.stop();
         std::cout << "end section" << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Фатальная ошибка: " << e.what() << std::endl;

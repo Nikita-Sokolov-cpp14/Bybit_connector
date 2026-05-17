@@ -42,6 +42,7 @@ private:
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
     std::optional<Side> signalDisbalance_;
     std::optional<Side> signalTrade_;
+    std::optional<Side> signalTotal_;
 
     void checkSignalTrades();
     void checkSignalDisbalance();

@@ -3,6 +3,7 @@
 #include "data_structures/orderbook.h"
 #include "data_structures/public_trade.h"
 #include "data_structures/order_request.h"
+#include "trade_manager/trade_manager.h"
 
 #include <condition_variable>
 #include <thread>
@@ -27,12 +28,12 @@ public:
         return running_;
     }
 
-    // Отправка ордера
-    bool sendOrder(const OrderRequest &request);
+    void setOrderSender(TradeManager::OrderSender orderSender);
 
 protected:
     std::condition_variable dataCV_;
     std::atomic<bool> newData_ {false};
+    TradeManager tradeManager_;
 
     // Чисто виртуальный метод - торговая логика
     virtual void onMarketUpdate() {
@@ -40,9 +41,6 @@ protected:
     }
 
 private:
-    // Функциональный объект для отправки ордеров
-    using OrderSender = std::function<bool(const OrderRequest &)>;
-
     // Данные
     mutable std::mutex dataMutex_;
     std::atomic<bool> running_ {false};

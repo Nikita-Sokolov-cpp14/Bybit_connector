@@ -20,8 +20,8 @@ void BaseTradingStrategy::stop() {
     }
 }
 
-bool BaseTradingStrategy::sendOrder(const OrderRequest &request) {
-    return false;
+void BaseTradingStrategy::setOrderSender(TradeManager::OrderSender orderSender) {
+    tradeManager_.setOrderSender(orderSender);
 }
 
 void BaseTradingStrategy::work() {

@@ -88,4 +88,6 @@ private:
 
     // Настройка колбэков для PublicDataHandler
     void setupDataCallbacks();
+
+    void setStrategyOrderSender();
 };

@@ -71,6 +71,7 @@ void ConnectionManager::reconnectOrderSender() {
 
     orderSender_ = std::move(newOrderSender);
     setOrderSenderReconnectCallback();
+    setStrategyOrderSender();
 }
 
 void ConnectionManager::reconnectPublicHandler() {
@@ -101,6 +102,7 @@ bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
 
 void ConnectionManager::subscribeStrategy(BaseTradingStrategy *tradingStrategy) {
     tradingStrategy_ = tradingStrategy;
+    setStrategyOrderSender();
 }
 
 ssl::context ConnectionManager::createSSLContext() {
@@ -169,4 +171,11 @@ void ConnectionManager::setupDataCallbacks() {
             [this]() { notifyOrderbookUpdate(); },
             // Колбэк для PublicTrade
             [this]() { notifyTradeUpdate(); });
+}
+
+void ConnectionManager::setStrategyOrderSender() {
+    tradingStrategy_->setOrderSender([this](const OrderRequest &orderRequest) {
+        std::cout << "send order to  orderSender_" << std::endl;
+        return orderSender_->placeOrder(orderRequest);
+    });
 }

@@ -12,7 +12,8 @@ publicTradeIsUpdate_(false),
 midPrices_(settings::historyMidPriceSize),
 publicTrades_(settings::historyPublicTradeSize),
 signalDisbalance_(std::nullopt),
-signalTrade_(std::nullopt) {
+signalTrade_(std::nullopt),
+signalTotal_(std::nullopt) {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
@@ -22,6 +23,8 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     orderbookIsUpdate_.store(true);
     newData_.store(true);
     dataCV_.notify_all();
+
+    // Проверить выход по таймауту
 }
 
 void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
@@ -73,8 +76,28 @@ void ImbalanceAndLarge::onMarketUpdate() {
 
     if (signalDisbalance_.has_value() && signalTrade_.has_value()) {
         if (signalDisbalance_.value() == Side_Buy && signalTrade_.value() == Side_Buy) {
+            // std::cout << "ImbalanceAndLarge: total buy" << std::endl;
+            tradeManager_.makeBuyTrade();
+            signalTotal_ = Side_Buy;
         } else if (signalDisbalance_.value() == Side_Sell && signalTrade_.value() == Side_Sell) {
+            // std::cout << "ImbalanceAndLarge: total sell" << std::endl;
+            tradeManager_.makeSellTrade();
+            signalTotal_ = Side_Sell;
+        } else {
+            signalTotal_ = std::nullopt;
         }
+    } else {
+        signalTotal_ = std::nullopt;
+    }
+
+    //! TODO: Если встретился противоположный сигнал.
+    // Подумать - закрывать только по противоположному дисбалансу или по полному противоположному сигналу?
+    // if (signalDisbalance_.has_value()) {
+    //     tradeManager_.checkInverseSignal(signalDisbalance_.value());
+    // }
+    //! TODO: Здесь закрытие по полному противоположному сигналу.
+    if (signalTotal_.has_value()) {
+        tradeManager_.checkInverseSignal(signalTotal_.value());
     }
 }
 
