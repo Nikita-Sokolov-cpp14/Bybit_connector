@@ -44,6 +44,7 @@ private:
     boost::circular_buffer<double> midPrices_;
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
     std::optional<Side> signalDisbalance_;
+    std::optional<Side> signalLargeDisbalance_;
     std::optional<Side> signalTrade_;
     std::optional<Side> signalTotal_;
 

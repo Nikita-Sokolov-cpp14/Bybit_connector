@@ -15,6 +15,7 @@ currentBestAskPrice_(0.0),
 currentBestBidPrice_(0.0),
 currentMidPrice_(0.0),
 signalDisbalance_(std::nullopt),
+signalLargeDisbalance_(std::nullopt),
 signalTrade_(std::nullopt),
 signalTotal_(std::nullopt) {
 }
@@ -105,9 +106,9 @@ void ImbalanceAndLarge::onMarketUpdate() {
     // }
     //! TODO: Здесь закрытие по полному противоположному сигналу.
     //! TODO: Пока противоположный сигнал никак не учитываем
-    // if (signalTotal_.has_value()) {
-    //     tradeManager_.checkInverseSignal(signalTotal_.value());
-    // }
+    if (signalLargeDisbalance_.has_value()) {
+        tradeManager_.checkInverseSignal(signalLargeDisbalance_.value());
+    }
 }
 
 void ImbalanceAndLarge::checkSignalTrades() {
@@ -140,5 +141,13 @@ void ImbalanceAndLarge::checkSignalDisbalance() {
         signalDisbalance_ = Side_Sell;
     } else {
         signalDisbalance_ = std::nullopt;
+    }
+
+    if (disbalance_ >= settings::inverseBuyDisbalance) {
+        signalLargeDisbalance_ = Side_Buy;
+    } else if (disbalance_ <= settings::inverseSellDisbalance) {
+        signalLargeDisbalance_ = Side_Sell;
+    } else {
+        signalLargeDisbalance_ = std::nullopt;
     }
 }

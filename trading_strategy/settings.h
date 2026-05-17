@@ -17,6 +17,8 @@ static const double sellDisbalance = 0.5;
 static const double inverseBuyDisbalance = 4.0;
 static const double inverseSellDisbalance = 0.25;
 
+static const size_t averrageDisbalanceCount = 5;
+
 static const uint8_t leverage = 50;
 // Объем
 static const double defaultQty = 0.001; // TODO: Пока для BTC
