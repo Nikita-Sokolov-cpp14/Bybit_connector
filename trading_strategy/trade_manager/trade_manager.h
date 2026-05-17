@@ -16,7 +16,7 @@ public:
     using OrderSender = std::function<bool(const OrderRequest &)>;
 
     void setOrderSender(OrderSender orderSender);
-    
+
     void makeTrade(const double price, const Side &side);
 
     bool hasOpenBuyTrade() const;
@@ -30,15 +30,22 @@ public:
 
     bool hasOpenTrade() const;
 
+    void checkCurrentPrice(const double price);
+
 private:
     OrderSender orderSender_;
 
     std::optional<Side> currentTradeSide_;
     Trade currentTrade_;
 
-    std::atomic<double> priceOpen_;
-    std::atomic<double> priceDlose_;
+    // std::atomic<double> priceOpen_;
+    // std::atomic<double> priceDlose_;
+
+    double openPrice;
+    double currentPrice;
+    
+    std::chrono::_V2::steady_clock::time_point startTrade;
 
     void openTrade();
-    void closeTrade();
+    void closeTrade(const double endPrice);
 };

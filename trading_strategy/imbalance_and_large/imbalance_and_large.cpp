@@ -27,6 +27,9 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     midPrices_.push_back(currentMidPrice_.load());
     orderbookIsUpdate_.store(true);
     newData_.store(true);
+
+    tradeManager_.checkCurrentPrice(currentMidPrice_.load());
+
     dataCV_.notify_all();
 
     // Проверить выход по таймауту

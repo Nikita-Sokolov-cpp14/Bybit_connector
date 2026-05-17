@@ -7,7 +7,9 @@
 #include "settings.h"
 
 Trade::Trade() :
-tradeNumber(0) {
+tradeNumber(0),
+takeProfitPrice(0.0),
+stopLossPrice(0.0) {
     orderOpenTrade.typeOrderRequest = TypeOrderRequest_New;
     //! TODO: Подумать - открывать рыночным или лимитным
     // orderOpenTrade.order_type = OrderType_Limit;
@@ -33,9 +35,6 @@ tradeNumber(0) {
 }
 
 void Trade::makeTrade(double price, const Side &side) {
-    double takeProfitPrice = 0.0;
-    double stopLossPrice = 0.0;
-
     switch (side) {
         case Side_Buy:
             takeProfitPrice = price + settings::coefTakeProfit * price;
