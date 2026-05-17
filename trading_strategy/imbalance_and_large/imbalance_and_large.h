@@ -5,6 +5,7 @@
 #include <atomic>
 #include <boost/circular_buffer.hpp>
 #include <optional>
+#include <numeric> 
 
 // struct TradeRecord {
 //     uint64_t timestamp;  // Время сделки (у тебя уже есть поле T)
@@ -25,9 +26,9 @@ protected:
 
 
 private:
-    void calcDisbalance(const OrderBook &orderbook);
+    double calcDisbalance(const OrderBook &orderbook);
 
-    std::atomic<float> disbalance_;
+    std::atomic<float> disbalanceAverage_;
     std::atomic<bool> orderbookIsUpdate_;
     std::atomic<bool> publicTradeIsUpdate_;
     std::atomic<double> currentBestAskPrice_;
@@ -42,6 +43,7 @@ private:
      * Сложность вставки в конец - O(1).
      */
     boost::circular_buffer<double> midPrices_;
+    boost::circular_buffer<double> midDisbalance_;
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
     std::optional<Side> signalDisbalance_;
     std::optional<Side> signalLargeDisbalance_;

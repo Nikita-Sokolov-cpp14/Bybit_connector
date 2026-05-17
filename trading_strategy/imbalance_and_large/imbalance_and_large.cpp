@@ -6,10 +6,11 @@
 #include "data_structures/public_trade.h"
 
 ImbalanceAndLarge::ImbalanceAndLarge() :
-disbalance_(0),
+disbalanceAverage_(0),
 orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
 midPrices_(settings::historyMidPriceSize),
+midDisbalance_(settings::averrageDisbalanceCount),
 publicTrades_(settings::historyPublicTradeSize),
 currentBestAskPrice_(0.0),
 currentBestBidPrice_(0.0),
@@ -21,7 +22,9 @@ signalTotal_(std::nullopt) {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
-    calcDisbalance(orderbook);
+    midDisbalance_.push_back(calcDisbalance(orderbook));
+    disbalanceAverage_.store(std::accumulate(midDisbalance_.begin(), midDisbalance_.end(), 0.0) / midDisbalance_.size());
+
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
@@ -47,7 +50,7 @@ void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTrade
     dataCV_.notify_all();
 }
 
-void ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
+double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
     double sumVolAsks = 0;
     double sumVolBids = 0;
 
@@ -62,12 +65,12 @@ void ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
         sumVolBids += it->second;
     }
 
+
     if (sumVolAsks == 0) {
-        disbalance_.store(1.0);
-        return;
+        return 1.0;
     }
 
-    disbalance_.store(sumVolBids / sumVolAsks);
+    return sumVolBids / sumVolAsks;
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
@@ -135,17 +138,17 @@ void ImbalanceAndLarge::checkSignalTrades() {
 }
 
 void ImbalanceAndLarge::checkSignalDisbalance() {
-    if (disbalance_ >= settings::buyDisbalance) {
+    if (disbalanceAverage_ >= settings::buyDisbalance) {
         signalDisbalance_ = Side_Buy;
-    } else if (disbalance_ <= settings::sellDisbalance) {
+    } else if (disbalanceAverage_ <= settings::sellDisbalance) {
         signalDisbalance_ = Side_Sell;
     } else {
         signalDisbalance_ = std::nullopt;
     }
 
-    if (disbalance_ >= settings::inverseBuyDisbalance) {
+    if (disbalanceAverage_ >= settings::inverseBuyDisbalance) {
         signalLargeDisbalance_ = Side_Buy;
-    } else if (disbalance_ <= settings::inverseSellDisbalance) {
+    } else if (disbalanceAverage_ <= settings::inverseSellDisbalance) {
         signalLargeDisbalance_ = Side_Sell;
     } else {
         signalLargeDisbalance_ = std::nullopt;
