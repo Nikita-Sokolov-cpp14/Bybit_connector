@@ -343,6 +343,23 @@ void OrderSender::serialize_order(std::string &buffer, const OrderRequest &order
 
     // Close on trigger (опционально)
     // buffer += ",\"closeOnTrigger\":false";
+    if (order.closeOnTrigger) {
+        buffer += ",\"triggerPrice\":\"";
+        buffer += std::to_string(order.triggerPrice);
+        buffer += "\",\"triggerDirection\":";
+         // Сериализируется как 1 — цена растет до триггера, 2 — цена падает до триггера
+        switch (order.triggerSide) {
+            case Side_Buy:
+                buffer += "1";
+                break;
+            case Side_Sell:
+                buffer += "2";
+                break;
+            default:
+                break;
+        }
+        buffer += ",\"closeOnTrigger\":true";
+    }
 
     buffer += "}]}";
 }

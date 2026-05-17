@@ -30,6 +30,9 @@ private:
     std::atomic<float> disbalance_;
     std::atomic<bool> orderbookIsUpdate_;
     std::atomic<bool> publicTradeIsUpdate_;
+    std::atomic<double> currentBestAskPrice_;
+    std::atomic<double> currentBestBidPrice_;
+    std::atomic<double> currentMidPrice_;
 
     /**
      * @brief Кольцевой буфер для хранения средней цены.

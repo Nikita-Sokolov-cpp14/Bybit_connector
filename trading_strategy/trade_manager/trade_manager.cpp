@@ -12,21 +12,21 @@ void TradeManager::setOrderSender(OrderSender orderSender) {
     orderSender_ = orderSender;
 }
 
-void TradeManager::makeBuyTrade() {
+void TradeManager::makeTrade(const double price, const Side &side) {
     if (hasOpenTrade()) {
         return;
     }
-    std::cout << " TradeManager::makeBuyTrade " << std::endl;
-    currentTradeSide_ = Side_Buy;
-    // Нужно отправить ордер на покупку, лимитный тейк профит и рыночный стоп-лосс ордер.
-}
+    currentTradeSide_ = side;
+    currentTrade_.makeTrade(price, side);
 
-void TradeManager::makeSellTrade() {
-    if (hasOpenTrade()) {
-        return;
-    }
-    std::cout << " TradeManager::makeSellTrade " << std::endl;
-    currentTradeSide_ = Side_Sell;
+    bool openIsPlace = false;
+    bool stopIsPlace = false;
+    bool takeIsPlace = false;
+    // if (orderSender_) {
+    //     openIsPlace = orderSender_(currentTrade_.orderOpenTrade);
+    //     stopIsPlace = orderSender_(currentTrade_.stopLoss);
+    //     takeIsPlace = orderSender_(currentTrade_.takeProfit);
+    // }
 }
 
 bool TradeManager::hasOpenBuyTrade() const {

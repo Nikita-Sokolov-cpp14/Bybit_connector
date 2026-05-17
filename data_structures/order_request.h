@@ -41,6 +41,11 @@ struct OrderRequest {
     double price; // пусто для market ?
     uint16_t leverage = 1;
 
+    // Нужно для указания стоп лосса. Для лонга triggerPrice < текущей и triggerSide = Sell
+    bool closeOnTrigger = false; // Условный ордер - нужно для стоп лосса
+    double triggerPrice;
+    Side triggerSide; // Сериализируется как 1 — цена растет до триггера, 2 — цена падает до триггера
+
     // служебная инфа. Не сериализируется
     TypeOrderRequest typeOrderRequest;
     uint64_t enqueue_time; // нужно для измерения задержки

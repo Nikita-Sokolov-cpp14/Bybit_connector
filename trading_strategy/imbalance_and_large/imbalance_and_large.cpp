@@ -11,6 +11,9 @@ orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
 midPrices_(settings::historyMidPriceSize),
 publicTrades_(settings::historyPublicTradeSize),
+currentBestAskPrice_(0.0),
+currentBestBidPrice_(0.0),
+currentMidPrice_(0.0),
 signalDisbalance_(std::nullopt),
 signalTrade_(std::nullopt),
 signalTotal_(std::nullopt) {
@@ -18,8 +21,10 @@ signalTotal_(std::nullopt) {
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     calcDisbalance(orderbook);
-    const double midPrice = (orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0;
-    midPrices_.push_back(midPrice);
+    currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
+    currentBestAskPrice_.store(orderbook.asks.begin()->first);
+    currentBestBidPrice_.store(orderbook.bids.begin()->first);
+    midPrices_.push_back(currentMidPrice_.load());
     orderbookIsUpdate_.store(true);
     newData_.store(true);
     dataCV_.notify_all();
@@ -77,11 +82,11 @@ void ImbalanceAndLarge::onMarketUpdate() {
     if (signalDisbalance_.has_value() && signalTrade_.has_value()) {
         if (signalDisbalance_.value() == Side_Buy && signalTrade_.value() == Side_Buy) {
             // std::cout << "ImbalanceAndLarge: total buy" << std::endl;
-            tradeManager_.makeBuyTrade();
+            tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
             signalTotal_ = Side_Buy;
         } else if (signalDisbalance_.value() == Side_Sell && signalTrade_.value() == Side_Sell) {
             // std::cout << "ImbalanceAndLarge: total sell" << std::endl;
-            tradeManager_.makeSellTrade();
+            tradeManager_.makeTrade(currentBestAskPrice_, Side_Sell);
             signalTotal_ = Side_Sell;
         } else {
             signalTotal_ = std::nullopt;
@@ -96,9 +101,10 @@ void ImbalanceAndLarge::onMarketUpdate() {
     //     tradeManager_.checkInverseSignal(signalDisbalance_.value());
     // }
     //! TODO: Здесь закрытие по полному противоположному сигналу.
-    if (signalTotal_.has_value()) {
-        tradeManager_.checkInverseSignal(signalTotal_.value());
-    }
+    //! TODO: Пока противоположный сигнал никак не учитываем
+    // if (signalTotal_.has_value()) {
+    //     tradeManager_.checkInverseSignal(signalTotal_.value());
+    // }
 }
 
 void ImbalanceAndLarge::checkSignalTrades() {
