@@ -49,6 +49,7 @@ void ConnectionManager::connect() {
     //     privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
     //             connectionConfig_.targetPrivate);
     // });
+    //! TODO: для демо счета:
     net::post(privateIoc_, [this]() {
         privateDataHandler_->connect("stream-demo.bybit.com", connectionConfig_.port,
                 connectionConfig_.targetPrivate);
@@ -59,6 +60,7 @@ void ConnectionManager::connect() {
     //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
     //             connectionConfig_.targetTrade);
     // });
+    //! TODO: для демо счета:
     net::post(orderSenderIoc_, [this]() {
         orderSender_->connect("stream-demo.bybit.com", connectionConfig_.port,
                 connectionConfig_.targetTrade);

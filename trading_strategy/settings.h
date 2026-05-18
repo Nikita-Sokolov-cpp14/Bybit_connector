@@ -5,7 +5,7 @@
 namespace settings {
 
 //!< Глубина стакана для расчета дисбаланса.
-static const size_t disbalanceDepthCalc = 50;
+static const size_t disbalanceDepthCalc = 30;
 
 //!< Размер истории средней цены.
 static const size_t historyMidPriceSize = 50;

@@ -56,7 +56,9 @@ void PrivateDataHandler::onSubscribeSent(beast::error_code ec, std::size_t bytes
 // Отправка подписки на потоки данных
 void PrivateDataHandler::subscribeToStreams() {
     // Подписываемся на приватные каналы
-    std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast","position","wallet"]})";
+    // std::string sub_msg = R"({"op":"subscribe","args":["order","execution.fast","position","wallet"]})";
+    //! TODO: для демо счета:
+    std::string sub_msg = R"({"op":"subscribe","args":["execution.fast"]})";
     // можно просто execution - больше данных, но медленнее.
 
     std::cout << "Отправляем подписку на приватные каналы: " << sub_msg << std::endl;
