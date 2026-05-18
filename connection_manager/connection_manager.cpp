@@ -45,14 +45,22 @@ void ConnectionManager::connect() {
     setPublicReconnectCallback();
     setupDataCallbacks();
 
+    // net::post(privateIoc_, [this]() {
+    //     privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
+    //             connectionConfig_.targetPrivate);
+    // });
     net::post(privateIoc_, [this]() {
-        privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
+        privateDataHandler_->connect("stream-demo.bybit.com", connectionConfig_.port,
                 connectionConfig_.targetPrivate);
     });
     setPrivateReconnectCallback();
 
+    // net::post(orderSenderIoc_, [this]() {
+    //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
+    //             connectionConfig_.targetTrade);
+    // });
     net::post(orderSenderIoc_, [this]() {
-        orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
+        orderSender_->connect("stream-demo.bybit.com", connectionConfig_.port,
                 connectionConfig_.targetTrade);
     });
     setOrderSenderReconnectCallback();
