@@ -7,6 +7,7 @@ namespace {
 double totalProfit = 0;
 double totalProfitPercent = 0;
 int totalCount = 0;
+int countPositive = 0;
 int stopLossCount = 0;
 int takeProfitCount = 0;
 int inverseSignalCount = 0;
@@ -142,16 +143,20 @@ void TradeManager::closeTrade(const double endPrice) {
     if (currentTradeSide_.value() == Side_Sell) {
         profit *= -1.0;
     }
+    if (profit > 0.0) {
+        countPositive++;
+    }
     double profitPercent = profit / endPrice;
 
     totalCount++;
     totalProfit += profit;
     totalProfitPercent += profitPercent;
     std::cout << "time = " << std::chrono::steady_clock::now().time_since_epoch();
-    std::cout << " profit: " << profit << " = " << profitPercent << " %" << std::endl;
+    std::cout << " profit: " << profit << std::endl;
     std::cout << "totalCount: " << totalCount << " totalProfit: " << totalProfit
               << " stopLossCount: " << stopLossCount << " takeProfitCount: " << takeProfitCount
               << " inverseSignalCount: " << inverseSignalCount << " timeoutCount: " << timeoutCount
+              << " win rate = " << (double)countPositive / totalCount
               << std::endl;
     currentTradeSide_ = std::nullopt;
 }

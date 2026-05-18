@@ -5,7 +5,7 @@
 namespace settings {
 
 //!< Глубина стакана для расчета дисбаланса.
-static const size_t disbalanceDepthCalc = 30;
+static const size_t disbalanceDepthCalc = 50;
 
 //!< Размер истории средней цены.
 static const size_t historyMidPriceSize = 50;
@@ -17,6 +17,7 @@ static const double sellDisbalance = 0.5;
 static const double inverseBuyDisbalance = 4.0;
 static const double inverseSellDisbalance = 0.25;
 static const size_t countInverseSignal = 5;
+static const size_t countSignal = 3;
 
 static const size_t averrageDisbalanceCount = 5;
 
@@ -24,8 +25,8 @@ static const uint8_t leverage = 50;
 // Объем
 static const double defaultQty = 0.001; // TODO: Пока для BTC
 
-static const double coefTakeProfit = 0.15 / 100.0; // В долях, а не процентах. 1%
-static const double coefStopLoss = 0.15 / 100.0; // В долях, а не процентах. 1%
+static const double coefTakeProfit = 0.1 / 100.0; // В долях, а не процентах. 1%
+static const double coefStopLoss = 0.1 / 100.0; // В долях, а не процентах. 1%
 
 static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(60 * 1000);
 

@@ -146,7 +146,7 @@ void BaseWebSocketClient::onPingTimer(beast::error_code ec) {
 void BaseWebSocketClient::onPingSent(beast::error_code ec) {
     if (!ec) {
         // Если PING отправлен успешно, планируем следующий
-        pingTimer_.expires_after(std::chrono::seconds(5));
+        pingTimer_.expires_after(std::chrono::seconds(20));
         pingTimer_.async_wait(
                 beast::bind_front_handler(&BaseWebSocketClient::onPingTimer, shared_from_this()));
     }
@@ -206,5 +206,7 @@ void BaseWebSocketClient::onControlFrame(websocket::frame_type kind, beast::stri
     if (kind == boost::beast::websocket::frame_type::pong) {
         measureLatency(pingSentTime_);
         isWaitPing_.store(false);
+    } else if (kind == boost::beast::websocket::frame_type::ping) {
+        std::cout << "Получен PING от сервера, отправляем PONG" << std::endl;
     }
 }

@@ -50,6 +50,7 @@ private:
     std::optional<Side> signalTrade_;
     std::optional<Side> signalTotal_;
     std::atomic<size_t> countInverseSignal_;
+    std::atomic<size_t> countSignal_;
 
     void checkSignalTrades();
     void checkSignalDisbalance();

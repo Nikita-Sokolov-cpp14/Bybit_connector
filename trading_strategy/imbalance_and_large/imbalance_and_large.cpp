@@ -19,7 +19,8 @@ signalDisbalance_(std::nullopt),
 signalLargeDisbalance_(std::nullopt),
 signalTrade_(std::nullopt),
 signalTotal_(std::nullopt),
-countInverseSignal_(0) {
+countInverseSignal_(0),
+countSignal_(0) {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
@@ -87,7 +88,8 @@ void ImbalanceAndLarge::onMarketUpdate() {
         publicTradeIsUpdate_ = false;
     }
 
-    if (signalDisbalance_.has_value() && signalTrade_.has_value()) {
+    if (signalDisbalance_.has_value() && signalTrade_.has_value() &&
+            countSignal_.load() >= settings::countSignal) {
         if (signalDisbalance_.value() == Side_Buy && signalTrade_.value() == Side_Buy) {
             // std::cout << "ImbalanceAndLarge: total buy" << std::endl;
             tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
@@ -97,6 +99,7 @@ void ImbalanceAndLarge::onMarketUpdate() {
             tradeManager_.makeTrade(currentBestAskPrice_, Side_Sell);
             signalTotal_ = Side_Sell;
         } else {
+            countSignal_.store(0);
             signalTotal_ = std::nullopt;
         }
     } else {
@@ -141,10 +144,21 @@ void ImbalanceAndLarge::checkSignalTrades() {
 
 void ImbalanceAndLarge::checkSignalDisbalance() {
     if (disbalanceAverage_ >= settings::buyDisbalance) {
+        if (signalDisbalance_ == Side_Buy) {
+            countSignal_++;
+        } else {
+            countSignal_.store(1);
+        }
         signalDisbalance_ = Side_Buy;
     } else if (disbalanceAverage_ <= settings::sellDisbalance) {
+        if (signalDisbalance_ == Side_Sell) {
+            countSignal_++;
+        } else {
+            countSignal_.store(1);
+        }
         signalDisbalance_ = Side_Sell;
     } else {
+        countSignal_.store(0);
         signalDisbalance_ = std::nullopt;
     }
 
