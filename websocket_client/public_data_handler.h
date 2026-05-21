@@ -16,8 +16,6 @@ public:
             StatusMessage *const statusMessage, PublicTrade *const publicTrade,
             const std::string_view userAgent);
 
-    using ParserCallback = std::function<void()>;
-
     void setDataCallbacks(ParserCallback obCallback, ParserCallback tradeCallback);
 
 private:

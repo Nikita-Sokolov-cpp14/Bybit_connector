@@ -111,7 +111,7 @@ void PublicDataHandler::onRead(beast::error_code ec, std::size_t bytesTransferre
             case TypeMessage_PublicTrade:
                 publicTradeJsonParser_.setString(messageView_);
                 publicTradeJsonParser_.parse();
-                if (orderbookCallback_) {
+                if (tradeCallback_) {
                     tradeCallback_();
                 }
                 break;

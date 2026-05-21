@@ -22,6 +22,12 @@ walletJsonParser_(messages.walletHFT),
 executionFastJsonParser_(messages.executionFast) {
 }
 
+void PrivateDataHandler::setDataCallbacks(ParserCallback orderCallback,
+        ParserCallback positionCallback) {
+    orderCallback_ = orderCallback;
+    positionCallback_ = positionCallback;
+}
+
 // Обработчик завершения WebSocket handshake
 void PrivateDataHandler::onHandshake(beast::error_code ec) {
     if (ec) {
@@ -115,22 +121,26 @@ void PrivateDataHandler::onRead(beast::error_code ec, std::size_t bytesTransferr
             case TypeMessage_Position:
                 positionJsonParser_.setString(messageView_);
                 positionJsonParser_.parse();
-                positionJsonParser_.printData();
+                if (positionCallback_) {
+                    positionCallback_();
+                }
                 break;
             case TypeMessage_Order:
                 orderJsonParser_.setString(messageView_);
                 orderJsonParser_.parse();
-                orderJsonParser_.printData();
+                if (orderCallback_) {
+                    orderCallback_();
+                }
                 break;
             case TypeMessage_ExecutionFast:
                 executionFastJsonParser_.setString(messageView_);
                 executionFastJsonParser_.parse();
-                executionFastJsonParser_.printData();
+                // executionFastJsonParser_.printData();
                 break;
             case TypeMessage_Wallet:
                 walletJsonParser_.setString(messageView_);
                 walletJsonParser_.parse();
-                walletJsonParser_.printData();
+                // walletJsonParser_.printData();
                 break;
             default:
                 std::cout << "PrivateDataHandler::onRead: Unknown message type " << messageView_

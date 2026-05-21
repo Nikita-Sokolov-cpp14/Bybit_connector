@@ -51,6 +51,24 @@ void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTrade
     dataCV_.notify_all();
 }
 
+void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
+    std::cout << "ImbalanceAndLarge::setOrder" << std::endl;
+    std::cout << "id " << order.id << std::endl;
+    std::cout << "orderLinkId " << order.orderLinkId << std::endl;
+    std::cout << "side " << order.side << std::endl;
+    std::cout << "orderStatus " << order.orderStatus << std::endl;
+    std::cout << "orderType " << order.orderType << std::endl;
+    std::cout << "price " << order.price << std::endl;
+    std::cout << "qty " << order.qty << std::endl;
+}
+
+void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
+    std::cout << "ImbalanceAndLarge::setPosition" << std::endl;
+    std::cout << "id " << position.id << std::endl;
+    std::cout << "side " << position.side << std::endl;
+    std::cout << "size " << position.size << std::endl;
+}
+
 double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
     double sumVolAsks = 0;
     double sumVolBids = 0;

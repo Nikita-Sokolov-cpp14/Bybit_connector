@@ -43,7 +43,7 @@ void ConnectionManager::connect() {
                 connectionConfig_.targetPublic);
     });
     setPublicReconnectCallback();
-    setupDataCallbacks();
+    setupPublicDataCallbacks();
 
     // net::post(privateIoc_, [this]() {
     //     privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
@@ -55,6 +55,7 @@ void ConnectionManager::connect() {
                 connectionConfig_.targetPrivate);
     });
     setPrivateReconnectCallback();
+    setupPrivateDataCallbacks();
 
     // net::post(orderSenderIoc_, [this]() {
     //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
@@ -90,7 +91,7 @@ void ConnectionManager::reconnectPublicHandler() {
 
     publicDataHandler_ = std::move(newPublicHandler);
     setPublicReconnectCallback();
-    setupDataCallbacks();
+    setupPublicDataCallbacks();
 }
 
 void ConnectionManager::reconnectPrivateHandler() {
@@ -100,6 +101,7 @@ void ConnectionManager::reconnectPrivateHandler() {
 
     privateDataHandler_ = std::move(newPrivateDataHandler);
     setPrivateReconnectCallback();
+    setupPrivateDataCallbacks();
 }
 
 bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
@@ -162,7 +164,7 @@ void ConnectionManager::notifyOrderbookUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(orderBook_.mt);
     if (tradingStrategy_) {
-        tradingStrategy_->setOrderbook(orderBook_);
+        // tradingStrategy_->setOrderbook(orderBook_);
     }
 }
 
@@ -170,17 +172,37 @@ void ConnectionManager::notifyTradeUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(publicTrade_.mt);
     if (tradingStrategy_) {
-        tradingStrategy_->setPublicTradeData(std::move(publicTrade_.data));
+        // tradingStrategy_->setPublicTradeData(std::move(publicTrade_.data));
     }
 }
 
-void ConnectionManager::setupDataCallbacks() {
+void ConnectionManager::notifyOrderUpdate() {
+    //! TODO: Придумать решение без mutex
+    std::lock_guard lg(orderHFT_.mt);
+    if (tradingStrategy_) {
+        tradingStrategy_->setOrder(orderHFT_);
+    }
+}
+
+void ConnectionManager::notifyPositionUpdate() {
+    std::lock_guard lg(positionHFT_.mt);
+    if (tradingStrategy_) {
+        tradingStrategy_->setPosition(positionHFT_);
+    }
+}
+
+void ConnectionManager::setupPublicDataCallbacks() {
     // Устанавливаем колбэки в PublicDataHandler
     publicDataHandler_->setDataCallbacks(
             // Колбэк для OrderBook
             [this]() { notifyOrderbookUpdate(); },
             // Колбэк для PublicTrade
             [this]() { notifyTradeUpdate(); });
+}
+
+void ConnectionManager::setupPrivateDataCallbacks() {
+    privateDataHandler_->setDataCallbacks([this]() { notifyOrderUpdate(); },
+            [this]() { notifyPositionUpdate(); });
 }
 
 void ConnectionManager::setStrategyOrderSender() {

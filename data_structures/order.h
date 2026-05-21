@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string_view>
+#include <mutex>
 #include "common_data.h"
 
 
@@ -142,6 +143,9 @@ public:
 
     uint64_t createdTime;          // 17. Время создания
     uint64_t updatedTime;          // 18. Время обновления
+
+    //! TODO: Чтобы пока не заморачиваться сделан mutex
+    std::mutex mt;
 
     void print();
 };

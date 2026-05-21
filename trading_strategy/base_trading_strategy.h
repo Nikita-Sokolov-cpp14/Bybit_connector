@@ -3,6 +3,8 @@
 #include "data_structures/orderbook.h"
 #include "data_structures/public_trade.h"
 #include "data_structures/order_request.h"
+#include "data_structures/order.h"
+#include "data_structures/position.h"
 #include "trade_manager/trade_manager.h"
 
 #include <condition_variable>
@@ -19,6 +21,12 @@ public:
     }
     virtual void setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
         std::cout << "BaseTradingStrategy::setPublicTradeData" << std::endl;
+    }
+    virtual void setOrder(const OrderHFT &order) {
+        std::cout << "BaseTradingStrategy::setOrder" << std::endl;
+    }
+    virtual void setPosition(const PositionHFT &position) {
+        std::cout << "BaseTradingStrategy::setPosition" << std::endl;
     }
 
     // Управление жизненным циклом

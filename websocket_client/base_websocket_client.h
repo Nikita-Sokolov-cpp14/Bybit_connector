@@ -60,6 +60,8 @@ public:
     // Устанавливаем колбэк на переподключение
     void setReconnectCallback(std::function<void()> callback);
 
+    using ParserCallback = std::function<void()>;
+
 protected:
     /**
      * @brief Обработчик результатов DNS.

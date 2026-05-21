@@ -20,6 +20,8 @@ public:
 
     void setOrderbook(const OrderBook &orderbook) override;
     void setPublicTradeData(PublicTrade::VectorData &&publicTradeData) override;
+    void setOrder(const OrderHFT &order) override;
+    void setPosition(const PositionHFT &position) override;
 
 protected:
     void onMarketUpdate() override;

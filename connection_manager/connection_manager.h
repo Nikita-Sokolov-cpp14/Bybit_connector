@@ -85,9 +85,13 @@ private:
 
     void notifyOrderbookUpdate();
     void notifyTradeUpdate();
+    void notifyOrderUpdate();
+    void notifyPositionUpdate();
 
     // Настройка колбэков для PublicDataHandler
-    void setupDataCallbacks();
+    void setupPublicDataCallbacks();
+
+    void setupPrivateDataCallbacks();
 
     void setStrategyOrderSender();
 };

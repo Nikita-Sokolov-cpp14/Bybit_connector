@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string_view>
+#include <mutex>
 #include "common_data.h"
 
 enum PositionStatus {
@@ -84,6 +85,9 @@ public:
 
     // Флаги состояния
     bool isReduceOnly; // Можно ли увеличивать позицию?
+
+    //! TODO: Чтобы пока не заморачиваться сделан mutex
+    std::mutex mt;
 
     void print();
 };

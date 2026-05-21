@@ -24,11 +24,15 @@ public:
             const std::string &api_secret, const Messages &messages,
             const std::string_view userAgent);
 
+    void setDataCallbacks(ParserCallback orderCallback, ParserCallback positionCallback);
+
 private:
     PositionJsonParser positionJsonParser_;
     OrderJsonParser orderJsonParser_;
     WalletJsonParser walletJsonParser_;
     ExecutionFastJsonParser executionFastJsonParser_;
+    ParserCallback orderCallback_;
+    ParserCallback positionCallback_;
 
     // Обработчик завершения WebSocket handshake
     void onHandshake(beast::error_code ec) override;
