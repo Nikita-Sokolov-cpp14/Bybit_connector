@@ -24,7 +24,6 @@ public:
 protected:
     void onMarketUpdate() override;
 
-
 private:
     double calcDisbalance(const OrderBook &orderbook);
 
@@ -46,7 +45,7 @@ private:
     boost::circular_buffer<double> midDisbalance_;
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
     std::optional<Side> signalDisbalance_;
-    std::optional<Side> signalLargeDisbalance_;
+    std::optional<Side> signalInverseDisbalance_;
     std::optional<Side> signalTrade_;
     std::optional<Side> signalTotal_;
     std::atomic<size_t> countInverseSignal_;

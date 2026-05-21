@@ -16,7 +16,7 @@ currentBestAskPrice_(0.0),
 currentBestBidPrice_(0.0),
 currentMidPrice_(0.0),
 signalDisbalance_(std::nullopt),
-signalLargeDisbalance_(std::nullopt),
+signalInverseDisbalance_(std::nullopt),
 signalTrade_(std::nullopt),
 signalTotal_(std::nullopt),
 countInverseSignal_(0),
@@ -38,8 +38,6 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     tradeManager_.checkCurrentPrice(currentMidPrice_.load());
 
     dataCV_.notify_all();
-
-    // Проверить выход по таймауту
 }
 
 void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
@@ -76,13 +74,13 @@ double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
-    //! TODO: Дисбаланс - основной сигнал
+    //! NOTE: Дисбаланс - основной сигнал
     if (orderbookIsUpdate_) {
         checkSignalDisbalance();
         orderbookIsUpdate_ = false;
     }
 
-    //! TODO: Крупная сделка - по большей части просто подтверждение.
+    //! NOTE: Крупная сделка - по большей части просто подтверждение.
     if (publicTradeIsUpdate_) {
         checkSignalTrades();
         publicTradeIsUpdate_ = false;
@@ -91,11 +89,9 @@ void ImbalanceAndLarge::onMarketUpdate() {
     if (signalDisbalance_.has_value() && signalTrade_.has_value() &&
             countSignal_.load() >= settings::countSignal) {
         if (signalDisbalance_.value() == Side_Buy && signalTrade_.value() == Side_Buy) {
-            // std::cout << "ImbalanceAndLarge: total buy" << std::endl;
             tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
             signalTotal_ = Side_Buy;
         } else if (signalDisbalance_.value() == Side_Sell && signalTrade_.value() == Side_Sell) {
-            // std::cout << "ImbalanceAndLarge: total sell" << std::endl;
             tradeManager_.makeTrade(currentBestAskPrice_, Side_Sell);
             signalTotal_ = Side_Sell;
         } else {
@@ -113,9 +109,9 @@ void ImbalanceAndLarge::onMarketUpdate() {
     // }
     //! TODO: Здесь закрытие по полному противоположному сигналу.
     //! TODO: Пока противоположный сигнал никак не учитываем
-    if (signalLargeDisbalance_.has_value() &&
+    if (signalInverseDisbalance_.has_value() &&
             countInverseSignal_.load() >= settings::countInverseSignal) {
-        tradeManager_.checkInverseSignal(signalLargeDisbalance_.value());
+        tradeManager_.checkInverseSignal(signalInverseDisbalance_.value());
     }
 }
 
@@ -163,21 +159,21 @@ void ImbalanceAndLarge::checkSignalDisbalance() {
     }
 
     if (disbalanceAverage_ >= settings::inverseBuyDisbalance) {
-        if (signalLargeDisbalance_ == Side_Buy) {
+        if (signalInverseDisbalance_ == Side_Buy) {
             countInverseSignal_++; // продолжаем ту же серию Buy
         } else {
             countInverseSignal_.store(1); // новая серия Buy
         }
-        signalLargeDisbalance_ = Side_Buy;
+        signalInverseDisbalance_ = Side_Buy;
     } else if (disbalanceAverage_ <= settings::inverseSellDisbalance) {
-        if (signalLargeDisbalance_ == Side_Sell) {
+        if (signalInverseDisbalance_ == Side_Sell) {
             countInverseSignal_++; // продолжаем ту же серию Sell
         } else {
             countInverseSignal_.store(1); // новая серия Sell
         }
-        signalLargeDisbalance_ = Side_Sell;
+        signalInverseDisbalance_ = Side_Sell;
     } else {
-        signalLargeDisbalance_ = std::nullopt;
+        signalInverseDisbalance_ = std::nullopt;
         countInverseSignal_.store(0);
     }
 }
