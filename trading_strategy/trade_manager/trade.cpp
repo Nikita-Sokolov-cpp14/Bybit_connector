@@ -9,7 +9,9 @@
 Trade::Trade() :
 tradeNumber(0),
 takeProfitPrice(0.0),
-stopLossPrice(0.0) {
+stopLossPrice(0.0),
+orderIsPlaced(false),
+orderIsFilled(false) {
     orderOpenTrade.typeOrderRequest = TypeOrderRequest_New;
     //! TODO: Подумать - открывать рыночным или лимитным
     // orderOpenTrade.order_type = OrderType_Limit;
@@ -32,6 +34,12 @@ stopLossPrice(0.0) {
     takeProfit.qty = settings::defaultQty;
     takeProfit.leverage = settings::leverage;
     strcpy(takeProfit.symbol, "BTCUSDT");
+
+    limitOrder.typeOrderRequest = TypeOrderRequest_New;
+    limitOrder.order_type = OrderType_Limit;
+    limitOrder.qty = settings::defaultQty;
+    limitOrder.leverage = settings::leverage;
+    strcpy(limitOrder.symbol, "BTCUSDT");
 }
 
 void Trade::makeTrade(double price, const Side &side) {
@@ -71,5 +79,14 @@ void Trade::makeTrade(double price, const Side &side) {
     takeProfit.price = takeProfitPrice;
     takeProfit.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
-                                          .count();
+                                      .count();
+}
+
+void Trade::makeLimitOrder(const double price, const Side &side) {
+    takeProfit.req_id = tradeNumber * 10 + 1; // Основной ордер
+    takeProfit.side = side;
+    takeProfit.price = price;
+    takeProfit.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+                                      .count();
 }

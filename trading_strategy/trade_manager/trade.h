@@ -15,11 +15,16 @@ struct Trade {
     OrderRequest orderOpenTrade;
     OrderRequest stopLoss;
     OrderRequest takeProfit;
+    OrderRequest limitOrder;
 
     uint32_t tradeNumber;
 
     double takeProfitPrice;
     double stopLossPrice;
 
+    bool orderIsPlaced;
+    bool orderIsFilled;
+
     void makeTrade(const double price, const Side &side);
+    void makeLimitOrder(const double price, const Side &side);
 };
