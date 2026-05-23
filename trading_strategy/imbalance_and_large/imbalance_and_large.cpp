@@ -9,6 +9,7 @@ ImbalanceAndLarge::ImbalanceAndLarge() :
 disbalanceAverage_(0),
 orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
+needCheckCurPrice_(false),
 midPrices_(settings::historyMidPriceSize),
 midDisbalance_(settings::averrageDisbalanceCount),
 publicTrades_(settings::historyPublicTradeSize),
@@ -35,7 +36,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     orderbookIsUpdate_.store(true);
     newData_.store(true);
 
-    tradeManager_.checkCurrentPrice(currentMidPrice_.load());
+    needCheckCurPrice_.store(true);
 
     dataCV_.notify_all();
 }
@@ -92,6 +93,11 @@ double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
+    if (needCheckCurPrice_.load()) {
+        tradeManager_.checkCurrentPrice(currentMidPrice_.load());
+        needCheckCurPrice_.store(true);
+    }
+
     //! NOTE: Дисбаланс - основной сигнал
     if (orderbookIsUpdate_) {
         checkSignalDisbalance();

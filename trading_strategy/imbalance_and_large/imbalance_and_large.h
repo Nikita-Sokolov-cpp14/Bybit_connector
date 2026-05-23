@@ -32,6 +32,7 @@ private:
     std::atomic<float> disbalanceAverage_;
     std::atomic<bool> orderbookIsUpdate_;
     std::atomic<bool> publicTradeIsUpdate_;
+    std::atomic<bool> needCheckCurPrice_;
     std::atomic<double> currentBestAskPrice_;
     std::atomic<double> currentBestBidPrice_;
     std::atomic<double> currentMidPrice_;

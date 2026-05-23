@@ -199,7 +199,7 @@ void BaseWebSocketClient::measureLatency(std::chrono::steady_clock::time_point s
     auto now = std::chrono::steady_clock::now();
     auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(now - sentTime).count();
 
-    // std::cout << "WebSocket PING/PONG RTT: " << latency << " ms" << std::endl;
+    std::cout << "WebSocket PING/PONG RTT: " << latency << " ms" << std::endl;
 }
 
 void BaseWebSocketClient::onControlFrame(websocket::frame_type kind, beast::string_view payload) {

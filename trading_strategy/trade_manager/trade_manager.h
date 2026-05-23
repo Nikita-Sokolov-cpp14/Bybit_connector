@@ -6,6 +6,8 @@
 #include <optional>
 
 #include "data_structures/order_request.h"
+#include "data_structures/order.h"
+#include "data_structures/position.h"
 #include "trade.h"
 
 class TradeManager {
@@ -16,6 +18,8 @@ public:
     using OrderSender = std::function<bool(const OrderRequest &)>;
 
     void setOrderSender(OrderSender orderSender);
+    void setOrder(const OrderHFT &order);
+    void setPosition(const PositionHFT &position);
 
     void makeTrade(const double price, const Side &side);
 
@@ -43,9 +47,17 @@ private:
 
     double openPrice;
     double currentPrice;
-    
+
     std::chrono::_V2::steady_clock::time_point startTrade;
+    std::chrono::_V2::steady_clock::time_point timePlaceOrder_;
+
+    bool waitOpenLimitOrder_;
 
     void openTrade();
     void closeTrade(const double endPrice);
+
+    void checkMainOrder(const OrderStatus &orderStatus);
+    void checkStopLoss(const OrderStatus &orderStatus);
+    void checkTakeProfit(const OrderStatus &orderStatus);
+    void checkCloseOrder(const OrderStatus &orderStatus);
 };

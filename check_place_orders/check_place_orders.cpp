@@ -23,7 +23,7 @@ void addNewOrders(ConnectionManager &connectionManager) {
 }
 
 void cancelOrders(ConnectionManager &connectionManager) {
-    std::this_thread::sleep_for(std::chrono::seconds(4));
+    std::this_thread::sleep_for(std::chrono::seconds(20));
     OrderRequest order;
     order.typeOrderRequest = TypeOrderRequest_Cancel;
     order.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -34,7 +34,7 @@ void cancelOrders(ConnectionManager &connectionManager) {
 
     // для order.order_id
     order.typeOrderId_ = TypeOrderId_OrderId;
-    strcpy(order.order_id, "ea685326-dee9-4451-8873-7c6306a9e47c");
+    strcpy(order.order_id, "0b8e8ac8-d82b-4170-9aef-4ebd04858a83");
 
     // для order.order_link_id
     // order.typeOrderId_ = TypeOrderId_OrderLinkId;

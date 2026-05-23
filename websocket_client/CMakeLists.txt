@@ -16,8 +16,22 @@ target_include_directories(websocket_client PUBLIC
 )
 
 target_link_libraries(websocket_client PRIVATE
-    OpenSSL::SSL
-    Boost::locale
     json_parser
     check_latency
 )
+
+# Для кросскомпиляции Windows добавляем системные библиотеки
+if(CMAKE_CROSSCOMPILING)
+    target_link_libraries(websocket_client PRIVATE
+        ${OPENSSL_LIBRARIES}
+        ${Boost_LIBRARIES}
+        ws2_32
+        wsock32
+        crypt32
+    )
+else()
+    target_link_libraries(websocket_client PRIVATE
+        OpenSSL::SSL
+        Boost::locale
+    )
+endif()
