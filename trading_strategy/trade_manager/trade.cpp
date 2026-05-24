@@ -124,10 +124,9 @@ bool Trade::makeCloseLimitOrder(const double price, const Side &side) {
     return sendOrder(closeLimitOrder);
 }
 
-bool Trade::makeCloseMarketOrder(const double price, const Side &side) {
+bool Trade::makeCloseMarketOrder(const Side &side) {
     closeMarketOrder.req_id = currentTradeNumber * 10 + idCloseMarketOrder;
     closeMarketOrder.side = side;
-    closeMarketOrder.price = price;
     closeMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                            .count();

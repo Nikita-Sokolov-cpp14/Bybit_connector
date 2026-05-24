@@ -49,10 +49,13 @@ private:
     bool waitOpenLimitOrder_;
     bool waitCloseLimitOrder_;
     bool waitCloseMarketOrder_;
+    bool waitCancelCloseLimitOrder_;
 
     void checkMainOrder(const OrderStatus &orderStatus);
-    void checkStopLoss(const OrderStatus &orderStatus);
-    void checkTakeProfit(const OrderStatus &orderStatus);
+    // void checkStopLoss(const OrderStatus &orderStatus);
+    // void checkTakeProfit(const OrderStatus &orderStatus);
     void checkCloseLimitOrder(const OrderStatus &orderStatus);
     void checkCloseMarketOrder(const OrderStatus &orderStatus);
+
+    void checkSLTP();
 };
