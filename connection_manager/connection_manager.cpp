@@ -45,27 +45,27 @@ void ConnectionManager::connect() {
     setPublicReconnectCallback();
     setupPublicDataCallbacks();
 
-    // net::post(privateIoc_, [this]() {
-    //     privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
-    //             connectionConfig_.targetPrivate);
-    // });
-    //! TODO: для демо счета:
     net::post(privateIoc_, [this]() {
-        privateDataHandler_->connect("stream-demo.bybit.com", connectionConfig_.port,
+        privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
                 connectionConfig_.targetPrivate);
     });
+    //! TODO: для демо счета:
+    // net::post(privateIoc_, [this]() {
+    //     privateDataHandler_->connect("stream-demo.bybit.com", connectionConfig_.port,
+    //             connectionConfig_.targetPrivate);
+    // });
     setPrivateReconnectCallback();
     setupPrivateDataCallbacks();
 
-    // net::post(orderSenderIoc_, [this]() {
-    //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
-    //             connectionConfig_.targetTrade);
-    // });
-    //! TODO: для демо счета:
     net::post(orderSenderIoc_, [this]() {
-        orderSender_->connect("stream-demo.bybit.com", connectionConfig_.port,
+        orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
                 connectionConfig_.targetTrade);
     });
+    //! TODO: для демо счета:
+    // net::post(orderSenderIoc_, [this]() {
+    //     orderSender_->connect("stream-demo.bybit.com", connectionConfig_.port,
+    //             connectionConfig_.targetTrade);
+    // });
     setOrderSenderReconnectCallback();
 
     publicThread_ = std::make_unique<std::jthread>([this]() { publicIoc_.run(); });
@@ -173,7 +173,7 @@ void ConnectionManager::notifyOrderbookUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(orderBook_.mt);
     if (tradingStrategy_) {
-        // tradingStrategy_->setOrderbook(orderBook_);
+        tradingStrategy_->setOrderbook(orderBook_);
     }
 }
 
@@ -181,7 +181,7 @@ void ConnectionManager::notifyTradeUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(publicTrade_.mt);
     if (tradingStrategy_) {
-        // tradingStrategy_->setPublicTradeData(std::move(publicTrade_.data));
+        tradingStrategy_->setPublicTradeData(std::move(publicTrade_.data));
     }
 }
 
@@ -189,7 +189,7 @@ void ConnectionManager::notifyOrderUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(orderHFT_.mt);
     if (tradingStrategy_) {
-        // tradingStrategy_->setOrder(orderHFT_);
+        tradingStrategy_->setOrder(orderHFT_);
     }
 }
 

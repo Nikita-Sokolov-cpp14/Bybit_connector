@@ -19,6 +19,7 @@ int countLimitOpenMiss = 0;
 int countLimitOpenFilled = 0;
 int countLimitCloseMiss = 0;
 int countLimitCloseFilled = 0;
+int countCloseMarket = 0;
 
 inline double CalcLimitPrice(const double price, const Side &side) {
     double delta = settings::spaceToLimitPrice * price;
@@ -35,11 +36,13 @@ currentTradeSide_(std::nullopt),
 // priceOpen_(0.0),
 // priceDlose_(0.0)
 openPrice(0.0),
+closePrice(0.0),
 currentPrice(0.0),
 waitOpenLimitOrder_(false),
 waitCloseLimitOrder_(false),
 waitCloseMarketOrder_(false),
-waitCancelCloseLimitOrder_(false) {
+waitCancelCloseLimitOrder_(false),
+tradeIsOpen_(false) {
 }
 
 void TradeManager::setOrderSender(Trade::OrderSender orderSender) {
@@ -114,12 +117,8 @@ bool TradeManager::hasOpenSellTrade() const {
 }
 
 void TradeManager::checkInverseSignal(const Side &side) {
-    if (!hasOpenTrade()) {
-        return;
-    }
-
     // Если лимитный ордер на вход не выполнен, то сделка не открыта и обратный сигнал не рассматриваем
-    if (currentTrade_.ordersStatus[currentTrade_.openLimitOrder.req_id] != OrderStatus_Filled) {
+    if (!hasOpenTrade() && !tradeIsOpen_) {
         return;
     }
 
@@ -156,7 +155,7 @@ void TradeManager::checkCurrentPrice(const double price) {
         return;
     }
 
-    if ((std::chrono::steady_clock::now() - startTrade > settings::tradeTimeOut) &&
+    if (tradeIsOpen_ && (std::chrono::steady_clock::now() - startTrade > settings::tradeTimeOut) &&
             !waitCloseLimitOrder_ && !waitCloseMarketOrder_) {
         std::cout << "close by timeout " << std::endl;
         timeoutCount++;
@@ -196,6 +195,7 @@ void TradeManager::checkMainOrder(const OrderStatus &orderStatus) {
         countLimitOpenFilled++;
         startTrade = std::chrono::steady_clock::now();
         openPrice = currentTrade_.openLimitOrder.price;
+        tradeIsOpen_ = true;
         //! NOTE: На случай, если отправили отмену ордера, а он в этот момент исполнился.
         if (waitOpenLimitOrder_ == false) {
             std::cout << "limit open order canceled but released" << std::endl;
@@ -237,6 +237,10 @@ void TradeManager::checkMainOrder(const OrderStatus &orderStatus) {
 
 void TradeManager::checkCloseLimitOrder(const OrderStatus &orderStatus) {
     if (orderStatus == OrderStatus_Filled) {
+        closePrice = currentTrade_.closeLimitOrder.price;
+        tradeIsOpen_ = false;
+        countLimitCloseFilled++;
+        printData();
         currentTradeSide_ = std::nullopt;
         waitCancelCloseLimitOrder_ = false;
 
@@ -261,6 +265,10 @@ void TradeManager::checkCloseLimitOrder(const OrderStatus &orderStatus) {
 
 void TradeManager::checkCloseMarketOrder(const OrderStatus &orderStatus) {
     if (orderStatus == OrderStatus_Filled) {
+        tradeIsOpen_ = false;
+        closePrice = currentTrade_.closeMarketOrder.price;
+        countCloseMarket++;
+        printData();
         currentTradeSide_ = std::nullopt;
         waitCloseMarketOrder_ = false;
     }
@@ -268,6 +276,10 @@ void TradeManager::checkCloseMarketOrder(const OrderStatus &orderStatus) {
 
 void TradeManager::checkSLTP() {
     if (!hasOpenTrade()) {
+        return;
+    }
+
+    if (currentTrade_.ordersStatus[currentTrade_.openLimitOrder.req_id] != OrderStatus_Filled) {
         return;
     }
 
@@ -290,4 +302,20 @@ void TradeManager::checkSLTP() {
         std::cout << "TradeManager::checkSLTP: take profit buy trade" << std::endl;
         closeTrade();
     }
+}
+
+void TradeManager::printData() {
+    double profit = closePrice - openPrice;
+    if (currentTradeSide_ == Side_Sell) {
+        profit *= -1;
+    }
+    totalProfit += profit;
+    totalCount++;
+
+    std::cout << "profit: " << profit << " total profit: " << totalProfit
+              << " count open limit: " << countLimitOpenFilled
+              << " miss open: " << countLimitOpenMiss << " close limit: " << countLimitCloseFilled
+              << " close market: " << countCloseMarket
+              << " miss close limit: " << countLimitCloseMiss << std::endl;
+    std::cout << "===============" << std::endl;
 }

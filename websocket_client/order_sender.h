@@ -57,4 +57,6 @@ private:
     void serialize_replace_order(std::string &buffer, const OrderRequest &order);
 
     void serialize_cancel_order(std::string &buffer, const OrderRequest &order);
+
+    void checkCreate();
 };

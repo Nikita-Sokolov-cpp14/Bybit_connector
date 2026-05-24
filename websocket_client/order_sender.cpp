@@ -176,6 +176,7 @@ void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
             case TypeOrderOperation_Cancel:
                 break;
             case TypeOrderOperation_Create:
+                checkCreate();
                 break;
             case TypeOrderOperation_Amend:
                 break;
@@ -247,7 +248,7 @@ void OrderSender::sendOrder(const OrderRequest &order) {
             return;
     }
 
-    std::cout << "отправка ордера " << write_buffer_ << std::endl;
+    std::cout << "OrderSender::sendOrder: отправка ордера " << write_buffer_ << std::endl;
     // у cancel и replace свои реализации.
 
     auto self = static_cast<OrderSender *>(shared_from_this().get());
@@ -452,4 +453,10 @@ void OrderSender::on_write(beast::error_code ec) {
 
     // Продолжаем с очередью
     sendNext();
+}
+
+void OrderSender::checkCreate() {
+    if (orderOperation_.retCode != 0) {
+        std::cout << "OrderSender::checkCreate: error: " << orderOperation_.retMsg << std::endl;
+    }
 }

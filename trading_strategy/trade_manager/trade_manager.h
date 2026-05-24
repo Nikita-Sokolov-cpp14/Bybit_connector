@@ -44,10 +44,8 @@ private:
     std::optional<Side> currentTradeSide_;
     Trade currentTrade_;
 
-    // std::atomic<double> priceOpen_;
-    // std::atomic<double> priceDlose_;
-
     double openPrice;
+    double closePrice;
     double currentPrice;
 
     std::chrono::_V2::steady_clock::time_point startTrade;
@@ -58,6 +56,7 @@ private:
     bool waitCloseLimitOrder_;
     bool waitCloseMarketOrder_;
     bool waitCancelCloseLimitOrder_;
+    bool tradeIsOpen_;
 
     void checkMainOrder(const OrderStatus &orderStatus);
     // void checkStopLoss(const OrderStatus &orderStatus);
@@ -66,4 +65,6 @@ private:
     void checkCloseMarketOrder(const OrderStatus &orderStatus);
 
     void checkSLTP();
+
+    void printData();
 };
