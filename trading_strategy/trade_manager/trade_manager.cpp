@@ -282,4 +282,12 @@ void TradeManager::checkSLTP() {
             waitCloseMarketOrder_ = true;
         }
     }
+
+    if (currentTradeSide_ == Side_Sell && (currentPrice <= currentTrade_.takeProfitPrice)) {
+        std::cout << "TradeManager::checkSLTP: take profit sell trade" << std::endl;
+        closeTrade();
+    } else if (currentTradeSide_ == Side_Buy && (currentPrice >= currentTrade_.takeProfitPrice)) {
+        std::cout << "TradeManager::checkSLTP: take profit buy trade" << std::endl;
+        closeTrade();
+    }
 }
