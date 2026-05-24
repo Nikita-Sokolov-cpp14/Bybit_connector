@@ -14,6 +14,10 @@
 struct Trade {
     Trade();
 
+    // Функциональный объект для отправки ордеров
+    using OrderSender = std::function<bool(const OrderRequest &)>;
+    OrderSender orderSender;
+
     OrderRequest orderOpenTrade;
     OrderRequest stopLoss;
     OrderRequest takeProfit;
@@ -35,14 +39,15 @@ struct Trade {
     void clearStatuses();
 
     void makeTrade(const double price, const Side &side);
-    void makeTradeByLimitOrder(const double price, const Side &side);
-    void makeTPSLOrders(const double price, const Side &side);
-    void makeCloseLimitOrder(const double price, const Side &side);
+    bool makeTradeByLimitOrder(const double price, const Side &side);
+    bool makeTPSLOrders(const double price, const Side &side);
+    bool makeCloseLimitOrder(const double price, const Side &side);
 
     void calcSLTP(double price, const Side &side);
 
     bool checkOrderStatus();
 
-    void cancelAllOrders();
-    void cancelOrder(const uint64_t orderId);
+    bool cancelOrder(const uint64_t orderId);
+
+    bool sendOrder(const OrderRequest &order);
 };

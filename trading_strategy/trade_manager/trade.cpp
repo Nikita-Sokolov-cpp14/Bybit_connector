@@ -16,6 +16,7 @@ const uint32_t idCloseOrder = 4;
 } // namespace
 
 Trade::Trade() :
+orderSender(),
 tradeNumber(0),
 currentTradeNumber(0),
 takeProfitPrice(0.0),
@@ -93,7 +94,7 @@ void Trade::makeTrade(double price, const Side &side) {
                                       .count();
 }
 
-void Trade::makeTradeByLimitOrder(const double price, const Side &side) {
+bool Trade::makeTradeByLimitOrder(const double price, const Side &side) {
     currentTradeNumber = tradeNumber;
     tradeNumber++;
     ordersStatus.clear();
@@ -105,9 +106,11 @@ void Trade::makeTradeByLimitOrder(const double price, const Side &side) {
             std::chrono::steady_clock::now().time_since_epoch())
                                           .count();
     ordersStatus[openLimitOrder.req_id] = OrderStatus_Unknown;
+
+    return sendOrder(openLimitOrder);
 }
 
-void Trade::makeTPSLOrders(const double price, const Side &side) {
+bool Trade::makeTPSLOrders(const double price, const Side &side) {
     calcSLTP(price, side);
 
     stopLoss.req_id = currentTradeNumber * 10 + idStopLoss; //! TODO: +2 - это стоп
@@ -125,16 +128,20 @@ void Trade::makeTPSLOrders(const double price, const Side &side) {
             std::chrono::steady_clock::now().time_since_epoch())
                                       .count();
     ordersStatus[takeProfit.req_id] = OrderStatus_Unknown;
+
+    return (sendOrder(stopLoss) && sendOrder(takeProfit));
 }
 
-void Trade::makeCloseLimitOrder(const double price, const Side &side) {
-    openLimitOrder.req_id = currentTradeNumber * 10 + idCloseOrder;
-    openLimitOrder.side = side;
-    openLimitOrder.price = price;
-    openLimitOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
+bool Trade::makeCloseLimitOrder(const double price, const Side &side) {
+    closeLimitOrder.req_id = currentTradeNumber * 10 + idCloseOrder;
+    closeLimitOrder.side = side;
+    closeLimitOrder.price = price;
+    closeLimitOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                           .count();
-    ordersStatus[openLimitOrder.req_id] = OrderStatus_Unknown;
+    ordersStatus[closeLimitOrder.req_id] = OrderStatus_Unknown;
+
+    return sendOrder(closeLimitOrder);
 }
 
 void Trade::calcSLTP(double price, const Side &side) {
@@ -162,13 +169,26 @@ bool Trade::checkOrderStatus() {
     return false;
 }
 
-void Trade::cancelAllOrders() {
-}
-
-void Trade::cancelOrder(const uint64_t orderId) {
+bool Trade::cancelOrder(const uint64_t orderId) {
     orderCancel.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                        .count();
     std::snprintf(orderCancel.order_link_id, sizeof(orderCancel.order_link_id), "%llu",
             static_cast<unsigned long long>(orderId));
+
+    return sendOrder(orderCancel);
+}
+
+bool Trade::sendOrder(const OrderRequest &order) {
+    if (!orderSender) {
+        std::cout << "Trade::sendOrder: orderSender is undefined" << std::endl;
+        return false;
+    }
+
+    if (!orderSender(order)) {
+        std::cout << "Trade::sendOrder: can't place order" << std::endl;
+        return false;
+    }
+
+    return true;
 }

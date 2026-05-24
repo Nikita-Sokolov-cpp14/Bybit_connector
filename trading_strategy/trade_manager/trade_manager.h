@@ -14,10 +14,7 @@ class TradeManager {
 public:
     TradeManager();
 
-    // Функциональный объект для отправки ордеров
-    using OrderSender = std::function<bool(const OrderRequest &)>;
-
-    void setOrderSender(OrderSender orderSender);
+    void setOrderSender(Trade::OrderSender orderSender);
     void setOrder(const OrderHFT &order);
     void setPosition(const PositionHFT &position);
 
@@ -26,8 +23,7 @@ public:
     bool hasOpenBuyTrade() const;
     bool hasOpenSellTrade() const;
 
-    void closeBuyTrade();
-    void closeSellTrade();
+    void closeTrade();
 
     // Проверить - не противоположный ли сигнал?
     void checkInverseSignal(const Side &side);
@@ -37,8 +33,6 @@ public:
     void checkCurrentPrice(const double price);
 
 private:
-    OrderSender orderSender_;
-
     std::optional<Side> currentTradeSide_;
     Trade currentTrade_;
 
@@ -49,12 +43,11 @@ private:
     double currentPrice;
 
     std::chrono::_V2::steady_clock::time_point startTrade;
-    std::chrono::_V2::steady_clock::time_point timePlaceOrder_;
+    std::chrono::_V2::steady_clock::time_point timePlaceOpenOrder_;
+    std::chrono::_V2::steady_clock::time_point timePlaceCloseOrder_;
 
     bool waitOpenLimitOrder_;
-
-    void openTrade();
-    void closeTrade(const double endPrice);
+    bool waitCloseLimitOrder_;
 
     void checkMainOrder(const OrderStatus &orderStatus);
     void checkStopLoss(const OrderStatus &orderStatus);

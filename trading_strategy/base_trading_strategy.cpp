@@ -20,7 +20,7 @@ void BaseTradingStrategy::stop() {
     }
 }
 
-void BaseTradingStrategy::setOrderSender(TradeManager::OrderSender orderSender) {
+void BaseTradingStrategy::setOrderSender(Trade::OrderSender orderSender) {
     tradeManager_.setOrderSender(orderSender);
 }
 
