@@ -18,11 +18,11 @@ struct Trade {
     using OrderSender = std::function<bool(const OrderRequest &)>;
     OrderSender orderSender;
 
-    OrderRequest orderOpenTrade;
     OrderRequest stopLoss;
     OrderRequest takeProfit;
     OrderRequest openLimitOrder;
     OrderRequest closeLimitOrder;
+    OrderRequest closeMarketOrder;
     OrderRequest orderCancel;
 
     uint64_t tradeNumber;
@@ -38,10 +38,10 @@ struct Trade {
 
     void clearStatuses();
 
-    void makeTrade(const double price, const Side &side);
     bool makeTradeByLimitOrder(const double price, const Side &side);
     bool makeTPSLOrders(const double price, const Side &side);
     bool makeCloseLimitOrder(const double price, const Side &side);
+    bool makeCloseMarketOrder(const double price, const Side &side);
 
     void calcSLTP(double price, const Side &side);
 
