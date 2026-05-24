@@ -6,10 +6,12 @@
 #include "data_structures/public_trade.h"
 
 ImbalanceAndLarge::ImbalanceAndLarge() :
+orderMainData_(),
 disbalanceAverage_(0),
 orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
 needCheckCurPrice_(false),
+orderIsUpdate_(false),
 midPrices_(settings::historyMidPriceSize),
 midDisbalance_(settings::averrageDisbalanceCount),
 publicTrades_(settings::historyPublicTradeSize),
@@ -61,7 +63,19 @@ void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
     // std::cout << "orderType " << order.orderType << std::endl;
     // std::cout << "price " << order.price << std::endl;
     // std::cout << "qty " << order.qty << std::endl;
-    tradeManager_.setOrder(order);
+    // tradeManager_.setOrder(order);
+
+    {
+        std::lock_guard lg(orderMt_);
+        orderMainData_.orderId = order.orderId;
+        orderMainData_.orderLinkId = order.orderLinkId;
+        orderMainData_.side = order.side;
+        orderMainData_.orderStatus = order.orderStatus;
+    }
+
+    newData_.store(true);
+    orderIsUpdate_.store(true);
+    dataCV_.notify_all();
 }
 
 void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
@@ -69,7 +83,8 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
     // std::cout << "id " << position.id << std::endl;
     // std::cout << "side " << position.side << std::endl;
     // std::cout << "size " << position.size << std::endl;
-    tradeManager_.setPosition(position);
+    // newData_.store(true);
+    // tradeManager_.setPosition(position);
 }
 
 double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
@@ -97,7 +112,7 @@ double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
 void ImbalanceAndLarge::onMarketUpdate() {
     if (needCheckCurPrice_.load()) {
         tradeManager_.checkCurrentPrice(currentMidPrice_.load());
-        needCheckCurPrice_.store(true);
+        needCheckCurPrice_.store(false);
     }
 
     //! NOTE: Дисбаланс - основной сигнал
@@ -110,6 +125,12 @@ void ImbalanceAndLarge::onMarketUpdate() {
     if (publicTradeIsUpdate_) {
         checkSignalTrades();
         publicTradeIsUpdate_ = false;
+    }
+
+    if (orderIsUpdate_.load()) {
+        std::lock_guard lg(orderMt_);
+        orderIsUpdate_.store(false);
+        tradeManager_.setOrder(orderMainData_);
     }
 
     if (signalDisbalance_.has_value() && signalTrade_.has_value() &&

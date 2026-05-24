@@ -47,7 +47,7 @@ void TradeManager::setOrderSender(Trade::OrderSender orderSender) {
     currentTrade_.orderSender = orderSender;
 }
 
-void TradeManager::setOrder(const OrderHFT &order) {
+void TradeManager::setOrder(const OrderMainData &order) {
     uint64_t orderLinkId = convertTo<uint64_t>(order.orderLinkId);
     auto it = currentTrade_.ordersStatus.find(orderLinkId);
     if (it == currentTrade_.ordersStatus.end()) {
@@ -114,12 +114,12 @@ bool TradeManager::hasOpenSellTrade() const {
 }
 
 void TradeManager::checkInverseSignal(const Side &side) {
-    // Если лимитный ордер на вход не выполнен, то сделка не открыта и обратный сигнал не рассматриваем
-    if (currentTrade_.ordersStatus[currentTrade_.openLimitOrder.req_id] != OrderStatus_Filled) {
+    if (!hasOpenTrade()) {
         return;
     }
 
-    if (!hasOpenTrade()) {
+    // Если лимитный ордер на вход не выполнен, то сделка не открыта и обратный сигнал не рассматриваем
+    if (currentTrade_.ordersStatus[currentTrade_.openLimitOrder.req_id] != OrderStatus_Filled) {
         return;
     }
 

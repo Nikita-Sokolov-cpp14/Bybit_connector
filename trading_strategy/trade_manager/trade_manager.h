@@ -12,10 +12,18 @@
 
 class TradeManager {
 public:
+    struct OrderMainData {
+        std::string_view orderId; // 5. ID ордера
+        std::string_view orderLinkId; // 6. Клиентский ID
+        Side side; // 7. Сторона
+
+        OrderStatus orderStatus; // 8. Статус (Filled/PartiallyFilled/Cancelled)
+    };
+
     TradeManager();
 
     void setOrderSender(Trade::OrderSender orderSender);
-    void setOrder(const OrderHFT &order);
+    void setOrder(const OrderMainData &order);
     void setPosition(const PositionHFT &position);
 
     void makeTrade(const double price, const Side &side);

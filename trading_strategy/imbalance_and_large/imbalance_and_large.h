@@ -27,15 +27,19 @@ protected:
     void onMarketUpdate() override;
 
 private:
-    double calcDisbalance(const OrderBook &orderbook);
+    TradeManager::OrderMainData orderMainData_;
+    std::mutex orderMt_;
 
     std::atomic<float> disbalanceAverage_;
     std::atomic<bool> orderbookIsUpdate_;
     std::atomic<bool> publicTradeIsUpdate_;
     std::atomic<bool> needCheckCurPrice_;
+    std::atomic<bool> orderIsUpdate_;
     std::atomic<double> currentBestAskPrice_;
     std::atomic<double> currentBestBidPrice_;
     std::atomic<double> currentMidPrice_;
+
+    double calcDisbalance(const OrderBook &orderbook);
 
     /**
      * @brief Кольцевой буфер для хранения средней цены.
