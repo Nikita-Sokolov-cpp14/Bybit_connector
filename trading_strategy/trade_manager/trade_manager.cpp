@@ -21,6 +21,8 @@ int countLimitCloseMiss = 0;
 int countLimitCloseFilled = 0;
 int countCloseMarket = 0;
 
+int maxCountTrades = 1;
+
 inline double CalcLimitPrice(const double price, const Side &side) {
     double delta = settings::spaceToLimitPrice * price;
     if (side == Side_Buy) {
@@ -79,6 +81,10 @@ void TradeManager::setPosition(const PositionHFT &position) {
 }
 
 void TradeManager::makeTrade(const double price, const Side &side) {
+    if (totalCount > maxCountTrades) {
+        return;
+    }
+
     if (hasOpenTrade()) {
         if ((currentTradeSide_.value() == Side_Buy && side == Side_Buy) ||
                 (currentTradeSide_.value() == Side_Sell && side == Side_Sell)) {
@@ -257,10 +263,10 @@ void TradeManager::checkCloseLimitOrder(const OrderStatus &orderStatus) {
         }
     }
 
-    if (!currentTrade_.cancelOrder(currentTrade_.takeProfit.req_id) ||
-            !currentTrade_.cancelOrder(currentTrade_.stopLoss.req_id)) {
-        std::cout << "TradeManager::checkCloseLimitOrder: can't send orders" << std::endl;
-    }
+    // if (!currentTrade_.cancelOrder(currentTrade_.takeProfit.req_id) ||
+    //         !currentTrade_.cancelOrder(currentTrade_.stopLoss.req_id)) {
+    //     std::cout << "TradeManager::checkCloseLimitOrder: can't send orders" << std::endl;
+    // }
 }
 
 void TradeManager::checkCloseMarketOrder(const OrderStatus &orderStatus) {
