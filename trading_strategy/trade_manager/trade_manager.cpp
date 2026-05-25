@@ -124,7 +124,11 @@ bool TradeManager::hasOpenSellTrade() const {
 
 void TradeManager::checkInverseSignal(const Side &side) {
     // Если лимитный ордер на вход не выполнен, то сделка не открыта и обратный сигнал не рассматриваем
-    if (!hasOpenTrade() && !tradeIsOpen_) {
+    if (!hasOpenTrade()) {
+        return;
+    }
+
+    if (!tradeIsOpen_) {
         return;
     }
 
@@ -172,17 +176,18 @@ void TradeManager::checkCurrentPrice(const double price) {
     //! NOTE: Ожидаем взятие лимитного ордера и прошло время ожидания больше допустимого.
     if (waitOpenLimitOrder_ &&
             (std::chrono::steady_clock::now() - timePlaceOpenOrder_ >
-                    settings::waitLimitOrderTime)) {
+                    settings::waitOpenLimitOrderTime)) {
         countLimitOpenMiss++;
         std::cout << "limit open order not released " << std::endl;
         waitOpenLimitOrder_ = false;
         currentTrade_.cancelOrder(currentTrade_.openLimitOrder.req_id);
+        currentTradeSide_ = std::nullopt;
         return;
     }
 
     if (waitCloseLimitOrder_ && !waitCloseMarketOrder_ &&
             (std::chrono::steady_clock::now() - timePlaceCloseOrder_ >
-                    settings::waitLimitOrderTime)) {
+                    settings::waitCloseLimitOrderTime)) {
         countLimitCloseMiss++;
         waitCloseLimitOrder_ = false;
         std::cout << "limit close order not released " << std::endl;
