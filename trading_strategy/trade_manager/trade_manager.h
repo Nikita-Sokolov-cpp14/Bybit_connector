@@ -66,5 +66,11 @@ private:
 
     void checkSLTP();
 
+    void cancelOpenLimitOrder();
+
+    bool sideIsEqual(const Side &side);
+
+    void moveOpenOrderToPrice();
+
     void printData();
 };

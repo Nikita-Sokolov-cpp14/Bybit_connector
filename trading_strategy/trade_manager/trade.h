@@ -50,4 +50,6 @@ struct Trade {
     bool cancelOrder(const uint64_t orderId);
 
     bool sendOrder(const OrderRequest &order);
+
+    bool replaceLimitOpenOrder(double price);
 };

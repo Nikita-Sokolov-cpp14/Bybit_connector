@@ -18,7 +18,7 @@ const uint32_t idCloseMarketOrder = 5;
 
 Trade::Trade() :
 orderSender(),
-tradeNumber(22275),
+tradeNumber(22325),
 currentTradeNumber(0),
 takeProfitPrice(0.0),
 stopLossPrice(0.0),
@@ -79,6 +79,7 @@ bool Trade::makeTradeByLimitOrder(const double price, const Side &side) {
     tradeNumber++;
     ordersStatus.clear();
 
+    openLimitOrder.typeOrderRequest = TypeOrderRequest_New;
     openLimitOrder.req_id = currentTradeNumber * 10 + idOpenOrder; // Основной ордер +1
     openLimitOrder.side = side;
     openLimitOrder.price = price;
@@ -129,7 +130,7 @@ bool Trade::makeCloseMarketOrder(const Side &side) {
     closeMarketOrder.side = side;
     closeMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
-                                           .count();
+                                            .count();
     ordersStatus[closeMarketOrder.req_id] = OrderStatus_Unknown;
 
     return sendOrder(closeMarketOrder);
@@ -180,4 +181,11 @@ bool Trade::sendOrder(const OrderRequest &order) {
     }
 
     return true;
+}
+
+bool Trade::replaceLimitOpenOrder(double price) {
+    openLimitOrder.typeOrderRequest = TypeOrderRequest_Replace;
+    openLimitOrder.price = price;
+
+    return sendOrder(openLimitOrder);
 }
