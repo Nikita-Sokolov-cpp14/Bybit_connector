@@ -1,6 +1,7 @@
 #include "imbalance_and_large.h"
 
 #include <iostream>
+#include <algorithm>
 
 #include "settings.h"
 #include "data_structures/public_trade.h"
@@ -161,8 +162,11 @@ void ImbalanceAndLarge::onMarketUpdate() {
     //     tradeManager_.checkInverseSignal(signalInverseDisbalance_.value());
     // }
 
-    if (signalDisbalance_.has_value() && countSignal_.load() >= settings::countSignal) {
-        tradeManager_.checkInverseSignal(signalDisbalance_.value());
+    // if (signalDisbalance_.has_value() && countSignal_.load() >= settings::countSignal) {
+    //     tradeManager_.checkInverseSignal(signalDisbalance_.value());
+    // }
+    if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
+        tradeManager_.checkInverseSignal(signalTotal_.value());
     }
 }
 
@@ -208,6 +212,8 @@ void ImbalanceAndLarge::checkSignalDisbalance() {
             countSignal_++;
         } else if (signalDisbalance_ == Side_Sell) {
             countSignal_.store(1);
+        } else {
+            countSignal_ = std::max(0UL, (countSignal_ - 1));
         }
         signalDisbalance_ = Side_Buy;
     } else if (disbalanceAverage_ <= settings::sellDisbalance) {
@@ -215,6 +221,8 @@ void ImbalanceAndLarge::checkSignalDisbalance() {
             countSignal_++;
         } else if (signalDisbalance_ == Side_Buy) {
             countSignal_.store(1);
+        } else {
+            countSignal_ = std::max(0UL, (countSignal_ - 1));
         }
         signalDisbalance_ = Side_Sell;
     } else {

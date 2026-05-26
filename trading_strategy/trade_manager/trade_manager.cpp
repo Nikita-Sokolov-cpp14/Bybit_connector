@@ -238,7 +238,6 @@ void TradeManager::checkMainOrder(const OrderStatus &orderStatus) {
 // void TradeManager::checkStopLoss(const OrderStatus &orderStatus) {
 //     if (orderStatus == OrderStatus_Filled) {
 //         currentTradeSide_ = std::nullopt;
-
 //         if (!currentTrade_.cancelOrder(currentTrade_.closeLimitOrder.req_id) ||
 //                 !currentTrade_.cancelOrder(currentTrade_.takeProfit.req_id)) {
 //             std::cout << "TradeManager::checkStopLoss: can't send orders" << std::endl;
