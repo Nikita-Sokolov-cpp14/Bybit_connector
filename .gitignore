@@ -23,3 +23,6 @@ clion_compound/
 test.txt
 auth.ini
 experiment/
+win_libraries/
+build_windows/
+cacert.pem

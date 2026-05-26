@@ -127,9 +127,13 @@ void ImbalanceAndLarge::onMarketUpdate() {
     // }
     //! TODO: Здесь закрытие по полному противоположному сигналу.
     //! TODO: Пока противоположный сигнал никак не учитываем
-    if (signalInverseDisbalance_.has_value() &&
-            countInverseSignal_.load() >= settings::countInverseSignal) {
-        tradeManager_.checkInverseSignal(signalInverseDisbalance_.value());
+    // if (signalInverseDisbalance_.has_value() &&
+    //         countInverseSignal_.load() >= settings::countInverseSignal) {
+    //     tradeManager_.checkInverseSignal(signalInverseDisbalance_.value());
+    // }
+
+    if (signalDisbalance_.has_value() && countSignal_.load() >= settings::countSignal) {
+        tradeManager_.checkInverseSignal(signalDisbalance_.value());
     }
 }
 
@@ -137,19 +141,32 @@ void ImbalanceAndLarge::checkSignalTrades() {
     //! TODO: Нужно внимательно проследить, что новые данные о сделках не добавятся.
     size_t countPlusTick = 0;
     size_t countminusTick = 0;
+
+    double plusTickQtu = 0.0;
+    double minusTickQtu = 0.0;
+
     for (const auto &trade : publicTrades_.back()) {
         if (trade.L == PublicTrade::TickDirection_PlusTick) {
             countPlusTick++;
+            plusTickQtu += trade.v;
         }
         if (trade.L == PublicTrade::TickDirection_MinusTick) {
             countminusTick++;
+            minusTickQtu += trade.v;
         }
     }
 
-    //! TODO: Это строгий сигнал. Можно ослабить, если будет очень мало сделок.
-    if (countPlusTick > 0 && countminusTick == 0) {
+    // if (countPlusTick > countminusTick) {
+    //     signalTrade_ = Side_Buy;
+    // } else if (countminusTick > countPlusTick) {
+    //     signalTrade_ = Side_Sell;
+    // } else {
+    //     signalTrade_ = std::nullopt;
+    // }
+
+    if (plusTickQtu > minusTickQtu) {
         signalTrade_ = Side_Buy;
-    } else if (countminusTick > 0 && countPlusTick == 0) {
+    } else if (minusTickQtu > plusTickQtu) {
         signalTrade_ = Side_Sell;
     } else {
         signalTrade_ = std::nullopt;
@@ -160,19 +177,18 @@ void ImbalanceAndLarge::checkSignalDisbalance() {
     if (disbalanceAverage_ >= settings::buyDisbalance) {
         if (signalDisbalance_ == Side_Buy) {
             countSignal_++;
-        } else {
+        } else if (signalDisbalance_ == Side_Sell) {
             countSignal_.store(1);
         }
         signalDisbalance_ = Side_Buy;
     } else if (disbalanceAverage_ <= settings::sellDisbalance) {
         if (signalDisbalance_ == Side_Sell) {
             countSignal_++;
-        } else {
+        } else if (signalDisbalance_ == Side_Buy) {
             countSignal_.store(1);
         }
         signalDisbalance_ = Side_Sell;
     } else {
-        countSignal_.store(0);
         signalDisbalance_ = std::nullopt;
     }
 

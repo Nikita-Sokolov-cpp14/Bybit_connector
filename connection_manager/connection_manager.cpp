@@ -164,7 +164,7 @@ void ConnectionManager::notifyOrderbookUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(orderBook_.mt);
     if (tradingStrategy_) {
-        // tradingStrategy_->setOrderbook(orderBook_);
+        tradingStrategy_->setOrderbook(orderBook_);
     }
 }
 
@@ -172,7 +172,7 @@ void ConnectionManager::notifyTradeUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(publicTrade_.mt);
     if (tradingStrategy_) {
-        // tradingStrategy_->setPublicTradeData(std::move(publicTrade_.data));
+        tradingStrategy_->setPublicTradeData(std::move(publicTrade_.data));
     }
 }
 
