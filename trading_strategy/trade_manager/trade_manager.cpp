@@ -139,13 +139,15 @@ void TradeManager::openTrade() {
 }
 
 void TradeManager::closeTrade(const double endPrice) {
-    double profit = endPrice - openPrice - 43.0;
+    double profit = endPrice - openPrice;
     if (currentTradeSide_.value() == Side_Sell) {
         profit *= -1.0;
     }
     if (profit > 0.0) {
         countPositive++;
     }
+
+    profit -= 43.0;
     double profitPercent = profit / endPrice;
 
     totalCount++;
