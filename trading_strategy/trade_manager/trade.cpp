@@ -18,7 +18,7 @@ const uint32_t idCloseMarketOrder = 5;
 
 Trade::Trade() :
 orderSender(),
-tradeNumber(22325),
+tradeNumber(22475),
 currentTradeNumber(0),
 takeProfitPrice(0.0),
 stopLossPrice(0.0),

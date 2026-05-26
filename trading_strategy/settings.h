@@ -11,8 +11,8 @@ static const size_t disbalanceDepthCalc = 30;
 static const size_t historyMidPriceSize = 50;
 static const size_t historyPublicTradeSize = 50;
 
-static const double buyDisbalance = 2.0;
-static const double sellDisbalance = 0.5;
+static const double buyDisbalance = 2.5;
+static const double sellDisbalance = 0.4;
 
 static const double inverseBuyDisbalance = 4.0;
 static const double inverseSellDisbalance = 0.25;
@@ -29,10 +29,10 @@ static const double coefTakeProfit = 0.15 / 100.0; // В долях, а не п�
 static const double coefStopLoss = 0.15 / 100.0; // В долях, а не процентах. 1%
 
 // Отступ лимитной цены для лимитного ордера при входе в сделку
-static const double spaceToLimitPrice = 0.0003 / 100.0;
+static const double spaceToLimitPrice = 0.0001 / 100.0;
 
 static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(60 * 1000);
 static const std::chrono::milliseconds waitOpenLimitOrderTime = std::chrono::milliseconds(15000);
-static const std::chrono::milliseconds waitCloseLimitOrderTime = std::chrono::milliseconds(1000);
+static const std::chrono::milliseconds waitCloseLimitOrderTime = std::chrono::milliseconds(5000);
 
 }

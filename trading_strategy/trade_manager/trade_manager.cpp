@@ -21,7 +21,7 @@ int countLimitCloseMiss = 0;
 int countLimitCloseFilled = 0;
 int countCloseMarket = 0;
 
-int maxCountTrades = 5;
+int maxCountTrades = 3;
 
 inline double CalcLimitPrice(const double price, const Side &side) {
     double delta = settings::spaceToLimitPrice * price;
@@ -134,6 +134,12 @@ void TradeManager::checkInverseSignal(const Side &side) {
             // moveOpenOrderToPrice();
         } else {
             cancelOpenLimitOrder();
+        }
+    }
+
+    if (waitCloseLimitOrder_ && checkProfit()) {
+        if (sideIsEqual(side)) {
+            timePlaceCloseOrder_ = std::chrono::steady_clock::now();
         }
     }
 
@@ -338,9 +344,20 @@ bool TradeManager::sideIsEqual(const Side &side) {
 }
 
 void TradeManager::moveOpenOrderToPrice() {
-    if(!currentTrade_.replaceLimitOpenOrder(CalcLimitPrice(currentPrice, currentTradeSide_.value()))) {
+    if (!currentTrade_.replaceLimitOpenOrder(
+                CalcLimitPrice(currentPrice, currentTradeSide_.value()))) {
         std::cout << "TradeManager::moveOpenOrderToPrice: can't replace order" << std::endl;
     }
+}
+
+bool TradeManager::checkProfit() {
+    if ((currentTradeSide_ == Side_Buy) && (currentPrice > openPrice)) {
+        return true;
+    } else if ((currentTradeSide_ == Side_Sell) && (currentPrice < openPrice)) {
+        return true;
+    }
+
+    return false;
 }
 
 void TradeManager::printData() {

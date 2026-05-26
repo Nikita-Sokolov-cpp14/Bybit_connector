@@ -72,5 +72,7 @@ private:
 
     void moveOpenOrderToPrice();
 
+    bool checkProfit();
+
     void printData();
 };
