@@ -32,7 +32,7 @@ static const double coefStopLoss = 0.15 / 100.0; // В долях, а не пр�
 static const double spaceToLimitPrice = 0.0001 / 100.0;
 
 static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(60 * 1000);
-static const std::chrono::milliseconds waitOpenLimitOrderTime = std::chrono::milliseconds(15000);
+static const std::chrono::milliseconds waitOpenLimitOrderTime = std::chrono::milliseconds(5000);
 static const std::chrono::milliseconds waitCloseLimitOrderTime = std::chrono::milliseconds(5000);
 
 }

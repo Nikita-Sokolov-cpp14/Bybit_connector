@@ -21,7 +21,7 @@ int countLimitCloseMiss = 0;
 int countLimitCloseFilled = 0;
 int countCloseMarket = 0;
 
-int maxCountTrades = 3;
+int maxCountTrades = 5;
 
 inline double CalcLimitPrice(const double price, const Side &side) {
     double delta = settings::spaceToLimitPrice * price;
