@@ -7,37 +7,28 @@
 #include "data_structures/public_trade.h"
 
 ImbalanceAndLarge::ImbalanceAndLarge() :
-disbalanceAverage_(0),
-orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
 midPrices_(settings::historyMidPriceSize),
-midDisbalance_(settings::averrageDisbalanceCount),
 publicTrades_(settings::historyPublicTradeSize),
 currentBestAskPrice_(0.0),
 currentBestBidPrice_(0.0),
 currentMidPrice_(0.0),
-signalDisbalance_(std::nullopt),
-signalInverseDisbalance_(std::nullopt),
 signalTrade_(std::nullopt),
 signalTotal_(std::nullopt),
-countInverseSignal_(0),
-countSignal_(0) {
+imbalanceIndicator_() {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
-    midDisbalance_.push_back(calcDisbalance(orderbook));
-    disbalanceAverage_.store(std::accumulate(midDisbalance_.begin(), midDisbalance_.end(), 0.0) /
-            midDisbalance_.size());
+    imbalanceIndicator_.setOrderbook(orderbook);
 
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
     midPrices_.push_back(currentMidPrice_.load());
-    orderbookIsUpdate_.store(true);
-    newData_.store(true);
 
     tradeManager_.checkCurrentPrice(currentMidPrice_.load());
 
+    newData_.store(true);
     dataCV_.notify_all();
 }
 
@@ -70,56 +61,36 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
     std::cout << "size " << position.size << std::endl;
 }
 
-double ImbalanceAndLarge::calcDisbalance(const OrderBook &orderbook) {
-    double sumVolAsks = 0;
-    double sumVolBids = 0;
-
-    const size_t depthAsks = std::min(settings::disbalanceDepthCalc, orderbook.asks.size());
-    const size_t depthBids = std::min(settings::disbalanceDepthCalc, orderbook.bids.size());
-
-    for (auto it = orderbook.asks.begin(); it < orderbook.asks.begin() + depthAsks; ++it) {
-        sumVolAsks += it->second;
-    }
-
-    for (auto it = orderbook.bids.begin(); it < orderbook.bids.begin() + depthBids; ++it) {
-        sumVolBids += it->second;
-    }
-
-    if (sumVolAsks == 0) {
-        return 1.0;
-    }
-
-    return sumVolBids / sumVolAsks;
-}
-
 void ImbalanceAndLarge::onMarketUpdate() {
-    //! NOTE: Дисбаланс - основной сигнал
-    if (orderbookIsUpdate_) {
-        checkSignalDisbalance();
-        orderbookIsUpdate_ = false;
-    }
-
     //! NOTE: Крупная сделка - по большей части просто подтверждение.
     if (publicTradeIsUpdate_) {
         checkSignalTrades();
         publicTradeIsUpdate_ = false;
     }
 
-    if (signalDisbalance_.has_value() && signalTrade_.has_value() &&
-            countSignal_.load() >= settings::countSignal) {
-        if (signalDisbalance_.value() == Side_Buy && signalTrade_.value() == Side_Buy) {
-            tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
-            signalTotal_ = Side_Buy;
-        } else if (signalDisbalance_.value() == Side_Sell && signalTrade_.value() == Side_Sell) {
-            tradeManager_.makeTrade(currentBestAskPrice_, Side_Sell);
-            signalTotal_ = Side_Sell;
-        } else {
-            countSignal_.store(0);
-            signalTotal_ = std::nullopt;
-        }
-    } else {
-        signalTotal_ = std::nullopt;
+    checkSignalTotal();
+
+    if (signalTotal_.has_value() && (signalTotal_.value() == Side_Buy)) {
+        tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
+    } else if (signalTotal_.has_value() && (signalTotal_.value() == Side_Sell)) {
+        tradeManager_.makeTrade(currentBestBidPrice_, Side_Sell);
     }
+
+    // if (signalDisbalance_.has_value() && signalTrade_.has_value() &&
+    //         countSignal_.load() >= settings::countSignal) {
+    //     if (signalDisbalance_.value() == Side_Buy && signalTrade_.value() == Side_Buy) {
+    //         tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
+    //         signalTotal_ = Side_Buy;
+    //     } else if (signalDisbalance_.value() == Side_Sell && signalTrade_.value() == Side_Sell) {
+    //         tradeManager_.makeTrade(currentBestAskPrice_, Side_Sell);
+    //         signalTotal_ = Side_Sell;
+    //     } else {
+    //         countSignal_.store(0);
+    //         signalTotal_ = std::nullopt;
+    //     }
+    // } else {
+    //     signalTotal_ = std::nullopt;
+    // }
 
     //! TODO: Если встретился противоположный сигнал.
     // Подумать - закрывать только по противоположному дисбалансу или по полному противоположному сигналу?
@@ -177,45 +148,10 @@ void ImbalanceAndLarge::checkSignalTrades() {
     }
 }
 
-void ImbalanceAndLarge::checkSignalDisbalance() {
-    if (disbalanceAverage_ >= settings::buyDisbalance) {
-        if (signalDisbalance_ == Side_Buy) {
-            countSignal_++;
-        } else if (signalDisbalance_ == Side_Sell) {
-            countSignal_.store(1);
-        } else {
-            countSignal_ = std::max(0UL, (countSignal_ - 1));
-        }
-        signalDisbalance_ = Side_Buy;
-    } else if (disbalanceAverage_ <= settings::sellDisbalance) {
-        if (signalDisbalance_ == Side_Sell) {
-            countSignal_++;
-        } else if (signalDisbalance_ == Side_Buy) {
-            countSignal_.store(1);
-        } else {
-            countSignal_ = std::max(0UL, (countSignal_ - 1));
-        }
-        signalDisbalance_ = Side_Sell;
-    } else {
-        signalDisbalance_ = std::nullopt;
+void ImbalanceAndLarge::checkSignalTotal() {
+    if (!imbalanceIndicator_.hasSignal()) {
+        signalTotal_ = std::nullopt;
     }
 
-    if (disbalanceAverage_ >= settings::inverseBuyDisbalance) {
-        if (signalInverseDisbalance_ == Side_Buy) {
-            countInverseSignal_++; // продолжаем ту же серию Buy
-        } else {
-            countInverseSignal_.store(1); // новая серия Buy
-        }
-        signalInverseDisbalance_ = Side_Buy;
-    } else if (disbalanceAverage_ <= settings::inverseSellDisbalance) {
-        if (signalInverseDisbalance_ == Side_Sell) {
-            countInverseSignal_++; // продолжаем ту же серию Sell
-        } else {
-            countInverseSignal_.store(1); // новая серия Sell
-        }
-        signalInverseDisbalance_ = Side_Sell;
-    } else {
-        signalInverseDisbalance_ = std::nullopt;
-        countInverseSignal_.store(0);
-    }
+    signalTotal_ = imbalanceIndicator_.getSignal();
 }

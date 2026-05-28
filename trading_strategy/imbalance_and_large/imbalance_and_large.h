@@ -6,6 +6,7 @@
 #include <boost/circular_buffer.hpp>
 #include <optional>
 #include <numeric>
+#include "indicators/imbalance/imbalance_indicator.h"
 
 // struct TradeRecord {
 //     uint64_t timestamp;  // Время сделки (у тебя уже есть поле T)
@@ -27,10 +28,6 @@ protected:
     void onMarketUpdate() override;
 
 private:
-    double calcDisbalance(const OrderBook &orderbook);
-
-    std::atomic<float> disbalanceAverage_;
-    std::atomic<bool> orderbookIsUpdate_;
     std::atomic<bool> publicTradeIsUpdate_;
     std::atomic<double> currentBestAskPrice_;
     std::atomic<double> currentBestBidPrice_;
@@ -44,15 +41,13 @@ private:
      * Сложность вставки в конец - O(1).
      */
     boost::circular_buffer<double> midPrices_;
-    boost::circular_buffer<double> midDisbalance_;
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
-    std::optional<Side> signalDisbalance_;
-    std::optional<Side> signalInverseDisbalance_;
     std::optional<Side> signalTrade_;
     std::optional<Side> signalTotal_;
-    std::atomic<size_t> countInverseSignal_;
-    std::atomic<size_t> countSignal_;
+
+    ImbalanceIndicator imbalanceIndicator_;
 
     void checkSignalTrades();
-    void checkSignalDisbalance();
+
+    void checkSignalTotal();
 };

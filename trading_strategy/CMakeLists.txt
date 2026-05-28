@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 add_subdirectory(trade_manager)
+add_subdirectory(indicators)
 
 add_library(trading_strategy
     base_trading_strategy.cpp
@@ -10,6 +11,7 @@ add_library(trading_strategy
 target_link_libraries(trading_strategy PRIVATE
     data_structures
     trade_manager
+    indicators
 )
 
 target_include_directories(trading_strategy PUBLIC

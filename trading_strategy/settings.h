@@ -11,15 +11,15 @@ static const size_t disbalanceDepthCalc = 50;
 static const size_t historyMidPriceSize = 50;
 static const size_t historyPublicTradeSize = 50;
 
-static const double buyDisbalance = 4.0;
-static const double sellDisbalance = 0.25;
+static const double buyDisbalance = 3.0;
+static const double sellDisbalance = 0.33;
 
 static const double inverseBuyDisbalance = 4.0;
 static const double inverseSellDisbalance = 0.25;
 static const size_t countInverseSignal = 1;
-static const size_t countSignal = 2;
+static const size_t countSignal = 1;
 
-static const size_t averrageDisbalanceCount = 10;
+static const size_t averrageDisbalanceCount = 750;
 
 static const uint8_t leverage = 50;
 // Объем
