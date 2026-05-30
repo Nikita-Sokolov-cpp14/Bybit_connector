@@ -15,6 +15,7 @@
 #include <boost/circular_buffer.hpp>
 #include <optional>
 #include <numeric>
+#include "loger/loger.h"
 
 class ImbalanceIndicator {
 public:
@@ -33,7 +34,11 @@ private:
     std::atomic<size_t> countSignal_;
     float sumDisbalance_;
 
+    Logger loger_;
+
     float calcDisbalance(const OrderBook &orderbook) ;
 
     void checkSignal();
+
+    void logData();
 };

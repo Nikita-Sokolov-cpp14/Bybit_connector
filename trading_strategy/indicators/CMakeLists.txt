@@ -6,6 +6,7 @@ add_library(indicators
 
 target_link_libraries(indicators PRIVATE
     data_structures
+    loger
 )
 
 target_include_directories(indicators PUBLIC
