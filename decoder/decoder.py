@@ -96,23 +96,57 @@ print(f"  Максимум: {df['z_score'].max():.3f}")
 print(f"  >3: {(df['z_score'] > 3).sum()} записей ({(df['z_score'] > 3).sum()/len(df)*100:.3f}%)")
 print(f"  <-3: {(df['z_score'] < -3).sum()} записей ({(df['z_score'] < -3).sum()/len(df)*100:.3f}%)")
 
+# ==============================
+
+# Посмотрим на z-score у сигналов
+print("\nZ-score у BUY сигналов:")
+print(buy_signals['z_score'].describe())
+print("\nZ-score у SELL сигналов:")
+print(sell_signals['z_score'].describe())
+
+# Посмотрим на сдвиг OBI у сигналов
+buy_signals['shift'] = buy_signals['OBI_recent'] - buy_signals['OBI_prev']
+sell_signals['shift'] = sell_signals['OBI_recent'] - sell_signals['OBI_prev']
+print(f"\nBUY shift: mean={buy_signals['shift'].mean():.4f}, min={buy_signals['shift'].min():.4f}")
+print(f"SELL shift: mean={sell_signals['shift'].mean():.4f}, max={sell_signals['shift'].max():.4f}")
+
+# Лаги от -60 до +60 тиков
+for lag in range(-60, 61, 10):
+    df[f'return_{lag}'] = df['mid_price'].shift(-lag) / df['mid_price'] - 1
+    corr = df['z_score'].corr(df[f'return_{lag}'])
+    if lag % 20 == 0:
+        print(f"Lag {lag:3d}: correlation = {corr:.4f}")
+print('\n')
+
 # 4. Оценка качества сигналов (предсказание движения)
 # ====================
-def check_movement(df, signal_type, horizon_sec=120, target_move=0.0015):
+def check_movement(df, signal_type, signal_column='signal',
+                   horizon_sec=120, target_move=0.0015, max_drawdown=0.005):
     """
-    horizon_sec: 120 секунд = 2 минуты
-    target_move: 0.0015 = 0.15%
+    Оценка сигналов
+    signal_column: имя колонки с сигналами ('signal' или 'signal_sim')
     """
-    signals = df[df['signal'] == signal_type].copy()
+    # Используем указанную колонку для фильтрации
+    signals = df[df[signal_column] == signal_type].copy()
+
+    if len(signals) == 0:
+        return {
+            'good': 0, 'false': 0, 'stopped_out': 0,
+            'accuracy': 0, 'total_signals': 0, 'valid_signals': 0
+        }
+
     good = 0
     false = 0
-    results = []
+    stopped_out = 0
 
     for idx, row in signals.iterrows():
         entry_price = row['mid_price']
         entry_time = row['timestamp_s']
+
+        # Берем будущие данные из исходного df (НЕ ИЗ signals!)
         future_rows = df[(df['timestamp_s'] >= entry_time) &
                          (df['timestamp_s'] <= entry_time + horizon_sec)]
+
         if len(future_rows) == 0:
             continue
 
@@ -120,9 +154,17 @@ def check_movement(df, signal_type, horizon_sec=120, target_move=0.0015):
         min_price = future_rows['mid_price'].min()
 
         if signal_type == 'buy':
+            max_drawdown_actual = (entry_price - min_price) / entry_price
+            if max_drawdown_actual > max_drawdown:
+                stopped_out += 1
+                continue
             move_pct = (max_price - entry_price) / entry_price
             hit = move_pct >= target_move
         else:
+            max_drawdown_actual = (max_price - entry_price) / entry_price
+            if max_drawdown_actual > max_drawdown:
+                stopped_out += 1
+                continue
             move_pct = (entry_price - min_price) / entry_price
             hit = move_pct >= target_move
 
@@ -130,31 +172,36 @@ def check_movement(df, signal_type, horizon_sec=120, target_move=0.0015):
             good += 1
         else:
             false += 1
-        results.append({'time': entry_time, 'price': entry_price,
-                        'move_pct': move_pct, 'hit': hit})
 
-    accuracy = good / (good + false) if (good+false) > 0 else 0
-    return good, false, accuracy, pd.DataFrame(results)
+    total_valid = good + false
+    accuracy = good / total_valid if total_valid > 0 else 0
 
-buy_res = check_movement(df, 'buy', horizon_sec=120, target_move=0.0015)
-sell_res = check_movement(df, 'sell', horizon_sec=120, target_move=0.0015)
+    return {
+        'good': good, 'false': false, 'stopped_out': stopped_out,
+        'accuracy': accuracy, 'total_signals': len(signals),
+        'valid_signals': total_valid
+    }
 
-print("=== BUY signals ===")
-print(f"Good: {buy_res[0]}, False: {buy_res[1]}, Accuracy: {buy_res[2]:.2%}")
-print(buy_res[3].head())
-print("\n=== SELL signals ===")
-print(f"Good: {sell_res[0]}, False: {sell_res[1]}, Accuracy: {sell_res[2]:.2%}")
+# Пример использования
+result = check_movement(df, 'buy', signal_column='signal',
+                        horizon_sec=120, target_move=0.0015, max_drawdown=0.005)
+print(f"BUY signals analysis:")
+print(f"  Total: {result['total_signals']}")
+print(f"  Valid (no stop-out): {result['valid_signals']}")
+print(f"  Stopped out: {result['stopped_out']}")
+print(f"  Good: {result['good']}, False: {result['false']}")
+print(f"  Accuracy: {result['accuracy']:.2%}")
 
 # Проверим на разных горизонтах:
 # ====================================
-horizons = [60, 120, 180]
-targets = [0.0015, 0.002, 0.0025]
+# horizons = [60, 120, 180]
+# targets = [0.0015, 0.002, 0.0025]
 
-for h in horizons:
-    for t in targets:
-        buy_acc = check_movement(df, 'buy', h, t)[2]
-        sell_acc = check_movement(df, 'sell', h, t)[2]
-        print(f"H={h}s, T={t:.2%}: Buy acc={buy_acc:.0%}, Sell acc={sell_acc:.0%}")
+# for h in horizons:
+#     for t in targets:
+#         buy_acc = check_movement(df, 'buy', h, t)[2]
+#         sell_acc = check_movement(df, 'sell', h, t)[2]
+#         print(f"H={h}s, T={t:.2%}: Buy acc={buy_acc:.0%}, Sell acc={sell_acc:.0%}")
 
 
 # ====================================
@@ -224,22 +271,140 @@ plt.show()
 # 7. Оптимизация порогов
 # ====================================
 # Перебираем разные пороги z-score и min shift
-best = {'z': 3.0, 'shift': 0.05, 'acc': 0}
-for z_thresh in np.arange(2.5, 4.0, 0.25):
-    for shift_min in [0.03, 0.05, 0.07, 0.1]:
-        # Эмулируем генерацию сигналов на истории
-        df_temp = df.copy()
-        shift = df_temp['OBI_recent'] - df_temp['OBI_prev']
-        df_temp['signal_sim'] = 'unknown'
-        df_temp.loc[(df_temp['z_score'] >= z_thresh) & (shift >= shift_min), 'signal_sim'] = 'buy'
-        df_temp.loc[(df_temp['z_score'] <= -z_thresh) & (shift <= -shift_min), 'signal_sim'] = 'sell'
+# best = {'z': 3.0, 'shift': 0.05, 'acc': 0}
+# for z_thresh in np.arange(2.5, 4.0, 0.25):
+#     for shift_min in [0.03, 0.05, 0.07, 0.1]:
+#         # Эмулируем генерацию сигналов на истории
+#         df_temp = df.copy()
+#         shift = df_temp['OBI_recent'] - df_temp['OBI_prev']
+#         df_temp['signal_sim'] = 'unknown'
+#         df_temp.loc[(df_temp['z_score'] >= z_thresh) & (shift >= shift_min), 'signal_sim'] = 'buy'
+#         df_temp.loc[(df_temp['z_score'] <= -z_thresh) & (shift <= -shift_min), 'signal_sim'] = 'sell'
 
-        buy_acc = check_movement(df_temp[df_temp['signal_sim']=='buy'], 'buy', 120, 0.0015)[2]
-        sell_acc = check_movement(df_temp[df_temp['signal_sim']=='sell'], 'sell', 120, 0.0015)[2]
-        avg_acc = (buy_acc + sell_acc) / 2
+#         buy_acc = check_movement(df_temp[df_temp['signal_sim']=='buy'], 'buy', 120, 0.0015)[2]
+#         sell_acc = check_movement(df_temp[df_temp['signal_sim']=='sell'], 'sell', 120, 0.0015)[2]
+#         avg_acc = (buy_acc + sell_acc) / 2
 
-        if avg_acc > best['acc']:
-            best = {'z': z_thresh, 'shift': shift_min, 'acc': avg_acc,
-                    'buy_acc': buy_acc, 'sell_acc': sell_acc}
+#         if avg_acc > best['acc']:
+#             best = {'z': z_thresh, 'shift': shift_min, 'acc': avg_acc,
+#                     'buy_acc': buy_acc, 'sell_acc': sell_acc}
 
-print(f"Optimal: z={best['z']}, shift={best['shift']}, avg_acc={best['acc']:.2%}")
+# print(f"Optimal: z={best['z']}, shift={best['shift']}, avg_acc={best['acc']:.2%}")
+
+def optimize_with_split(df, train_ratio=0.7):
+    """
+    Правильная оптимизация: train/test split
+    """
+    # Разделяем данные
+    split_idx = int(len(df) * train_ratio)
+    train_df = df.iloc[:split_idx].copy()
+    test_df = df.iloc[split_idx:].copy()
+
+    best = None
+    results = []
+
+    print("Перебираем параметры...")
+
+    for z_thresh in np.arange(2.5, 4.0, 0.25):
+        for shift_min in [0.03, 0.05, 0.07, 0.1, 0.15]:
+            # Генерируем сигналы на train
+            train_df_temp = train_df.copy()
+            shift = train_df_temp['OBI_recent'] - train_df_temp['OBI_prev']
+            train_df_temp['signal_sim'] = 'unknown'
+            train_df_temp.loc[(train_df_temp['z_score'] >= z_thresh) & (shift >= shift_min), 'signal_sim'] = 'buy'
+            train_df_temp.loc[(train_df_temp['z_score'] <= -z_thresh) & (shift <= -shift_min), 'signal_sim'] = 'sell'
+
+            # Оцениваем на train (используем signal_column='signal_sim')
+            buy_result = check_movement(train_df_temp, 'buy', signal_column='signal_sim',
+                                        horizon_sec=120, target_move=0.0015, max_drawdown=0.005)
+            sell_result = check_movement(train_df_temp, 'sell', signal_column='signal_sim',
+                                         horizon_sec=120, target_move=0.0015, max_drawdown=0.005)
+
+            buy_acc = buy_result['accuracy']
+            sell_acc = sell_result['accuracy']
+
+            # Средняя точность (взвешенная по количеству сигналов)
+            total_train_signals = buy_result['total_signals'] + sell_result['total_signals']
+            if total_train_signals > 0:
+                train_acc = (buy_acc * buy_result['total_signals'] + sell_acc * sell_result['total_signals']) / total_train_signals
+            else:
+                train_acc = 0
+
+            # Генерируем сигналы на test
+            test_df_temp = test_df.copy()
+            shift = test_df_temp['OBI_recent'] - test_df_temp['OBI_prev']
+            test_df_temp['signal_sim'] = 'unknown'
+            test_df_temp.loc[(test_df_temp['z_score'] >= z_thresh) & (shift >= shift_min), 'signal_sim'] = 'buy'
+            test_df_temp.loc[(test_df_temp['z_score'] <= -z_thresh) & (shift <= -shift_min), 'signal_sim'] = 'sell'
+
+            buy_result_test = check_movement(test_df_temp, 'buy', signal_column='signal_sim',
+                                             horizon_sec=120, target_move=0.0015, max_drawdown=0.005)
+            sell_result_test = check_movement(test_df_temp, 'sell', signal_column='signal_sim',
+                                              horizon_sec=120, target_move=0.0015, max_drawdown=0.005)
+
+            buy_acc_test = buy_result_test['accuracy']
+            sell_acc_test = sell_result_test['accuracy']
+
+            total_test_signals = buy_result_test['total_signals'] + sell_result_test['total_signals']
+            if total_test_signals > 0:
+                test_acc = (buy_acc_test * buy_result_test['total_signals'] + sell_acc_test * sell_result_test['total_signals']) / total_test_signals
+            else:
+                test_acc = 0
+
+            # Сохраняем результат, если есть сигналы
+            if total_train_signals > 5 and total_test_signals > 5:
+                result = {
+                    'z': z_thresh,
+                    'shift': shift_min,
+                    'train_acc': train_acc,
+                    'test_acc': test_acc,
+                    'train_buy_signals': buy_result['total_signals'],
+                    'train_sell_signals': sell_result['total_signals'],
+                    'test_buy_signals': buy_result_test['total_signals'],
+                    'test_sell_signals': sell_result_test['total_signals'],
+                    'train_buy_good': buy_result['good'],
+                    'train_sell_good': sell_result['good'],
+                    'test_buy_good': buy_result_test['good'],
+                    'test_sell_good': sell_result_test['good']
+                }
+                results.append(result)
+
+                print(f"  z={z_thresh:.2f}, shift={shift_min:.2f}: "
+                      f"train_acc={train_acc:.2%} ({total_train_signals} sig), "
+                      f"test_acc={test_acc:.2%} ({total_test_signals} sig)")
+
+    # Находим лучший по test_acc
+    if results:
+        results_df = pd.DataFrame(results)
+        results_df = results_df.sort_values('test_acc', ascending=False)
+        best = results_df.iloc[0].to_dict()
+
+        print(f"\n=== Лучшие 5 комбинаций ===")
+        print(results_df.head(5)[['z', 'shift', 'train_acc', 'test_acc',
+                                   'train_buy_signals', 'train_sell_signals',
+                                   'test_buy_signals', 'test_sell_signals']].to_string())
+    else:
+        print("Не найдено комбинаций с достаточным количеством сигналов!")
+        best = {
+            'z': 3.0, 'shift': 0.05, 'train_acc': 0, 'test_acc': 0,
+            'train_buy_signals': 0, 'train_sell_signals': 0,
+            'test_buy_signals': 0, 'test_sell_signals': 0,
+            'train_buy_good': 0, 'train_sell_good': 0,
+            'test_buy_good': 0, 'test_sell_good': 0
+        }
+
+    return best, results_df if results else pd.DataFrame()
+
+# Запуск
+print("\n=== Начинаем оптимизацию (может занять несколько минут) ===")
+best_params = optimize_with_split(df)
+print(f"\n=== РЕЗУЛЬТАТЫ ОПТИМИЗАЦИИ ===")
+print(f"Best parameters:")
+print(f"  z_threshold: {best_params['z']}")
+print(f"  min_shift: {best_params['shift']}")
+print(f"  Train accuracy: {best_params['train_acc']:.2%}")
+print(f"  Test accuracy: {best_params['test_acc']:.2%}")
+print(f"  Buy signals (train): {best_params['buy_signals_train']}")
+print(f"  Sell signals (train): {best_params['sell_signals_train']}")
+print(f"  Buy signals (test): {best_params['buy_signals_test']}")
+print(f"  Sell signals (test): {best_params['sell_signals_test']}")
