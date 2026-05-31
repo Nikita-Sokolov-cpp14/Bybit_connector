@@ -28,17 +28,17 @@ public:
     Side getSignal();
 
 private:
-    boost::circular_buffer<double> midDisbalance_;
-    std::atomic<float> disbalanceAverage_;
+    boost::circular_buffer<double> imbalanceSrorage_;
+    double disbalanceAverage_;
+    double disbalanceRecent_;
+    double disbalancePrev_;
     std::atomic<Side> signal_;
-    std::atomic<size_t> countSignal_;
-    float sumDisbalance_;
 
     Logger loger_;
 
-    float calcDisbalance(const OrderBook &orderbook) ;
+    double calcDisbalance(const OrderBook &orderbook) ;
 
     void checkSignal();
 
-    void logData();
+    double getSKO();
 };
