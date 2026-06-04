@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Загрузка
-df = pd.read_csv('../log_files/imbalance_3105_large .csv', delimiter='\t')
+df = pd.read_csv('../log_files/0306/imbalance_day.csv', delimiter='\t')
 df.columns = ['timestamp_ns', 'mid_price', 'DW_OBI', 'OBI_recent', 'OBI_prev', 'z_score', 'signal']
 
 print(df.shape)
@@ -305,8 +305,8 @@ def optimize_with_split(df, train_ratio=0.7):
 
     print("Перебираем параметры...")
 
-    for z_thresh in np.arange(2.5, 4.0, 0.25):
-        for shift_min in [0.03, 0.05, 0.07, 0.1, 0.15]:
+    for z_thresh in np.arange(1.84, 2.3, 0.02):
+        for shift_min in [0.03, 0.05, 0.07, 0.1, 0.15, 0.18, 0.21, 0.24, 0.27, 0.3]:
             # Генерируем сигналы на train
             train_df_temp = train_df.copy()
             shift = train_df_temp['OBI_recent'] - train_df_temp['OBI_prev']

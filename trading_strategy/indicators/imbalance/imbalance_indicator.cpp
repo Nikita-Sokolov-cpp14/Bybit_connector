@@ -27,6 +27,11 @@ loger_("../log_files/imbalance.csv") {
 
 void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
     const double disbalance = calcDisbalance(orderbook);
+
+    // if (std::fabs(disbalance) > 0.95) {
+    //     return;
+    // }
+
     imbalanceSrorage_.push_back(disbalance);
 
     if (imbalanceSrorage_.size() < imbalanceSrorage_.capacity()) {
@@ -34,15 +39,15 @@ void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
         return;
     }
 
-    // recent: индексы [size-10, size-1] — последние 10 элементов
+    // recent: индексы [size-50, size-1] — последние 50 элементов
     double sumDisbalanceRecent = 0.0;
-    for (size_t i = imbalanceSrorage_.size() - 10; i < imbalanceSrorage_.size(); ++i) {
+    for (size_t i = imbalanceSrorage_.size() - 50; i < imbalanceSrorage_.size(); ++i) {
         sumDisbalanceRecent += imbalanceSrorage_[i];
     }
 
-    // prev: индексы [size-20, size-11] — предыдущие 10 элементов
+    // prev: индексы [size-100, size-51] — предыдущие 10 элементов
     double sumDisbalancePrev = 0.0;
-    for (size_t i = imbalanceSrorage_.size() - 20; i < imbalanceSrorage_.size() - 10; ++i) {
+    for (size_t i = imbalanceSrorage_.size() - 100; i < imbalanceSrorage_.size() - 50; ++i) {
         sumDisbalancePrev += imbalanceSrorage_[i];
     }
 
@@ -52,8 +57,14 @@ void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
     }
 
     disbalanceAverage_ = sumDisbalance / imbalanceSrorage_.size();
-    disbalanceRecent_ = sumDisbalanceRecent / 10;
-    disbalancePrev_ = sumDisbalancePrev / 10;
+    disbalanceRecent_ = sumDisbalanceRecent / 50.0;
+    disbalancePrev_ = sumDisbalancePrev / 50.0;
+
+    // После расчета disbalanceRecent_
+    if (std::fabs(disbalanceRecent_) < 0.40) { // OBI_recent должен быть сильным
+        signal_.store(Side_Unknown);
+        return;
+    }
 
     loger_.recordValue(std::chrono::steady_clock::now().time_since_epoch().count());
     loger_.recordValue(orderbook.asks.begin()->first);
@@ -80,30 +91,62 @@ double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
 
     const size_t depthAsks = std::min(settings::disbalanceDepthCalc, orderbook.asks.size());
     const size_t depthBids = std::min(settings::disbalanceDepthCalc, orderbook.bids.size());
-    double wi = 1.0;
+
     const double bestAsk = orderbook.asks.begin()->first;
     const double bestBid = orderbook.bids.begin()->first;
-    double distancePct = 0.0;
-    const double scale = 0.01;
+    const double midPrice = (bestAsk + bestBid) / 2.0;
+
+    // Для скальпинга BTCUSDT: scale = 0.002 (0.2%)
+    const double scale = 0.002;
 
     for (auto it = orderbook.asks.begin(); it < orderbook.asks.begin() + depthAsks; ++it) {
-        distancePct = (it->first - bestAsk) / bestAsk * 100;
-        wi = 1.0 / pow(1.0 + distancePct / scale, 2);
+        double distancePct = (it->first - bestAsk) / midPrice * 100;
+        // Экспоненциальные веса (более плавные)
+        double wi = exp(-distancePct / scale);
         sumVolAsks += it->second * wi;
     }
 
     for (auto it = orderbook.bids.begin(); it < orderbook.bids.begin() + depthBids; ++it) {
-        distancePct = (bestBid - it->first) / bestBid * 100;
-        wi = 1.0 / pow(1.0 + distancePct / scale, 2);
+        double distancePct = (bestBid - it->first) / midPrice * 100;
+        double wi = exp(-distancePct / scale);
         sumVolBids += it->second * wi;
     }
 
-    if ((sumVolBids + sumVolAsks) == 0) {
-        return 0.f;
-    }
+    if ((sumVolBids + sumVolAsks) < 1e-10) return 0.0;
 
     return (sumVolBids - sumVolAsks) / (sumVolBids + sumVolAsks);
 }
+
+// double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
+//     double sumVolAsks = 0;
+//     double sumVolBids = 0;
+
+//     const size_t depthAsks = std::min(settings::disbalanceDepthCalc, orderbook.asks.size());
+//     const size_t depthBids = std::min(settings::disbalanceDepthCalc, orderbook.bids.size());
+//     double wi = 1.0;
+//     const double bestAsk = orderbook.asks.begin()->first;
+//     const double bestBid = orderbook.bids.begin()->first;
+//     double distancePct = 0.0;
+//     const double scale = 0.01;
+
+//     for (auto it = orderbook.asks.begin(); it < orderbook.asks.begin() + depthAsks; ++it) {
+//         distancePct = (it->first - bestAsk) / bestAsk * 100;
+//         wi = 1.0 / pow(1.0 + distancePct / scale, 2);
+//         sumVolAsks += it->second * wi;
+//     }
+
+//     for (auto it = orderbook.bids.begin(); it < orderbook.bids.begin() + depthBids; ++it) {
+//         distancePct = (bestBid - it->first) / bestBid * 100;
+//         wi = 1.0 / pow(1.0 + distancePct / scale, 2);
+//         sumVolBids += it->second * wi;
+//     }
+
+//     if ((sumVolBids + sumVolAsks) == 0) {
+//         return 0.f;
+//     }
+
+//     return (sumVolBids - sumVolAsks) / (sumVolBids + sumVolAsks);
+// }
 
 void ImbalanceIndicator::checkSignal() {
     double zNormal = (disbalanceRecent_ - disbalancePrev_) / getSKO();
@@ -125,7 +168,7 @@ void ImbalanceIndicator::checkSignal() {
 
     // std::cout << "zNormal " << zNormal << std::endl;
 
-    if (absDeltaImbalance < 0.05) {
+    if (absDeltaImbalance < 0.15) {
         signal_.store(Side_Unknown);
         return;
     }
