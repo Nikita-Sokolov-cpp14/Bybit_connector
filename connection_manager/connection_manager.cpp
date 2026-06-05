@@ -45,10 +45,10 @@ void ConnectionManager::connect() {
     setPublicReconnectCallback();
     setupPublicDataCallbacks();
 
-    net::post(privateIoc_, [this]() {
-        privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
-                connectionConfig_.targetPrivate);
-    });
+    // net::post(privateIoc_, [this]() {
+    //     privateDataHandler_->connect(connectionConfig_.host, connectionConfig_.port,
+    //             connectionConfig_.targetPrivate);
+    // });
     //! TODO: для демо счета:
     // net::post(privateIoc_, [this]() {
     //     privateDataHandler_->connect("stream-demo.bybit.com", connectionConfig_.port,
@@ -57,10 +57,10 @@ void ConnectionManager::connect() {
     setPrivateReconnectCallback();
     setupPrivateDataCallbacks();
 
-    net::post(orderSenderIoc_, [this]() {
-        orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
-                connectionConfig_.targetTrade);
-    });
+    // net::post(orderSenderIoc_, [this]() {
+    //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
+    //             connectionConfig_.targetTrade);
+    // });
     //! TODO: для демо счета:
     // net::post(orderSenderIoc_, [this]() {
     //     orderSender_->connect("stream-demo.bybit.com", connectionConfig_.port,
@@ -69,8 +69,8 @@ void ConnectionManager::connect() {
     setOrderSenderReconnectCallback();
 
     publicThread_ = std::make_unique<std::jthread>([this]() { publicIoc_.run(); });
-    privateThread_ = std::make_unique<std::jthread>([this]() { privateIoc_.run(); });
-    orderSenderThread_ = std::make_unique<std::jthread>([this]() { orderSenderIoc_.run(); });
+    // privateThread_ = std::make_unique<std::jthread>([this]() { privateIoc_.run(); });
+    // orderSenderThread_ = std::make_unique<std::jthread>([this]() { orderSenderIoc_.run(); });
 }
 
 void ConnectionManager::reconnectOrderSender() {

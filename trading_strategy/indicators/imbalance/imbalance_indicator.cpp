@@ -4,12 +4,6 @@
 #include <chrono>
 #include <cmath>
 
-namespace {
-
-uint64_t countRows;
-
-}
-
 ImbalanceIndicator::ImbalanceIndicator() :
 imbalanceSrorage_(settings::averrageDisbalanceCount),
 disbalanceAverage_(0.0f),
@@ -28,10 +22,6 @@ loger_("../log_files/imbalance.csv") {
 void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
     const double disbalance = calcDisbalance(orderbook);
 
-    // if (std::fabs(disbalance) > 0.95) {
-    //     return;
-    // }
-
     imbalanceSrorage_.push_back(disbalance);
 
     if (imbalanceSrorage_.size() < imbalanceSrorage_.capacity()) {
@@ -39,15 +29,18 @@ void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
         return;
     }
 
-    // recent: индексы [size-50, size-1] — последние 50 элементов
+    // recent: индексы [size-75, size-1] — последние 75 элементов
     double sumDisbalanceRecent = 0.0;
-    for (size_t i = imbalanceSrorage_.size() - 50; i < imbalanceSrorage_.size(); ++i) {
+    for (size_t i = imbalanceSrorage_.size() - settings::obiWindowSizeRecent;
+            i < imbalanceSrorage_.size(); ++i) {
         sumDisbalanceRecent += imbalanceSrorage_[i];
     }
 
-    // prev: индексы [size-100, size-51] — предыдущие 10 элементов
+    // prev: индексы [size-150, size-76] — предыдущие 75 элементов
     double sumDisbalancePrev = 0.0;
-    for (size_t i = imbalanceSrorage_.size() - 100; i < imbalanceSrorage_.size() - 50; ++i) {
+    for (size_t i = imbalanceSrorage_.size() - settings::obiWindowSizeRecent -
+                    settings::obiWindowSizePrev;
+            i < imbalanceSrorage_.size() - settings::obiWindowSizeRecent; ++i) {
         sumDisbalancePrev += imbalanceSrorage_[i];
     }
 
@@ -57,8 +50,8 @@ void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
     }
 
     disbalanceAverage_ = sumDisbalance / imbalanceSrorage_.size();
-    disbalanceRecent_ = sumDisbalanceRecent / 50.0;
-    disbalancePrev_ = sumDisbalancePrev / 50.0;
+    disbalanceRecent_ = sumDisbalanceRecent / settings::obiWindowSizeRecent;
+    disbalancePrev_ = sumDisbalancePrev / settings::obiWindowSizePrev;
 
     // После расчета disbalanceRecent_
     if (std::fabs(disbalanceRecent_) < 0.40) { // OBI_recent должен быть сильным
@@ -112,7 +105,8 @@ double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
         sumVolBids += it->second * wi;
     }
 
-    if ((sumVolBids + sumVolAsks) < 1e-10) return 0.0;
+    if ((sumVolBids + sumVolAsks) < 1e-10)
+        return 0.0;
 
     return (sumVolBids - sumVolAsks) / (sumVolBids + sumVolAsks);
 }
@@ -168,7 +162,7 @@ void ImbalanceIndicator::checkSignal() {
 
     // std::cout << "zNormal " << zNormal << std::endl;
 
-    if (absDeltaImbalance < 0.15) {
+    if (absDeltaImbalance < settings::minShift) {
         signal_.store(Side_Unknown);
         return;
     }

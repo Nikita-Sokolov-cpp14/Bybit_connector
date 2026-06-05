@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Загрузка
-df = pd.read_csv('../log_files/0306/imbalance_day.csv', delimiter='\t')
+df = pd.read_csv('../log_files/0506/imbalance_day.csv', delimiter='\t')
 df.columns = ['timestamp_ns', 'mid_price', 'DW_OBI', 'OBI_recent', 'OBI_prev', 'z_score', 'signal']
 
 print(df.shape)
@@ -305,7 +305,7 @@ def optimize_with_split(df, train_ratio=0.7):
 
     print("Перебираем параметры...")
 
-    for z_thresh in np.arange(1.84, 2.3, 0.02):
+    for z_thresh in np.arange(1.76, 2.3, 0.02):
         for shift_min in [0.03, 0.05, 0.07, 0.1, 0.15, 0.18, 0.21, 0.24, 0.27, 0.3]:
             # Генерируем сигналы на train
             train_df_temp = train_df.copy()
@@ -404,7 +404,7 @@ print(f"  z_threshold: {best_params['z']}")
 print(f"  min_shift: {best_params['shift']}")
 print(f"  Train accuracy: {best_params['train_acc']:.2%}")
 print(f"  Test accuracy: {best_params['test_acc']:.2%}")
-print(f"  Buy signals (train): {best_params['buy_signals_train']}")
-print(f"  Sell signals (train): {best_params['sell_signals_train']}")
-print(f"  Buy signals (test): {best_params['buy_signals_test']}")
-print(f"  Sell signals (test): {best_params['sell_signals_test']}")
+print(f"  Buy signals (train): {best_params['train_buy_signals']}")
+print(f"  Sell signals (train): {best_params['train_sell_signals']}")
+print(f"  Buy signals (test): {best_params['test_buy_signals']}")
+print(f"  Sell signals (test): {best_params['test_sell_signals']}")
