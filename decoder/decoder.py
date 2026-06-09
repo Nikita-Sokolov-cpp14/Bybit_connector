@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Загрузка
-df = pd.read_csv('../log_files/0506/imbalance_day.csv', delimiter='\t')
+df = pd.read_csv('../log_files/imbalance.csv', delimiter='\t')
 df.columns = ['timestamp_ns', 'mid_price', 'DW_OBI', 'OBI_recent', 'OBI_prev', 'z_score', 'signal']
 
 print(df.shape)
