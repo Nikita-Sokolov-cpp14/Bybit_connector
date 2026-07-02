@@ -7,6 +7,7 @@
 #include <optional>
 #include <numeric>
 #include "indicators/imbalance/imbalance_indicator.h"
+#include "indicators/trade_flow/trade_flow.h"
 
 // struct TradeRecord {
 //     uint64_t timestamp;  // Время сделки (у тебя уже есть поле T)
@@ -20,7 +21,7 @@ public:
     ImbalanceAndLarge();
 
     void setOrderbook(const OrderBook &orderbook) override;
-    void setPublicTradeData(PublicTrade::VectorData &&publicTradeData) override;
+    void setPublicTradeData(const PublicTrade &publicTrade) override;
     void setOrder(const OrderHFT &order) override;
     void setPosition(const PositionHFT &position) override;
 
@@ -46,6 +47,7 @@ private:
     std::optional<Side> signalTotal_;
 
     ImbalanceIndicator imbalanceIndicator_;
+    TradeFlowIndicator tradeFlowIndicator_;
 
     void checkSignalTrades();
 

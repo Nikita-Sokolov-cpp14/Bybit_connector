@@ -19,7 +19,7 @@ public:
     virtual void setOrderbook(const OrderBook &orderbook) {
         std::cout << "BaseTradingStrategy::setOrderbook" << std::endl;
     }
-    virtual void setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
+    virtual void setPublicTradeData(const PublicTrade &publicTrade) {
         std::cout << "BaseTradingStrategy::setPublicTradeData" << std::endl;
     }
     virtual void setOrder(const OrderHFT &order) {

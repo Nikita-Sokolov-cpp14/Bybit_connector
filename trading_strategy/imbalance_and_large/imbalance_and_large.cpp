@@ -15,16 +15,19 @@ currentBestBidPrice_(0.0),
 currentMidPrice_(0.0),
 signalTrade_(std::nullopt),
 signalTotal_(std::nullopt),
-imbalanceIndicator_() {
+imbalanceIndicator_(),
+tradeFlowIndicator_() {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
-    imbalanceIndicator_.setOrderbook(orderbook);
+    //! TODO:
+    // imbalanceIndicator_.setOrderbook(orderbook);
 
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
     midPrices_.push_back(currentMidPrice_.load());
+    tradeFlowIndicator_.setMidPrice(currentMidPrice_.load());
 
     tradeManager_.checkCurrentPrice(currentMidPrice_.load());
 
@@ -32,15 +35,16 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     dataCV_.notify_all();
 }
 
-void ImbalanceAndLarge::setPublicTradeData(PublicTrade::VectorData &&publicTradeData) {
+void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
+    tradeFlowIndicator_.setPublicTrade(publicTrade);
     //! TODO: После этой опреации у publicTrade больше нет данных.
     //! TODO: Нужно успеть обработать обновление сделок до прихода новых.
     // Предполагается, что onMarketUpdate работает меньше 1 мс. За это время новая
     // информация не поступит.
-    publicTrades_.push_back(std::move(publicTradeData));
-    publicTradeIsUpdate_.store(true);
-    newData_.store(true);
-    dataCV_.notify_all();
+    // publicTrades_.push_back(std::move(publicTradeData));
+    // publicTradeIsUpdate_.store(true);
+    // newData_.store(true);
+    // dataCV_.notify_all();
 }
 
 void ImbalanceAndLarge::setOrder(const OrderHFT &order) {

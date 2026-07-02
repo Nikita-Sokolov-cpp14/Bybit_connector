@@ -25,6 +25,7 @@ static const size_t obiWindowSizePrev = 75;
 static const double minShift = 0.15;
 
 static const uint8_t leverage = 50;
+
 // Объем
 static const double defaultQty = 0.001; // TODO: Пока для BTC
 
@@ -32,5 +33,13 @@ static const double coefTakeProfit = 0.15 / 100.0; // В долях, а не п�
 static const double coefStopLoss = 0.08 / 100.0; // В долях, а не процентах. 1%
 
 static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(180 * 1000);
+
+// TFI
+//! TODO: +300 сделано для копенсации пинга. Убрать при тестах на сервере.
+static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(300 + 300);
+static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(2 * 1000 + 300);
+
+static const double tradeFlowCountSigmaBuy = 2.0;
+static const double tradeFlowCountSigmaSell = -2.0;
 
 }
