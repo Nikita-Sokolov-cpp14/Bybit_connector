@@ -46,12 +46,12 @@ private:
     // Окно на 2 с примерно. Базовое.
     std::list<SmallTradeData> baseWindow_;
     std::vector<double> netFlowIntervalData_;
+    std::vector<double> sumVolBuy_;
+    std::vector<double> sumVolSell_;
     double netFlowShort_;
     double mu_;
     double sigma_;
     std::atomic<Side> signal_;
-    double sumVolBuy_;
-    double sumVolSell_;
     std::atomic<double> midPrice_;
     double zScore_;
     Logger loger_;
@@ -62,9 +62,7 @@ private:
 
     void checkSignal();
 
-    void checkDirection(const SmallTradeData &trade);
-
-    void insertEmptyIntervals(int countEmptyInterval);
+    bool isBuy(const SmallTradeData &trade);
 
     void logData();
 };

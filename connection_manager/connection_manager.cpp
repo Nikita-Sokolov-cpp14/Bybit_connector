@@ -54,8 +54,8 @@ void ConnectionManager::connect() {
     //     privateDataHandler_->connect("stream-demo.bybit.com", connectionConfig_.port,
     //             connectionConfig_.targetPrivate);
     // });
-    setPrivateReconnectCallback();
-    setupPrivateDataCallbacks();
+    // setPrivateReconnectCallback();
+    // setupPrivateDataCallbacks();
 
     // net::post(orderSenderIoc_, [this]() {
     //     orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
@@ -66,7 +66,7 @@ void ConnectionManager::connect() {
     //     orderSender_->connect("stream-demo.bybit.com", connectionConfig_.port,
     //             connectionConfig_.targetTrade);
     // });
-    setOrderSenderReconnectCallback();
+    // setOrderSenderReconnectCallback();
 
     publicThread_ = std::make_unique<std::jthread>([this]() { publicIoc_.run(); });
     // privateThread_ = std::make_unique<std::jthread>([this]() { privateIoc_.run(); });

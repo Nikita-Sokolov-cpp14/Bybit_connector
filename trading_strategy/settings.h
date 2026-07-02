@@ -36,8 +36,8 @@ static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(
 
 // TFI
 //! TODO: +300 сделано для копенсации пинга. Убрать при тестах на сервере.
-static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(300 + 300);
-static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(2 * 1000 + 300);
+static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(300);
+static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(2 * 1000);
 
 static const double tradeFlowCountSigmaBuy = 2.0;
 static const double tradeFlowCountSigmaSell = -2.0;

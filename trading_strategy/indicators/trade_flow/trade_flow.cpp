@@ -9,10 +9,7 @@ namespace {
 
 // шаг выборки, мс
 const size_t step = 100;
-
-const size_t minCountNetFlow = 20;
-
-const size_t maxCountEmptyIntervals = 10;
+const size_t countIntervals = settings::baseTime.count() / step;
 
 } // namespace
 
@@ -21,8 +18,8 @@ signal_(Side_Unknown),
 netFlowShort_(0.0),
 mu_(0.0),
 sigma_(0.0),
-sumVolBuy_(0.0),
-sumVolSell_(0.0),
+sumVolBuy_(),
+sumVolSell_(),
 midPrice_(0.0),
 zScore_(0.0),
 loger_("../log_files/trade_flow.csv") {
@@ -109,68 +106,64 @@ void TradeFlowIndicator::checkActualityTime() {
 }
 
 void TradeFlowIndicator::calculateShort() {
-    sumVolBuy_ = 0.0;
-    sumVolSell_ = 0.0;
+    double sumVolBuy = 0.0;
+    double sumVolSell = 0.0;
     double total = 0.0;
 
     for (const auto &trade : shortWindow_) {
-        checkDirection(trade);
+        if (isBuy(trade)) {
+            sumVolBuy += trade.v;
+        } else {
+            sumVolSell += trade.v;
+        }
     }
 
-    total = sumVolSell_ + sumVolBuy_;
+    total = sumVolSell + sumVolBuy;
     if (total < 1e-10) {
         netFlowShort_ = 0.0;
         return;
     }
 
-    netFlowShort_ = (sumVolBuy_ - sumVolSell_) / total;
+    netFlowShort_ = (sumVolBuy - sumVolSell) / total;
 }
 
 void TradeFlowIndicator::calculateBase() {
-    double timeStartInterval = baseWindow_.begin()->T;
-    double netFlowInterval = 0.0;
-    double total = 0.0;
+    uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+                           .count();
 
-    sumVolBuy_ = 0.0;
-    sumVolSell_ = 0.0;
     netFlowIntervalData_.clear();
+    netFlowIntervalData_.resize(countIntervals, 0.0);
+    sumVolBuy_.clear();
+    sumVolBuy_.resize(countIntervals, 0.0);
+    sumVolSell_.clear();
+    sumVolSell_.resize(countIntervals, 0.0);
 
     for (const auto &trade : baseWindow_) {
-        if ((trade.T - timeStartInterval) > step) {
-            // 1. Сохраняем текущий интервал
-            total = sumVolSell_ + sumVolBuy_;
-            netFlowInterval = (total < 1e-10) ? 0 : (sumVolBuy_ - sumVolSell_) / total;
-            netFlowIntervalData_.push_back(netFlowInterval);
-
-            // 2. Вставляем пустые интервалы
-            int countEmptyInterval = (trade.T - timeStartInterval) / step;
-            int emptyIntervalsToInsert = countEmptyInterval - 1;
-            if (emptyIntervalsToInsert > 0) {
-                insertEmptyIntervals(emptyIntervalsToInsert);
+        int index = (trade.T - (now - settings::baseTime.count())) / step;
+        if (index >= 0 && index < countIntervals) {
+            if (isBuy(trade)) {
+                sumVolBuy_[index] += trade.v;
+            } else {
+                sumVolSell_[index] += trade.v;
             }
-
-            // 3. Начинаем новый интервал
-            timeStartInterval += step * countEmptyInterval;
-            sumVolBuy_ = 0.0;
-            sumVolSell_ = 0.0;
         }
-        checkDirection(trade);
     }
 
-    if (netFlowIntervalData_.size() < minCountNetFlow) {
-        mu_ = 0.0;
-        sigma_ = 0.0;
-        return;
+    // Теперь для каждого интервала считаем netFlow
+    for (int i = 0; i < countIntervals; ++i) {
+        double total = sumVolBuy_[i] + sumVolSell_[i];
+        netFlowIntervalData_[i] = (total < 1e-10) ? 0 : (sumVolBuy_[i] - sumVolSell_[i]) / total;
     }
 
-    mu_ = std::accumulate(netFlowIntervalData_.begin(), netFlowIntervalData_.end(), 0.0) /
-            netFlowIntervalData_.size();
+    // Считаем mu и sigma по 20 точкам
+    mu_ = std::accumulate(netFlowIntervalData_.begin(), netFlowIntervalData_.end(), 0.0) / 20;
 
     double sumDeltaSquare = 0.0;
     for (const auto &netFlow : netFlowIntervalData_) {
         sumDeltaSquare += pow(netFlow - mu_, 2);
     }
-    sigma_ = sqrt(sumDeltaSquare / (netFlowIntervalData_.size() - 1));
+    sigma_ = sqrt(sumDeltaSquare / (countIntervals - 1));
 }
 
 void TradeFlowIndicator::checkSignal() {
@@ -191,33 +184,16 @@ void TradeFlowIndicator::checkSignal() {
     }
 }
 
-void TradeFlowIndicator::checkDirection(const SmallTradeData &trade) {
-    switch (trade.L) {
-        case PublicTrade::TickDirection_PlusTick:
-            sumVolBuy_ += trade.v;
-            break;
-        case PublicTrade::TickDirection_ZeroPlusTick:
-            sumVolBuy_ += trade.v;
-            break;
-        case PublicTrade::TickDirection_MinusTick:
-            sumVolSell_ += trade.v;
-            break;
-        case PublicTrade::TickDirection_ZeroMinusTick:
-            sumVolSell_ += trade.v;
-            break;
-        default:
-            break;
-    }
-}
-
-void TradeFlowIndicator::insertEmptyIntervals(int countEmptyInterval) {
-    if (countEmptyInterval > maxCountEmptyIntervals) {
-        countEmptyInterval = maxCountEmptyIntervals;
+bool TradeFlowIndicator::isBuy(const SmallTradeData &trade) {
+    if (trade.L == PublicTrade::TickDirection_PlusTick ||
+            trade.L == PublicTrade::TickDirection_ZeroPlusTick) {
+        return true;
+    } else if (trade.L == PublicTrade::TickDirection_MinusTick ||
+            trade.L == PublicTrade::TickDirection_ZeroMinusTick) {
+        return false;
     }
 
-    for (size_t i = 0; i < countEmptyInterval; ++i) {
-        netFlowIntervalData_.push_back(0.0);
-    }
+    return false;
 }
 
 void TradeFlowIndicator::logData() {
