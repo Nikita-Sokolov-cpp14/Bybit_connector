@@ -7,7 +7,20 @@
 #include "check_place_orders/check_place_orders.h"
 #include "trading_strategy/imbalance_and_large/imbalance_and_large.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 int main() {
+#ifdef _WIN32
+    // setlocale(LC_ALL, "russian");
+    // Устанавливаем кодовую страницу консоли 65001 (UTF-8)
+    SetConsoleOutputCP(65001);
+    SetConsoleCP(65001);
+    // Также можно установить локаль
+    setlocale(LC_ALL, "ru_RU.UTF-8");
+#endif
+
     std::cout << "hello" << std::endl;
     try {
         std::cout << "start" << std::endl;
