@@ -119,7 +119,15 @@ void ConnectionManager::subscribeStrategy(BaseTradingStrategy *tradingStrategy) 
 
 ssl::context ConnectionManager::createSSLContext() {
     ssl::context ctx(ssl::context::tlsv12_client);
+#ifdef _WIN32
+    boost::system::error_code ec;
+    ctx.load_verify_file("cacert.pem", ec);
+    if (ec) {
+        std::cerr << "Can't load cacert.pem: " << ec.message() << std::endl;
+    }
+#else
     ctx.set_default_verify_paths(); // загружаем системные CA сертификаты
+#endif
     // Верифицируем сертификат сервера (обязательно для продакшена)
     ctx.set_verify_mode(ssl::verify_peer);
     // ctx.set_options(ssl::context::no_compression); // Для HFT
