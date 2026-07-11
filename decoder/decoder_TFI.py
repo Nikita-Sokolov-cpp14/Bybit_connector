@@ -196,7 +196,7 @@ print("=" * 60)
 
 TARGET_MOVE = 0.0020  # 0.20%
 MAX_DD = 0.0040       # 0.40%
-HORIZON = 420         # 7 минут
+HORIZON = 3300         # 7 минут
 
 buy_res = analyze_signals(df_clean, 1, HORIZON, TARGET_MOVE, MAX_DD)
 sell_res = analyze_signals(df_clean, 2, HORIZON, TARGET_MOVE, MAX_DD)
@@ -534,7 +534,7 @@ print("\n" + "=" * 60)
 print("АНАЛИЗ ДЛЯ РАЗНЫХ ГОРИЗОНТОВ")
 print("=" * 60)
 
-horizons = [180, 240, 300, 360, 420, 480]
+horizons = [420, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000, 3300, 3600, 3900, 4200, 4500, 4800, 5100, 5400, 6000]
 targets = [0.0015, 0.0020, 0.0025]
 
 print("\nAccuracy для разных горизонтов и целей:")

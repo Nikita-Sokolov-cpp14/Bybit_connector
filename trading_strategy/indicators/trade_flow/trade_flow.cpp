@@ -10,6 +10,11 @@ namespace {
 // шаг выборки, мс
 const size_t step = 100;
 const size_t countIntervals = settings::baseTime.count() / step;
+const double minSigma = 0.1;
+const double maxSigma = 0.65;
+// const size_t maxShortWinSize = 200;
+// const size_t minShortWinSize = 0;
+const double minVolume = 0.1;
 
 } // namespace
 
@@ -50,6 +55,10 @@ void TradeFlowIndicator::setPublicTrade(const PublicTrade &publicTrade) {
         //           << std::chrono::duration_cast<std::chrono::milliseconds>(
         //                      std::chrono::system_clock::now().time_since_epoch()).count()
         //           << std::endl;
+
+        if (tradeData.v < minVolume) {
+            continue;
+        }
 
         shortWindow_.push_back(tradeData);
         baseWindow_.push_back(tradeData);
@@ -167,7 +176,13 @@ void TradeFlowIndicator::calculateBase() {
 }
 
 void TradeFlowIndicator::checkSignal() {
-    if (sigma_ < 1e-10) {
+    // if ((sigma_ < minSigma) || (sigma_ > maxSigma) || (shortWindow_.size() < minShortWinSize) ||
+    //         (shortWindow_.size()) > maxShortWinSize) {
+    //     signal_.store(Side_Unknown);
+    //     zScore_ = 0.0;
+    //     return;
+    // }
+    if ((sigma_ < minSigma) || (sigma_ > maxSigma)) {
         signal_.store(Side_Unknown);
         zScore_ = 0.0;
         return;
