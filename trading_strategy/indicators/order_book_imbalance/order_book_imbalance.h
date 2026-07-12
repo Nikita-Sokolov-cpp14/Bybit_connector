@@ -12,6 +12,7 @@
 #include <iostream>
 #include <functional>
 #include <atomic>
+#include <array>
 #include <boost/circular_buffer.hpp>
 #include <optional>
 #include <numeric>
@@ -28,17 +29,26 @@ public:
     Side getSignal();
 
 private:
-    boost::circular_buffer<double> imbalanceSrorage_;
+    boost::circular_buffer<double> aggObiStorage_;
     double disbalanceAverage_;
-    double disbalanceRecent_;
-    double disbalancePrev_;
     std::atomic<Side> signal_;
+    size_t indexAgregateData_;
+    double emaObi_;
+    double emaObiPrev_;
+    double emaRecent_;
+    double emaRecentT_1_;
+    double smaPrev_;
+    double sigma_;
+    double dwObi_;
+    double midPrice_;
 
     Logger loger_;
 
-    double calcDisbalance(const OrderBook &orderbook) ;
+    double calcDisbalance(const OrderBook &orderbook);
 
     void checkSignal();
 
-    double getSKO();
+    void getSKO();
+
+    void logData();
 };
