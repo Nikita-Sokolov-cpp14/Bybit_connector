@@ -32,7 +32,7 @@ static const double defaultQty = 0.001; // TODO: Пока для BTC
 static const double coefTakeProfit = 0.15 / 100.0; // В долях, а не процентах. 1%
 static const double coefStopLoss = 0.08 / 100.0; // В долях, а не процентах. 1%
 
-static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(180 * 1000);
+static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(3300 * 1000);
 
 // TFI
 static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(500);

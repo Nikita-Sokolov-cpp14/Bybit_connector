@@ -13,16 +13,22 @@ publicTrades_(settings::historyPublicTradeSize),
 currentBestAskPrice_(0.0),
 currentBestBidPrice_(0.0),
 currentMidPrice_(0.0),
-signalTrade_(std::nullopt),
+signalTfi_(std::nullopt),
+signalObi_(std::nullopt),
 signalTotal_(std::nullopt),
 imbalanceIndicator_(),
-tradeFlowIndicator_() {
+tradeFlowIndicator_(),
+loger_("../log_files/total_signals.csv") {
+    loger_.recordValue("ts");
+    loger_.recordValue("mid_price");
+    loger_.recordValue("signal_obi");
+    loger_.recordValue("signal_tfi");
+    loger_.recordValue("signal_combined");
+    loger_.endStr();
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
-    //! TODO:
-    // imbalanceIndicator_.setOrderbook(orderbook);
-
+    imbalanceIndicator_.setOrderbook(orderbook);
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
@@ -42,9 +48,9 @@ void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
     // Предполагается, что onMarketUpdate работает меньше 1 мс. За это время новая
     // информация не поступит.
     // publicTrades_.push_back(std::move(publicTradeData));
-    // publicTradeIsUpdate_.store(true);
-    // newData_.store(true);
-    // dataCV_.notify_all();
+    publicTradeIsUpdate_.store(true);
+    newData_.store(true);
+    dataCV_.notify_all();
 }
 
 void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
@@ -66,17 +72,18 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
-    //! NOTE: Крупная сделка - по большей части просто подтверждение.
-    if (publicTradeIsUpdate_) {
-        checkSignalTrades();
-        publicTradeIsUpdate_ = false;
-    }
+    signalTfi_ = tradeFlowIndicator_.getSignal();
+    signalObi_ = imbalanceIndicator_.getSignal();
 
     checkSignalTotal();
+    logData();
+    if (!signalTotal_.has_value()) {
+        return;
+    }
 
-    if (signalTotal_.has_value() && (signalTotal_.value() == Side_Buy)) {
+    if (signalTotal_.value() == Side_Buy) {
         tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
-    } else if (signalTotal_.has_value() && (signalTotal_.value() == Side_Sell)) {
+    } else {
         tradeManager_.makeTrade(currentBestBidPrice_, Side_Sell);
     }
 
@@ -116,46 +123,23 @@ void ImbalanceAndLarge::onMarketUpdate() {
     }
 }
 
-void ImbalanceAndLarge::checkSignalTrades() {
-    //! TODO: Нужно внимательно проследить, что новые данные о сделках не добавятся.
-    size_t countPlusTick = 0;
-    size_t countminusTick = 0;
-
-    double plusTickQtu = 0.0;
-    double minusTickQtu = 0.0;
-
-    for (const auto &trade : publicTrades_.back()) {
-        if (trade.L == PublicTrade::TickDirection_PlusTick) {
-            countPlusTick++;
-            plusTickQtu += trade.v;
-        }
-        if (trade.L == PublicTrade::TickDirection_MinusTick) {
-            countminusTick++;
-            minusTickQtu += trade.v;
-        }
-    }
-
-    // if (countPlusTick > countminusTick) {
-    //     signalTrade_ = Side_Buy;
-    // } else if (countminusTick > countPlusTick) {
-    //     signalTrade_ = Side_Sell;
-    // } else {
-    //     signalTrade_ = std::nullopt;
-    // }
-
-    if (plusTickQtu > minusTickQtu) {
-        signalTrade_ = Side_Buy;
-    } else if (minusTickQtu > plusTickQtu) {
-        signalTrade_ = Side_Sell;
+void ImbalanceAndLarge::checkSignalTotal() {
+    if ((signalTfi_ == Side_Buy) && (signalObi_ == Side_Buy)) {
+        signalTotal_ = Side_Buy;
+    } else if ((signalTfi_ == Side_Sell) && (signalObi_ == Side_Sell)) {
+        signalTotal_ = Side_Sell;
     } else {
-        signalTrade_ = std::nullopt;
+        signalTotal_ = std::nullopt;
     }
 }
 
-void ImbalanceAndLarge::checkSignalTotal() {
-    if (!imbalanceIndicator_.hasSignal()) {
-        signalTotal_ = std::nullopt;
-    }
-
-    signalTotal_ = imbalanceIndicator_.getSignal();
+void ImbalanceAndLarge::logData() {
+    loger_.recordValue(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+                               .count());
+    loger_.recordValue(currentMidPrice_.load());
+    loger_.recordValue(signalObi_.value_or(Side_Unknown));
+    loger_.recordValue(signalTfi_.value_or(Side_Unknown));
+    loger_.recordValue(signalTotal_.value_or(Side_Unknown));
+    loger_.endStr();
 }

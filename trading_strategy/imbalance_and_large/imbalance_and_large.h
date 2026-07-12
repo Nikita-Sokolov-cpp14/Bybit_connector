@@ -8,6 +8,7 @@
 #include <numeric>
 #include "indicators/imbalance/imbalance_indicator.h"
 #include "indicators/trade_flow/trade_flow.h"
+#include "loger/loger.h"
 
 // struct TradeRecord {
 //     uint64_t timestamp;  // Время сделки (у тебя уже есть поле T)
@@ -43,13 +44,15 @@ private:
      */
     boost::circular_buffer<double> midPrices_;
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
-    std::optional<Side> signalTrade_;
+    std::optional<Side> signalTfi_;
+    std::optional<Side> signalObi_;
     std::optional<Side> signalTotal_;
 
     ImbalanceIndicator imbalanceIndicator_;
     TradeFlowIndicator tradeFlowIndicator_;
 
-    void checkSignalTrades();
+    Logger loger_;
 
     void checkSignalTotal();
+    void logData();
 };
