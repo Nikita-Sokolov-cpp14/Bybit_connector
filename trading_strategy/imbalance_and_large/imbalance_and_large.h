@@ -6,8 +6,8 @@
 #include <boost/circular_buffer.hpp>
 #include <optional>
 #include <numeric>
-#include "indicators/imbalance/imbalance_indicator.h"
-#include "indicators/trade_flow/trade_flow.h"
+#include "indicators/order_book_imbalance/order_book_imbalance.h"
+#include "indicators/trade_flow_imbalance/trade_flow_imbalance.h"
 #include "loger/loger.h"
 
 // struct TradeRecord {
@@ -48,8 +48,8 @@ private:
     std::optional<Side> signalObi_;
     std::optional<Side> signalTotal_;
 
-    ImbalanceIndicator imbalanceIndicator_;
-    TradeFlowIndicator tradeFlowIndicator_;
+    OrderBookImbalance orderBookImbalance_;
+    TradeFlowImbalance tradeFlowImbalance_;
 
     Logger loger_;
 

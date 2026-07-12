@@ -17,9 +17,9 @@
 #include <numeric>
 #include "loger/loger.h"
 
-class ImbalanceIndicator {
+class OrderBookImbalance {
 public:
-    ImbalanceIndicator();
+    OrderBookImbalance();
 
     void setOrderbook(const OrderBook &orderbook);
 

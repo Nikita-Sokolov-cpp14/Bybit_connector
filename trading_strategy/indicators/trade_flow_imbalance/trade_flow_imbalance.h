@@ -18,9 +18,9 @@
 #include <list>
 #include "loger/loger.h"
 
-class TradeFlowIndicator {
+class TradeFlowImbalance {
 public:
-    TradeFlowIndicator();
+    TradeFlowImbalance();
 
     void setPublicTrade(const PublicTrade &publicTrade);
 

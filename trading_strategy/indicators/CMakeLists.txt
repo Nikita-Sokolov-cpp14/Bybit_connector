@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 
 add_library(indicators
-    imbalance/imbalance_indicator.cpp
-    trade_flow/trade_flow.cpp
+    order_book_imbalance/order_book_imbalance.cpp
+    trade_flow_imbalance/trade_flow_imbalance.cpp
 )
 
 target_link_libraries(indicators PRIVATE

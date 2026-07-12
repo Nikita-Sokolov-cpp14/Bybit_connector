@@ -1,10 +1,10 @@
-#include "imbalance_indicator.h"
+#include "order_book_imbalance.h"
 #include "settings.h"
 
 #include <chrono>
 #include <cmath>
 
-ImbalanceIndicator::ImbalanceIndicator() :
+OrderBookImbalance::OrderBookImbalance() :
 imbalanceSrorage_(settings::averrageDisbalanceCount),
 disbalanceAverage_(0.0f),
 signal_(Side_Unknown),
@@ -19,7 +19,7 @@ loger_("../log_files/imbalance.csv") {
     loger_.endStr();
 }
 
-void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
+void OrderBookImbalance::setOrderbook(const OrderBook &orderbook) {
     const double disbalance = calcDisbalance(orderbook);
 
     imbalanceSrorage_.push_back(disbalance);
@@ -66,7 +66,7 @@ void ImbalanceIndicator::setOrderbook(const OrderBook &orderbook) {
     checkSignal();
 }
 
-bool ImbalanceIndicator::hasSignal() {
+bool OrderBookImbalance::hasSignal() {
     if (signal_.load() != Side_Unknown) {
         return true;
     }
@@ -74,11 +74,11 @@ bool ImbalanceIndicator::hasSignal() {
     return false;
 }
 
-Side ImbalanceIndicator::getSignal() {
+Side OrderBookImbalance::getSignal() {
     return signal_.load();
 }
 
-double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
+double OrderBookImbalance::calcDisbalance(const OrderBook &orderbook) {
     double sumVolAsks = 0;
     double sumVolBids = 0;
 
@@ -111,7 +111,7 @@ double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
     return (sumVolBids - sumVolAsks) / (sumVolBids + sumVolAsks);
 }
 
-// double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
+// double OrderBookImbalance::calcDisbalance(const OrderBook &orderbook) {
 //     double sumVolAsks = 0;
 //     double sumVolBids = 0;
 
@@ -142,7 +142,7 @@ double ImbalanceIndicator::calcDisbalance(const OrderBook &orderbook) {
 //     return (sumVolBids - sumVolAsks) / (sumVolBids + sumVolAsks);
 // }
 
-void ImbalanceIndicator::checkSignal() {
+void OrderBookImbalance::checkSignal() {
     double zNormal = (disbalanceRecent_ - disbalancePrev_) / getSKO();
     double absDeltaImbalance = std::fabs(disbalanceRecent_ - disbalancePrev_);
 
@@ -178,7 +178,7 @@ void ImbalanceIndicator::checkSignal() {
     }
 }
 
-double ImbalanceIndicator::getSKO() {
+double OrderBookImbalance::getSKO() {
     double sumDeltaSquare = 0.0;
 
     for (const auto &imbalance : imbalanceSrorage_) {

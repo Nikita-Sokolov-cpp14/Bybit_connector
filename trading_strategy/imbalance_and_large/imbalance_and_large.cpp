@@ -16,8 +16,8 @@ currentMidPrice_(0.0),
 signalTfi_(std::nullopt),
 signalObi_(std::nullopt),
 signalTotal_(std::nullopt),
-imbalanceIndicator_(),
-tradeFlowIndicator_(),
+orderBookImbalance_(),
+tradeFlowImbalance_(),
 loger_("../log_files/total_signals.csv") {
     loger_.recordValue("ts");
     loger_.recordValue("mid_price");
@@ -28,12 +28,12 @@ loger_("../log_files/total_signals.csv") {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
-    imbalanceIndicator_.setOrderbook(orderbook);
+    orderBookImbalance_.setOrderbook(orderbook);
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
     midPrices_.push_back(currentMidPrice_.load());
-    tradeFlowIndicator_.setMidPrice(currentMidPrice_.load());
+    tradeFlowImbalance_.setMidPrice(currentMidPrice_.load());
 
     tradeManager_.checkCurrentPrice(currentMidPrice_.load());
 
@@ -42,7 +42,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
 }
 
 void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
-    tradeFlowIndicator_.setPublicTrade(publicTrade);
+    tradeFlowImbalance_.setPublicTrade(publicTrade);
     //! TODO: После этой опреации у publicTrade больше нет данных.
     //! TODO: Нужно успеть обработать обновление сделок до прихода новых.
     // Предполагается, что onMarketUpdate работает меньше 1 мс. За это время новая
@@ -72,8 +72,8 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
-    signalTfi_ = tradeFlowIndicator_.getSignal();
-    signalObi_ = imbalanceIndicator_.getSignal();
+    signalTfi_ = tradeFlowImbalance_.getSignal();
+    signalObi_ = orderBookImbalance_.getSignal();
 
     checkSignalTotal();
     logData();

@@ -1,4 +1,4 @@
-#include "trade_flow.h"
+#include "trade_flow_imbalance.h"
 #include "settings.h"
 
 #include <chrono>
@@ -18,7 +18,7 @@ const double minVolume = 0.1;
 
 } // namespace
 
-TradeFlowIndicator::TradeFlowIndicator() :
+TradeFlowImbalance::TradeFlowImbalance() :
 signal_(Side_Unknown),
 netFlowShort_(0.0),
 mu_(0.0),
@@ -41,7 +41,7 @@ loger_("../log_files/trade_flow.csv") {
     loger_.endStr();
 }
 
-void TradeFlowIndicator::setPublicTrade(const PublicTrade &publicTrade) {
+void TradeFlowImbalance::setPublicTrade(const PublicTrade &publicTrade) {
     for (const auto &trade : publicTrade.data) {
         SmallTradeData tradeData;
         tradeData.BT = trade.BT;
@@ -51,7 +51,7 @@ void TradeFlowIndicator::setPublicTrade(const PublicTrade &publicTrade) {
         tradeData.seq = trade.seq;
         tradeData.T = trade.T;
         tradeData.v = trade.v;
-        // std::cout << "TradeFlowIndicator::setPublicTrade " << tradeData.T << " "
+        // std::cout << "TradeFlowImbalance::setPublicTrade " << tradeData.T << " "
         //           << std::chrono::duration_cast<std::chrono::milliseconds>(
         //                      std::chrono::system_clock::now().time_since_epoch()).count()
         //           << std::endl;
@@ -77,7 +77,7 @@ void TradeFlowIndicator::setPublicTrade(const PublicTrade &publicTrade) {
     logData();
 }
 
-bool TradeFlowIndicator::hasSignal() {
+bool TradeFlowImbalance::hasSignal() {
     if (signal_.load() != Side_Unknown) {
         return true;
     }
@@ -85,15 +85,15 @@ bool TradeFlowIndicator::hasSignal() {
     return false;
 }
 
-Side TradeFlowIndicator::getSignal() {
+Side TradeFlowImbalance::getSignal() {
     return signal_.load();
 }
 
-void TradeFlowIndicator::setMidPrice(double price) {
+void TradeFlowImbalance::setMidPrice(double price) {
     midPrice_.store(price);
 }
 
-void TradeFlowIndicator::checkActualityTime() {
+void TradeFlowImbalance::checkActualityTime() {
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch());
 
@@ -114,7 +114,7 @@ void TradeFlowIndicator::checkActualityTime() {
     }
 }
 
-void TradeFlowIndicator::calculateShort() {
+void TradeFlowImbalance::calculateShort() {
     double sumVolBuy = 0.0;
     double sumVolSell = 0.0;
     double total = 0.0;
@@ -136,7 +136,7 @@ void TradeFlowIndicator::calculateShort() {
     netFlowShort_ = (sumVolBuy - sumVolSell) / total;
 }
 
-void TradeFlowIndicator::calculateBase() {
+void TradeFlowImbalance::calculateBase() {
     uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch())
                            .count();
@@ -175,7 +175,7 @@ void TradeFlowIndicator::calculateBase() {
     sigma_ = sqrt(sumDeltaSquare / (countIntervals - 1));
 }
 
-void TradeFlowIndicator::checkSignal() {
+void TradeFlowImbalance::checkSignal() {
     // if ((sigma_ < minSigma) || (sigma_ > maxSigma) || (shortWindow_.size() < minShortWinSize) ||
     //         (shortWindow_.size()) > maxShortWinSize) {
     //     signal_.store(Side_Unknown);
@@ -199,7 +199,7 @@ void TradeFlowIndicator::checkSignal() {
     }
 }
 
-bool TradeFlowIndicator::isBuy(const SmallTradeData &trade) {
+bool TradeFlowImbalance::isBuy(const SmallTradeData &trade) {
     if (trade.L == PublicTrade::TickDirection_PlusTick ||
             trade.L == PublicTrade::TickDirection_ZeroPlusTick) {
         return true;
@@ -211,7 +211,7 @@ bool TradeFlowIndicator::isBuy(const SmallTradeData &trade) {
     return false;
 }
 
-void TradeFlowIndicator::logData() {
+void TradeFlowImbalance::logData() {
     loger_.recordValue(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch())
                                .count());
