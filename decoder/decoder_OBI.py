@@ -342,10 +342,10 @@ else:
     print("\nОптимизация не удалась!")
 
 # ============================================
-# 6. ВИЗУАЛИЗАЦИЯ
+# 6. ВИЗУАЛИЗАЦИЯ (СТАТИЧЕСКИЕ ГРАФИКИ)
 # ============================================
 print("\n" + "=" * 60)
-print("ПОСТРОЕНИЕ ГРАФИКОВ")
+print("ПОСТРОЕНИЕ СТАТИЧЕСКИХ ГРАФИКОВ")
 print("=" * 60)
 
 fig = plt.figure(figsize=(22, 18))
@@ -566,11 +566,569 @@ ax12.set_title('Корреляционная матрица', fontsize=12)
 
 plt.tight_layout()
 plt.savefig('obi_analysis.png', dpi=150, bbox_inches='tight')
-print("\nГрафик сохранен: obi_analysis.png")
+print("\n✅ Статический график сохранен: obi_analysis.png")
 plt.show()
 
 # ============================================
-# 7. ДОПОЛНИТЕЛЬНЫЙ АНАЛИЗ: РАЗНЫЕ ГОРИЗОНТЫ
+# 7. ИНТЕРАКТИВНЫЕ HTML ГРАФИКИ (ДОБАВЛЕНЫ)
+# ============================================
+print("\n" + "=" * 60)
+print("ПОСТРОЕНИЕ ИНТЕРАКТИВНЫХ HTML ГРАФИКОВ")
+print("=" * 60)
+
+try:
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    USE_PLOTLY = True
+    print("✅ Используем Plotly для интерактивных графиков")
+except ImportError:
+    USE_PLOTLY = False
+    print("⚠️ Plotly не установлен. Установите: pip install plotly")
+
+if USE_PLOTLY:
+
+    # --------------------------------------------------------------------
+    # 7.1 ИНТЕРАКТИВНЫЙ ГРАФИК: Цена (отдельно, в своем масштабе)
+    # --------------------------------------------------------------------
+    print("\n7.1 Создание интерактивного графика: Цена...")
+
+    fig_price = go.Figure()
+
+    fig_price.add_trace(
+        go.Scatter(
+            x=df_clean['ts_s_rel'],
+            y=df_clean['mid_price'],
+            mode='lines',
+            name='Price',
+            line=dict(color='black', width=1.5),
+            hovertemplate='<b>Price</b>: %{y:.2f}<br>Время: %{x:.0f}с<extra></extra>'
+        )
+    )
+
+    # Добавляем сигналы на график цены
+    buy_plot = df_clean[df_clean['signal'] == 1]
+    sell_plot = df_clean[df_clean['signal'] == 2]
+
+    fig_price.add_trace(
+        go.Scatter(
+            x=buy_plot['ts_s_rel'],
+            y=buy_plot['mid_price'],
+            mode='markers',
+            name='BUY',
+            marker=dict(symbol='triangle-up', size=12, color='lime', line=dict(color='darkgreen', width=2)),
+            hovertemplate='<b>BUY</b><br>Price: %{y:.2f}<br>z-score: %{customdata:.3f}<extra></extra>',
+            customdata=buy_plot['z_score']
+        )
+    )
+
+    fig_price.add_trace(
+        go.Scatter(
+            x=sell_plot['ts_s_rel'],
+            y=sell_plot['mid_price'],
+            mode='markers',
+            name='SELL',
+            marker=dict(symbol='triangle-down', size=12, color='red', line=dict(color='darkred', width=2)),
+            hovertemplate='<b>SELL</b><br>Price: %{y:.2f}<br>z-score: %{customdata:.3f}<extra></extra>',
+            customdata=sell_plot['z_score']
+        )
+    )
+
+    fig_price.update_layout(
+        title=dict(text='<b>Цена с сигналами</b>', font=dict(size=18)),
+        xaxis_title='Время (сек)',
+        yaxis_title='Price',
+        height=400,
+        hovermode='x unified',
+        dragmode='pan',
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=5, label="5мин", step="minute", stepmode="backward"),
+                    dict(count=15, label="15мин", step="minute", stepmode="backward"),
+                    dict(count=30, label="30мин", step="minute", stepmode="backward"),
+                    dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(step="all", label="Все")
+                ])
+            ),
+            rangeslider=dict(visible=True, thickness=0.05)
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    fig_price.write_html("obi_price.html")
+    print("✅ Сохранен: obi_price.html")
+
+    # --------------------------------------------------------------------
+    # 7.2 ИНТЕРАКТИВНЫЙ ГРАФИК: z-score (отдельно)
+    # --------------------------------------------------------------------
+    print("\n7.2 Создание интерактивного графика: z-score...")
+
+    # Автоматический подбор порога
+    recommended_threshold = np.percentile(np.abs(df_clean['z_score']), 95)
+
+    fig_zscore = go.Figure()
+
+    fig_zscore.add_trace(
+        go.Scatter(
+            x=df_clean['ts_s_rel'],
+            y=df_clean['z_score'],
+            mode='lines',
+            name='z-score',
+            line=dict(color='blue', width=1.2),
+            hovertemplate='<b>z-score</b>: %{y:.3f}<br>Время: %{x:.0f}с<extra></extra>'
+        )
+    )
+
+    # Пороги
+    fig_zscore.add_hline(
+        y=recommended_threshold,
+        line_dash="dash",
+        line_color="green",
+        line_width=1.5,
+        annotation_text=f"рекомендуемый +{recommended_threshold:.2f}"
+    )
+    fig_zscore.add_hline(
+        y=-recommended_threshold,
+        line_dash="dash",
+        line_color="green",
+        line_width=1.5,
+        annotation_text=f"рекомендуемый -{recommended_threshold:.2f}"
+    )
+    fig_zscore.add_hline(
+        y=2.0,
+        line_dash="dot",
+        line_color="orange",
+        line_width=1,
+        annotation_text="старый +2.0"
+    )
+    fig_zscore.add_hline(
+        y=-2.0,
+        line_dash="dot",
+        line_color="orange",
+        line_width=1,
+        annotation_text="старый -2.0"
+    )
+    fig_zscore.add_hline(y=0, line_dash="solid", line_color="gray", line_width=0.5)
+
+    fig_zscore.update_layout(
+        title=dict(text='<b>z-score с порогами</b>', font=dict(size=18)),
+        xaxis_title='Время (сек)',
+        yaxis_title='z-score',
+        height=400,
+        hovermode='x unified',
+        dragmode='pan',
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=5, label="5мин", step="minute", stepmode="backward"),
+                    dict(count=15, label="15мин", step="minute", stepmode="backward"),
+                    dict(count=30, label="30мин", step="minute", stepmode="backward"),
+                    dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(step="all", label="Все")
+                ])
+            ),
+            rangeslider=dict(visible=True, thickness=0.05)
+        )
+    )
+
+    fig_zscore.write_html("obi_zscore.html")
+    print("✅ Сохранен: obi_zscore.html")
+
+    # --------------------------------------------------------------------
+    # 7.3 ИНТЕРАКТИВНЫЙ ГРАФИК: OBI_recent и OBI_prev (отдельно)
+    # --------------------------------------------------------------------
+    print("\n7.3 Создание интерактивного графика: OBI_recent и OBI_prev...")
+
+    fig_obi = go.Figure()
+
+    fig_obi.add_trace(
+        go.Scatter(
+            x=df_clean['ts_s_rel'],
+            y=df_clean['OBI_recent'],
+            mode='lines',
+            name='OBI_recent (быстрый)',
+            line=dict(color='#1f77b4', width=1.5),
+            hovertemplate='<b>OBI_recent</b>: %{y:.4f}<br>Время: %{x:.0f}с<extra></extra>'
+        )
+    )
+
+    fig_obi.add_trace(
+        go.Scatter(
+            x=df_clean['ts_s_rel'],
+            y=df_clean['OBI_prev'],
+            mode='lines',
+            name='OBI_prev (медленный)',
+            line=dict(color='#ff7f0e', width=1.5),
+            hovertemplate='<b>OBI_prev</b>: %{y:.4f}<br>Время: %{x:.0f}с<extra></extra>'
+        )
+    )
+
+    fig_obi.add_hline(y=0, line_dash="solid", line_color="gray", line_width=0.5)
+
+    fig_obi.update_layout(
+        title=dict(text='<b>OBI_recent vs OBI_prev</b>', font=dict(size=18)),
+        xaxis_title='Время (сек)',
+        yaxis_title='OBI',
+        height=400,
+        hovermode='x unified',
+        dragmode='pan',
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=5, label="5мин", step="minute", stepmode="backward"),
+                    dict(count=15, label="15мин", step="minute", stepmode="backward"),
+                    dict(count=30, label="30мин", step="minute", stepmode="backward"),
+                    dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(step="all", label="Все")
+                ])
+            ),
+            rangeslider=dict(visible=True, thickness=0.05)
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    fig_obi.write_html("obi_components.html")
+    print("✅ Сохранен: obi_components.html")
+
+    # --------------------------------------------------------------------
+    # 7.4 ИНТЕРАКТИВНЫЙ ГРАФИК: sigma (волатильность OBI)
+    # --------------------------------------------------------------------
+    print("\n7.4 Создание интерактивного графика: sigma...")
+
+    fig_sigma = go.Figure()
+
+    fig_sigma.add_trace(
+        go.Scatter(
+            x=df_clean['ts_s_rel'],
+            y=df_clean['sigma'],
+            mode='lines',
+            name='sigma',
+            line=dict(color='orange', width=1.2),
+            fill='tozeroy',
+            fillcolor='rgba(255, 165, 0, 0.2)',
+            hovertemplate='<b>sigma</b>: %{y:.6f}<br>Время: %{x:.0f}с<extra></extra>'
+        )
+    )
+
+    fig_sigma.add_hline(
+        y=df_clean['sigma'].median(),
+        line_dash="dash",
+        line_color="red",
+        line_width=1,
+        annotation_text=f"медиана = {df_clean['sigma'].median():.6f}"
+    )
+
+    fig_sigma.update_layout(
+        title=dict(text='<b>Sigma (волатильность OBI)</b>', font=dict(size=18)),
+        xaxis_title='Время (сек)',
+        yaxis_title='sigma',
+        height=400,
+        hovermode='x unified',
+        dragmode='pan',
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=5, label="5мин", step="minute", stepmode="backward"),
+                    dict(count=15, label="15мин", step="minute", stepmode="backward"),
+                    dict(count=30, label="30мин", step="minute", stepmode="backward"),
+                    dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(step="all", label="Все")
+                ])
+            ),
+            rangeslider=dict(visible=True, thickness=0.05)
+        )
+    )
+
+    fig_sigma.write_html("obi_sigma.html")
+    print("✅ Сохранен: obi_sigma.html")
+
+    # --------------------------------------------------------------------
+    # 7.5 ИНТЕРАКТИВНЫЙ ГРАФИК: Корреляция z-score с движением цены
+    # --------------------------------------------------------------------
+    print("\n7.5 Создание интерактивного графика: Корреляция...")
+
+    horizons = np.arange(1, 31, 1)
+    correlations = []
+
+    for h in horizons:
+        periods = h * 60 * 2
+        if periods < len(df_clean):
+            df_clean[f'price_change_{h}min'] = df_clean['mid_price'].shift(-periods) - df_clean['mid_price']
+            corr = df_clean['z_score'].corr(df_clean[f'price_change_{h}min'])
+            correlations.append(corr if not np.isnan(corr) else 0)
+
+    fig_corr = go.Figure()
+
+    fig_corr.add_trace(
+        go.Scatter(
+            x=horizons[:len(correlations)],
+            y=correlations,
+            mode='lines+markers',
+            name='Корреляция',
+            line=dict(color='blue', width=2),
+            marker=dict(size=10),
+            hovertemplate='Горизонт: %{x} мин<br>Корреляция: %{y:.3f}<extra></extra>'
+        )
+    )
+
+    # Заливка
+    fig_corr.add_trace(
+        go.Scatter(
+            x=horizons[:len(correlations)],
+            y=correlations,
+            mode='lines',
+            name='',
+            fill='tozeroy',
+            fillcolor='rgba(0, 0, 255, 0.1)',
+            line=dict(width=0),
+            showlegend=False
+        )
+    )
+
+    fig_corr.add_hline(y=0, line_dash="solid", line_color="gray", line_width=1)
+
+    # Максимальная корреляция
+    max_corr_idx = np.argmax(np.abs(correlations))
+    max_corr = correlations[max_corr_idx]
+    max_horizon = horizons[max_corr_idx]
+
+    fig_corr.add_annotation(
+        x=max_horizon,
+        y=max_corr,
+        text=f"<b>Макс: {max_corr:.3f}</b><br>на {max_horizon} мин",
+        showarrow=True,
+        arrowhead=2,
+        font=dict(size=13),
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1
+    )
+
+    fig_corr.update_layout(
+        title=dict(text='<b>Корреляция z-score с будущим движением цены</b>', font=dict(size=18)),
+        xaxis_title='Горизонт (минуты)',
+        yaxis_title='Корреляция Пирсона',
+        height=450,
+        hovermode='x unified',
+        dragmode='pan'
+    )
+
+    fig_corr.write_html("obi_correlation.html")
+    print("✅ Сохранен: obi_correlation.html")
+
+    # --------------------------------------------------------------------
+    # 7.6 ИНТЕРАКТИВНЫЙ ГРАФИК: Распределение z-score
+    # --------------------------------------------------------------------
+    print("\n7.6 Создание интерактивного графика: Распределение z-score...")
+
+    fig_dist = go.Figure()
+
+    # Гистограмма
+    fig_dist.add_trace(
+        go.Histogram(
+            x=df_clean['z_score'],
+            nbinsx=80,
+            name='Распределение',
+            opacity=0.7,
+            marker=dict(color='steelblue', line=dict(color='black', width=0.5)),
+            hovertemplate='z-score: %{x:.3f}<br>Частота: %{y}<extra></extra>'
+        )
+    )
+
+    # Нормальное распределение
+    x_norm = np.linspace(df_clean['z_score'].min(), df_clean['z_score'].max(), 100)
+    bin_width = (df_clean['z_score'].max() - df_clean['z_score'].min()) / 80
+    y_norm = norm.pdf(x_norm, 0, 1) * len(df_clean) * bin_width
+
+    fig_dist.add_trace(
+        go.Scatter(
+            x=x_norm,
+            y=y_norm,
+            mode='lines',
+            name='N(0,1)',
+            line=dict(color='red', width=2),
+            hovertemplate='N(0,1): %{y:.0f}<extra></extra>'
+        )
+    )
+
+    # Вертикальные линии порогов
+    fig_dist.add_vline(
+        x=recommended_threshold,
+        line_dash="dash",
+        line_color="green",
+        line_width=2,
+        annotation_text=f"новый +{recommended_threshold:.2f}"
+    )
+    fig_dist.add_vline(
+        x=-recommended_threshold,
+        line_dash="dash",
+        line_color="green",
+        line_width=2,
+        annotation_text=f"новый -{recommended_threshold:.2f}"
+    )
+    fig_dist.add_vline(
+        x=2.0,
+        line_dash="dot",
+        line_color="orange",
+        line_width=1.5,
+        annotation_text="старый +2.0"
+    )
+    fig_dist.add_vline(
+        x=-2.0,
+        line_dash="dot",
+        line_color="orange",
+        line_width=1.5,
+        annotation_text="старый -2.0"
+    )
+
+    # Статистика в аннотации
+    stats_text = (f"Среднее: {df_clean['z_score'].mean():.3f}<br>"
+                  f"СКО: {df_clean['z_score'].std():.3f}<br>"
+                  f"Сигналов с новым порогом: {len(buy_signals) + len(sell_signals)}")
+
+    fig_dist.add_annotation(
+        x=0.98,
+        y=0.95,
+        xref="paper",
+        yref="paper",
+        text=stats_text,
+        showarrow=False,
+        font=dict(size=12),
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1
+    )
+
+    fig_dist.update_layout(
+        title=dict(text='<b>Распределение z-score с порогами</b>', font=dict(size=18)),
+        xaxis_title='z-score',
+        yaxis_title='Частота',
+        height=450,
+        hovermode='x unified',
+        dragmode='pan',
+        barmode='overlay',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    fig_dist.write_html("obi_distribution.html")
+    print("✅ Сохранен: obi_distribution.html")
+
+    # --------------------------------------------------------------------
+    # 7.7 СВОДНЫЙ HTML С ГРУППОЙ ГРАФИКОВ
+    # --------------------------------------------------------------------
+    print("\n7.7 Создание сводного HTML с группой графиков...")
+
+    html_content = '''<!DOCTYPE html>
+    <html>
+    <head>
+        <title>OBI Анализ - Сводка графиков</title>
+        <style>
+            body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 20px; }
+            h1 { color: #333; text-align: center; }
+            .graph-container {
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                margin: 20px 0;
+                padding: 20px;
+            }
+            .graph-container iframe {
+                width: 100%;
+                border: none;
+                border-radius: 5px;
+            }
+            .stats {
+                background: white;
+                border-radius: 10px;
+                padding: 20px;
+                margin: 20px 0;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .stats table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .stats td, .stats th {
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                text-align: left;
+            }
+            .stats th {
+                background: #f0f0f0;
+            }
+            .stats .positive { color: green; }
+            .stats .negative { color: red; }
+            .stats .highlight { background: #f0f8ff; }
+        </style>
+    </head>
+    <body>
+        <h1>📊 OBI Анализ - Сводка интерактивных графиков</h1>
+
+        <div class="stats">
+            <h2>📈 Базовые метрики</h2>
+            <table>
+                <tr><th>Метрика</th><th>Значение</th></tr>
+                <tr><td>Всего записей</td><td>''' + f"{len(df_clean)}" + '''</td></tr>
+                <tr><td>BUY сигналов</td><td>''' + f"{len(buy_signals)} ({len(buy_signals)/len(df_clean)*100:.2f}%)" + '''</td></tr>
+                <tr><td>SELL сигналов</td><td>''' + f"{len(sell_signals)} ({len(sell_signals)/len(df_clean)*100:.2f}%)" + '''</td></tr>
+                <tr><td>Z-score среднее</td><td>''' + f"{df_clean['z_score'].mean():.3f}" + '''</td></tr>
+                <tr><td>Z-score СКО</td><td>''' + f"{df_clean['z_score'].std():.3f}" + '''</td></tr>
+                <tr><td>Z-score min/max</td><td>''' + f"{df_clean['z_score'].min():.3f} / {df_clean['z_score'].max():.3f}" + '''</td></tr>
+                <tr><td>Рекомендуемый порог</td><td class="highlight"><b>''' + f"{recommended_threshold:.2f}" + '''</b></td></tr>
+                <tr><td>Точность сигналов (5 мин, 0.20%)</td><td>''' + f"{total_acc:.2%}" + '''</td></tr>
+            </table>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Цена с сигналами</h2>
+            <iframe src="obi_price.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Z-score с порогами</h2>
+            <iframe src="obi_zscore.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 OBI_recent vs OBI_prev</h2>
+            <iframe src="obi_components.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Sigma (волатильность OBI)</h2>
+            <iframe src="obi_sigma.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Корреляция z-score с будущим движением цены</h2>
+            <iframe src="obi_correlation.html" height="500"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Распределение z-score</h2>
+            <iframe src="obi_distribution.html" height="500"></iframe>
+        </div>
+
+        <p style="text-align:center; color:#888; font-size:12px; margin-top:30px;">
+            Сгенерировано автоматически • Используйте Ctrl+Колесо мыши для масштабирования
+        </p>
+    </body>
+    </html>
+    '''
+
+    with open('obi_dashboard.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    print("✅ Сохранен: obi_dashboard.html")
+
+    print("\n" + "=" * 60)
+    print("ИНТЕРАКТИВНЫЕ ГРАФИКИ СОЗДАНЫ")
+    print("=" * 60)
+    print("\nОткройте в браузере: obi_dashboard.html")
+    print("Для масштабирования используйте: Ctrl + Колесо мыши")
+    print("=" * 60)
+
+# ============================================
+# 8. ДОПОЛНИТЕЛЬНЫЙ АНАЛИЗ: РАЗНЫЕ ГОРИЗОНТЫ
 # ============================================
 print("\n" + "=" * 60)
 print("АНАЛИЗ ДЛЯ РАЗНЫХ ГОРИЗОНТОВ И ЦЕЛЕЙ")
@@ -604,13 +1162,13 @@ for h in horizons:
             })
 
 # ============================================
-# 8. ДЕТАЛЬНЫЙ АНАЛИЗ КАЧЕСТВА СИГНАЛОВ
+# 9. ДЕТАЛЬНЫЙ АНАЛИЗ КАЧЕСТВА СИГНАЛОВ
 # ============================================
 print("\n" + "=" * 60)
 print("ДЕТАЛЬНЫЙ АНАЛИЗ КАЧЕСТВА СИГНАЛОВ")
 print("=" * 60)
 
-# 8.1 Распределение z-score для сигналов vs не-сигналов
+# 9.1 Распределение z-score для сигналов vs не-сигналов
 signals = df_clean[df_clean['signal'] != 0]
 no_signals = df_clean[df_clean['signal'] == 0]
 
@@ -618,7 +1176,7 @@ print(f"\nZ-score статистика:")
 print(f"  Сигналы: mean={signals['z_score'].mean():.3f}, std={signals['z_score'].std():.3f}")
 print(f"  Не-сигналы: mean={no_signals['z_score'].mean():.3f}, std={no_signals['z_score'].std():.3f}")
 
-# 8.2 Распределение движений после сигналов
+# 9.2 Распределение движений после сигналов
 if len(signals) > 0:
     all_moves = []
     for signal_type in [1, 2]:

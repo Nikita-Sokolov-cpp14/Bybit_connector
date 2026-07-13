@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <title>OBI Анализ - Сводка графиков</title>
+        <style>
+            body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 20px; }
+            h1 { color: #333; text-align: center; }
+            .graph-container {
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                margin: 20px 0;
+                padding: 20px;
+            }
+            .graph-container iframe {
+                width: 100%;
+                border: none;
+                border-radius: 5px;
+            }
+            .stats {
+                background: white;
+                border-radius: 10px;
+                padding: 20px;
+                margin: 20px 0;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .stats table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .stats td, .stats th {
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                text-align: left;
+            }
+            .stats th {
+                background: #f0f0f0;
+            }
+            .stats .positive { color: green; }
+            .stats .negative { color: red; }
+            .stats .highlight { background: #f0f8ff; }
+        </style>
+    </head>
+    <body>
+        <h1>📊 OBI Анализ - Сводка интерактивных графиков</h1>
+
+        <div class="stats">
+            <h2>📈 Базовые метрики</h2>
+            <table>
+                <tr><th>Метрика</th><th>Значение</th></tr>
+                <tr><td>Всего записей</td><td>95060</td></tr>
+                <tr><td>BUY сигналов</td><td>0 (0.00%)</td></tr>
+                <tr><td>SELL сигналов</td><td>0 (0.00%)</td></tr>
+                <tr><td>Z-score среднее</td><td>-0.001</td></tr>
+                <tr><td>Z-score СКО</td><td>0.462</td></tr>
+                <tr><td>Z-score min/max</td><td>-1.483 / 1.429</td></tr>
+                <tr><td>Рекомендуемый порог</td><td class="highlight"><b>0.91</b></td></tr>
+                <tr><td>Точность сигналов (5 мин, 0.20%)</td><td>0.00%</td></tr>
+            </table>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Цена с сигналами</h2>
+            <iframe src="obi_price.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Z-score с порогами</h2>
+            <iframe src="obi_zscore.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 OBI_recent vs OBI_prev</h2>
+            <iframe src="obi_components.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Sigma (волатильность OBI)</h2>
+            <iframe src="obi_sigma.html" height="450"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Корреляция z-score с будущим движением цены</h2>
+            <iframe src="obi_correlation.html" height="500"></iframe>
+        </div>
+
+        <div class="graph-container">
+            <h2>📊 Распределение z-score</h2>
+            <iframe src="obi_distribution.html" height="500"></iframe>
+        </div>
+
+        <p style="text-align:center; color:#888; font-size:12px; margin-top:30px;">
+            Сгенерировано автоматически • Используйте Ctrl+Колесо мыши для масштабирования
+        </p>
+    </body>
+    </html>
+    
