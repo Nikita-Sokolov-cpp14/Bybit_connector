@@ -6,13 +6,13 @@
 
 namespace {
 
-const size_t nEff = 250;
+const size_t nEff = 25;
 const double alpha = 2.0 / (nEff + 1.0);
 
-const size_t nEffFast = 90;
+const size_t nEffFast = 100;
 const double alphaFast = 2.0 / (nEffFast + 1.0);
 
-const size_t nStd = 3 * settings::obiAgrWindowSizePrev;
+const size_t nStd = 2 * settings::obiAgrWindowSizePrev;
 
 } // namespace
 

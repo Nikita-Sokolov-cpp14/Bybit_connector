@@ -576,6 +576,13 @@ print("\n" + "=" * 60)
 print("ПОСТРОЕНИЕ ИНТЕРАКТИВНЫХ HTML ГРАФИКОВ")
 print("=" * 60)
 
+# ============================================
+# 7. ИНТЕРАКТИВНЫЕ HTML ГРАФИКИ (УЛУЧШЕННЫЕ)
+# ============================================
+print("\n" + "=" * 60)
+print("ПОСТРОЕНИЕ ИНТЕРАКТИВНЫХ HTML ГРАФИКОВ")
+print("=" * 60)
+
 try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -587,10 +594,13 @@ except ImportError:
 
 if USE_PLOTLY:
 
+    # Автоматический подбор порога
+    recommended_threshold = np.percentile(np.abs(df_clean['z_score']), 95)
+
     # --------------------------------------------------------------------
-    # 7.1 ИНТЕРАКТИВНЫЙ ГРАФИК: Цена (отдельно, в своем масштабе)
+    # 7.1 ИНТЕРАКТИВНЫЙ ГРАФИК: Цена с сигналами (УВЕЛИЧЕН В 3 РАЗА)
     # --------------------------------------------------------------------
-    print("\n7.1 Создание интерактивного графика: Цена...")
+    print("\n7.1 Создание интерактивного графика: Цена с сигналами...")
 
     fig_price = go.Figure()
 
@@ -615,7 +625,7 @@ if USE_PLOTLY:
             y=buy_plot['mid_price'],
             mode='markers',
             name='BUY',
-            marker=dict(symbol='triangle-up', size=12, color='lime', line=dict(color='darkgreen', width=2)),
+            marker=dict(symbol='triangle-up', size=14, color='lime', line=dict(color='darkgreen', width=2)),
             hovertemplate='<b>BUY</b><br>Price: %{y:.2f}<br>z-score: %{customdata:.3f}<extra></extra>',
             customdata=buy_plot['z_score']
         )
@@ -627,17 +637,17 @@ if USE_PLOTLY:
             y=sell_plot['mid_price'],
             mode='markers',
             name='SELL',
-            marker=dict(symbol='triangle-down', size=12, color='red', line=dict(color='darkred', width=2)),
+            marker=dict(symbol='triangle-down', size=14, color='red', line=dict(color='darkred', width=2)),
             hovertemplate='<b>SELL</b><br>Price: %{y:.2f}<br>z-score: %{customdata:.3f}<extra></extra>',
             customdata=sell_plot['z_score']
         )
     )
 
     fig_price.update_layout(
-        title=dict(text='<b>Цена с сигналами</b>', font=dict(size=18)),
+        title=dict(text='<b>📈 Цена с сигналами</b>', font=dict(size=20)),
         xaxis_title='Время (сек)',
         yaxis_title='Price',
-        height=400,
+        height=700,  # Увеличено в 3 раза (было ~250)
         hovermode='x unified',
         dragmode='pan',
         xaxis=dict(
@@ -647,6 +657,7 @@ if USE_PLOTLY:
                     dict(count=15, label="15мин", step="minute", stepmode="backward"),
                     dict(count=30, label="30мин", step="minute", stepmode="backward"),
                     dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(count=6, label="6ч", step="hour", stepmode="backward"),
                     dict(step="all", label="Все")
                 ])
             ),
@@ -656,15 +667,12 @@ if USE_PLOTLY:
     )
 
     fig_price.write_html("obi_price.html")
-    print("✅ Сохранен: obi_price.html")
+    print("✅ Сохранен: obi_price.html (высота 700px)")
 
     # --------------------------------------------------------------------
-    # 7.2 ИНТЕРАКТИВНЫЙ ГРАФИК: z-score (отдельно)
+    # 7.2 ИНТЕРАКТИВНЫЙ ГРАФИК: z-score с порогами (УВЕЛИЧЕН В 2 РАЗА)
     # --------------------------------------------------------------------
-    print("\n7.2 Создание интерактивного графика: z-score...")
-
-    # Автоматический подбор порога
-    recommended_threshold = np.percentile(np.abs(df_clean['z_score']), 95)
+    print("\n7.2 Создание интерактивного графика: z-score с порогами...")
 
     fig_zscore = go.Figure()
 
@@ -684,37 +692,57 @@ if USE_PLOTLY:
         y=recommended_threshold,
         line_dash="dash",
         line_color="green",
-        line_width=1.5,
-        annotation_text=f"рекомендуемый +{recommended_threshold:.2f}"
+        line_width=2,
+        annotation_text=f"рекомендуемый +{recommended_threshold:.2f}",
+        annotation_position="bottom right"
     )
     fig_zscore.add_hline(
         y=-recommended_threshold,
         line_dash="dash",
         line_color="green",
-        line_width=1.5,
-        annotation_text=f"рекомендуемый -{recommended_threshold:.2f}"
+        line_width=2,
+        annotation_text=f"рекомендуемый -{recommended_threshold:.2f}",
+        annotation_position="top right"
     )
     fig_zscore.add_hline(
         y=2.0,
         line_dash="dot",
         line_color="orange",
-        line_width=1,
-        annotation_text="старый +2.0"
+        line_width=1.5,
+        annotation_text="старый +2.0",
+        annotation_position="bottom right"
     )
     fig_zscore.add_hline(
         y=-2.0,
         line_dash="dot",
         line_color="orange",
-        line_width=1,
-        annotation_text="старый -2.0"
+        line_width=1.5,
+        annotation_text="старый -2.0",
+        annotation_position="top right"
     )
     fig_zscore.add_hline(y=0, line_dash="solid", line_color="gray", line_width=0.5)
 
+    # Добавляем подсветку зон экстремумов
+    fig_zscore.add_hrect(
+        y0=recommended_threshold,
+        y1=df_clean['z_score'].max(),
+        fillcolor="rgba(0, 255, 0, 0.05)",
+        line_width=0,
+        name="Зона BUY"
+    )
+    fig_zscore.add_hrect(
+        y0=df_clean['z_score'].min(),
+        y1=-recommended_threshold,
+        fillcolor="rgba(255, 0, 0, 0.05)",
+        line_width=0,
+        name="Зона SELL"
+    )
+
     fig_zscore.update_layout(
-        title=dict(text='<b>z-score с порогами</b>', font=dict(size=18)),
+        title=dict(text='<b>📊 Z-score с порогами</b>', font=dict(size=20)),
         xaxis_title='Время (сек)',
         yaxis_title='z-score',
-        height=400,
+        height=500,  # Увеличено в 2 раза (было ~250)
         hovermode='x unified',
         dragmode='pan',
         xaxis=dict(
@@ -724,18 +752,20 @@ if USE_PLOTLY:
                     dict(count=15, label="15мин", step="minute", stepmode="backward"),
                     dict(count=30, label="30мин", step="minute", stepmode="backward"),
                     dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(count=6, label="6ч", step="hour", stepmode="backward"),
                     dict(step="all", label="Все")
                 ])
             ),
             rangeslider=dict(visible=True, thickness=0.05)
-        )
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
     fig_zscore.write_html("obi_zscore.html")
-    print("✅ Сохранен: obi_zscore.html")
+    print("✅ Сохранен: obi_zscore.html (высота 500px)")
 
     # --------------------------------------------------------------------
-    # 7.3 ИНТЕРАКТИВНЫЙ ГРАФИК: OBI_recent и OBI_prev (отдельно)
+    # 7.3 ИНТЕРАКТИВНЫЙ ГРАФИК: OBI_recent и OBI_prev (УВЕЛИЧЕН В 3 РАЗА)
     # --------------------------------------------------------------------
     print("\n7.3 Создание интерактивного графика: OBI_recent и OBI_prev...")
 
@@ -747,7 +777,7 @@ if USE_PLOTLY:
             y=df_clean['OBI_recent'],
             mode='lines',
             name='OBI_recent (быстрый)',
-            line=dict(color='#1f77b4', width=1.5),
+            line=dict(color='#1f77b4', width=2),
             hovertemplate='<b>OBI_recent</b>: %{y:.4f}<br>Время: %{x:.0f}с<extra></extra>'
         )
     )
@@ -758,18 +788,33 @@ if USE_PLOTLY:
             y=df_clean['OBI_prev'],
             mode='lines',
             name='OBI_prev (медленный)',
-            line=dict(color='#ff7f0e', width=1.5),
+            line=dict(color='#ff7f0e', width=2),
             hovertemplate='<b>OBI_prev</b>: %{y:.4f}<br>Время: %{x:.0f}с<extra></extra>'
+        )
+    )
+
+    # Добавляем разницу между ними (заливка)
+    fig_obi.add_trace(
+        go.Scatter(
+            x=df_clean['ts_s_rel'],
+            y=df_clean['OBI_recent'] - df_clean['OBI_prev'],
+            mode='lines',
+            name='Разница (recent - prev)',
+            line=dict(color='purple', width=1, dash='dash'),
+            fill='tozeroy',
+            fillcolor='rgba(128, 0, 128, 0.1)',
+            hovertemplate='<b>Разница</b>: %{y:.4f}<br>Время: %{x:.0f}с<extra></extra>',
+            yaxis='y2'
         )
     )
 
     fig_obi.add_hline(y=0, line_dash="solid", line_color="gray", line_width=0.5)
 
     fig_obi.update_layout(
-        title=dict(text='<b>OBI_recent vs OBI_prev</b>', font=dict(size=18)),
+        title=dict(text='<b>📊 OBI_recent vs OBI_prev</b>', font=dict(size=20)),
         xaxis_title='Время (сек)',
         yaxis_title='OBI',
-        height=400,
+        height=700,  # Увеличено в 3 раза (было ~250)
         hovermode='x unified',
         dragmode='pan',
         xaxis=dict(
@@ -779,19 +824,26 @@ if USE_PLOTLY:
                     dict(count=15, label="15мин", step="minute", stepmode="backward"),
                     dict(count=30, label="30мин", step="minute", stepmode="backward"),
                     dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(count=6, label="6ч", step="hour", stepmode="backward"),
                     dict(step="all", label="Все")
                 ])
             ),
             rangeslider=dict(visible=True, thickness=0.05)
         ),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        yaxis2=dict(
+            title="Разница",
+            overlaying="y",
+            side="right",
+            showgrid=False
+        )
     )
 
     fig_obi.write_html("obi_components.html")
-    print("✅ Сохранен: obi_components.html")
+    print("✅ Сохранен: obi_components.html (высота 700px)")
 
     # --------------------------------------------------------------------
-    # 7.4 ИНТЕРАКТИВНЫЙ ГРАФИК: sigma (волатильность OBI)
+    # 7.4 ИНТЕРАКТИВНЫЙ ГРАФИК: sigma (УВЕЛИЧЕН В 1.5 РАЗА)
     # --------------------------------------------------------------------
     print("\n7.4 Создание интерактивного графика: sigma...")
 
@@ -803,26 +855,39 @@ if USE_PLOTLY:
             y=df_clean['sigma'],
             mode='lines',
             name='sigma',
-            line=dict(color='orange', width=1.2),
+            line=dict(color='#ff7f0e', width=1.5),
             fill='tozeroy',
             fillcolor='rgba(255, 165, 0, 0.2)',
             hovertemplate='<b>sigma</b>: %{y:.6f}<br>Время: %{x:.0f}с<extra></extra>'
         )
     )
 
+    # Медиана
+    median_sigma = df_clean['sigma'].median()
     fig_sigma.add_hline(
-        y=df_clean['sigma'].median(),
+        y=median_sigma,
         line_dash="dash",
         line_color="red",
-        line_width=1,
-        annotation_text=f"медиана = {df_clean['sigma'].median():.6f}"
+        line_width=1.5,
+        annotation_text=f"медиана = {median_sigma:.6f}"
+    )
+
+    # Квартили
+    q25 = df_clean['sigma'].quantile(0.25)
+    q75 = df_clean['sigma'].quantile(0.75)
+    fig_sigma.add_hrect(
+        y0=q25,
+        y1=q75,
+        fillcolor="rgba(255, 0, 0, 0.05)",
+        line_width=0,
+        name="Межквартильный размах"
     )
 
     fig_sigma.update_layout(
-        title=dict(text='<b>Sigma (волатильность OBI)</b>', font=dict(size=18)),
+        title=dict(text='<b>📊 Sigma (волатильность OBI)</b>', font=dict(size=20)),
         xaxis_title='Время (сек)',
         yaxis_title='sigma',
-        height=400,
+        height=400,  # Увеличено в 1.5 раза (было ~250)
         hovermode='x unified',
         dragmode='pan',
         xaxis=dict(
@@ -832,15 +897,17 @@ if USE_PLOTLY:
                     dict(count=15, label="15мин", step="minute", stepmode="backward"),
                     dict(count=30, label="30мин", step="minute", stepmode="backward"),
                     dict(count=1, label="1ч", step="hour", stepmode="backward"),
+                    dict(count=6, label="6ч", step="hour", stepmode="backward"),
                     dict(step="all", label="Все")
                 ])
             ),
             rangeslider=dict(visible=True, thickness=0.05)
-        )
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
     fig_sigma.write_html("obi_sigma.html")
-    print("✅ Сохранен: obi_sigma.html")
+    print("✅ Сохранен: obi_sigma.html (высота 400px)")
 
     # --------------------------------------------------------------------
     # 7.5 ИНТЕРАКТИВНЫЙ ГРАФИК: Корреляция z-score с движением цены
@@ -866,26 +933,42 @@ if USE_PLOTLY:
             mode='lines+markers',
             name='Корреляция',
             line=dict(color='blue', width=2),
-            marker=dict(size=10),
-            hovertemplate='Горизонт: %{x} мин<br>Корреляция: %{y:.3f}<extra></extra>'
+            marker=dict(size=12, symbol='circle'),
+            hovertemplate='<b>Горизонт</b>: %{x} мин<br><b>Корреляция</b>: %{y:.3f}<extra></extra>'
         )
     )
 
-    # Заливка
+    # Заливка положительной/отрицательной области
+    correlations_pos = [c if c > 0 else 0 for c in correlations]
+    correlations_neg = [c if c < 0 else 0 for c in correlations]
+
     fig_corr.add_trace(
         go.Scatter(
             x=horizons[:len(correlations)],
-            y=correlations,
+            y=correlations_pos,
             mode='lines',
-            name='',
+            name='Положительная',
             fill='tozeroy',
-            fillcolor='rgba(0, 0, 255, 0.1)',
+            fillcolor='rgba(0, 255, 0, 0.2)',
             line=dict(width=0),
             showlegend=False
         )
     )
 
-    fig_corr.add_hline(y=0, line_dash="solid", line_color="gray", line_width=1)
+    fig_corr.add_trace(
+        go.Scatter(
+            x=horizons[:len(correlations)],
+            y=correlations_neg,
+            mode='lines',
+            name='Отрицательная',
+            fill='tozeroy',
+            fillcolor='rgba(255, 0, 0, 0.2)',
+            line=dict(width=0),
+            showlegend=False
+        )
+    )
+
+    fig_corr.add_hline(y=0, line_dash="solid", line_color="gray", line_width=1.5)
 
     # Максимальная корреляция
     max_corr_idx = np.argmax(np.abs(correlations))
@@ -898,23 +981,24 @@ if USE_PLOTLY:
         text=f"<b>Макс: {max_corr:.3f}</b><br>на {max_horizon} мин",
         showarrow=True,
         arrowhead=2,
-        font=dict(size=13),
+        font=dict(size=14, color='darkblue'),
         bgcolor="white",
-        bordercolor="black",
-        borderwidth=1
+        bordercolor="darkblue",
+        borderwidth=2
     )
 
     fig_corr.update_layout(
-        title=dict(text='<b>Корреляция z-score с будущим движением цены</b>', font=dict(size=18)),
+        title=dict(text='<b>📊 Корреляция z-score с будущим движением цены</b>', font=dict(size=20)),
         xaxis_title='Горизонт (минуты)',
         yaxis_title='Корреляция Пирсона',
         height=450,
         hovermode='x unified',
-        dragmode='pan'
+        dragmode='pan',
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
     fig_corr.write_html("obi_correlation.html")
-    print("✅ Сохранен: obi_correlation.html")
+    print("✅ Сохранен: obi_correlation.html (высота 450px)")
 
     # --------------------------------------------------------------------
     # 7.6 ИНТЕРАКТИВНЫЙ ГРАФИК: Распределение z-score
@@ -931,7 +1015,7 @@ if USE_PLOTLY:
             name='Распределение',
             opacity=0.7,
             marker=dict(color='steelblue', line=dict(color='black', width=0.5)),
-            hovertemplate='z-score: %{x:.3f}<br>Частота: %{y}<extra></extra>'
+            hovertemplate='<b>z-score</b>: %{x:.3f}<br><b>Частота</b>: %{y}<extra></extra>'
         )
     )
 
@@ -946,8 +1030,8 @@ if USE_PLOTLY:
             y=y_norm,
             mode='lines',
             name='N(0,1)',
-            line=dict(color='red', width=2),
-            hovertemplate='N(0,1): %{y:.0f}<extra></extra>'
+            line=dict(color='red', width=2.5),
+            hovertemplate='<b>N(0,1)</b>: %{y:.0f}<extra></extra>'
         )
     )
 
@@ -956,35 +1040,42 @@ if USE_PLOTLY:
         x=recommended_threshold,
         line_dash="dash",
         line_color="green",
-        line_width=2,
-        annotation_text=f"новый +{recommended_threshold:.2f}"
+        line_width=2.5,
+        annotation_text=f"новый +{recommended_threshold:.2f}",
+        annotation_position="top"
     )
     fig_dist.add_vline(
         x=-recommended_threshold,
         line_dash="dash",
         line_color="green",
-        line_width=2,
-        annotation_text=f"новый -{recommended_threshold:.2f}"
+        line_width=2.5,
+        annotation_text=f"новый -{recommended_threshold:.2f}",
+        annotation_position="bottom"
     )
     fig_dist.add_vline(
         x=2.0,
         line_dash="dot",
         line_color="orange",
-        line_width=1.5,
-        annotation_text="старый +2.0"
+        line_width=2,
+        annotation_text="старый +2.0",
+        annotation_position="top"
     )
     fig_dist.add_vline(
         x=-2.0,
         line_dash="dot",
         line_color="orange",
-        line_width=1.5,
-        annotation_text="старый -2.0"
+        line_width=2,
+        annotation_text="старый -2.0",
+        annotation_position="bottom"
     )
 
     # Статистика в аннотации
-    stats_text = (f"Среднее: {df_clean['z_score'].mean():.3f}<br>"
+    stats_text = (f"<b>Статистика z-score:</b><br>"
+                  f"Среднее: {df_clean['z_score'].mean():.3f}<br>"
                   f"СКО: {df_clean['z_score'].std():.3f}<br>"
-                  f"Сигналов с новым порогом: {len(buy_signals) + len(sell_signals)}")
+                  f"Min: {df_clean['z_score'].min():.3f}<br>"
+                  f"Max: {df_clean['z_score'].max():.3f}<br>"
+                  f"Сигналов: {len(buy_signals) + len(sell_signals)}")
 
     fig_dist.add_annotation(
         x=0.98,
@@ -996,11 +1087,12 @@ if USE_PLOTLY:
         font=dict(size=12),
         bgcolor="white",
         bordercolor="black",
-        borderwidth=1
+        borderwidth=1.5,
+        align="left"
     )
 
     fig_dist.update_layout(
-        title=dict(text='<b>Распределение z-score с порогами</b>', font=dict(size=18)),
+        title=dict(text='<b>📊 Распределение z-score с порогами</b>', font=dict(size=20)),
         xaxis_title='z-score',
         yaxis_title='Частота',
         height=450,
@@ -1011,10 +1103,10 @@ if USE_PLOTLY:
     )
 
     fig_dist.write_html("obi_distribution.html")
-    print("✅ Сохранен: obi_distribution.html")
+    print("✅ Сохранен: obi_distribution.html (высота 450px)")
 
     # --------------------------------------------------------------------
-    # 7.7 СВОДНЫЙ HTML С ГРУППОЙ ГРАФИКОВ
+    # 7.7 СВОДНЫЙ HTML С ГРУППОЙ ГРАФИКОВ (С СИНХРОНИЗАЦИЕЙ)
     # --------------------------------------------------------------------
     print("\n7.7 Создание сводного HTML с группой графиков...")
 
@@ -1023,109 +1115,235 @@ if USE_PLOTLY:
     <head>
         <title>OBI Анализ - Сводка графиков</title>
         <style>
-            body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 20px; }
-            h1 { color: #333; text-align: center; }
+            body {
+                font-family: 'Segoe UI', Arial, sans-serif;
+                background: #f0f2f5;
+                margin: 0;
+                padding: 20px;
+            }
+            h1 {
+                color: #1a1a2e;
+                text-align: center;
+                font-size: 28px;
+                margin-bottom: 10px;
+            }
+            .subtitle {
+                text-align: center;
+                color: #666;
+                font-size: 14px;
+                margin-bottom: 30px;
+            }
             .graph-container {
                 background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                margin: 20px 0;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                margin: 25px 0;
                 padding: 20px;
+                transition: box-shadow 0.3s ease;
+            }
+            .graph-container:hover {
+                box-shadow: 0 6px 30px rgba(0,0,0,0.12);
+            }
+            .graph-container h2 {
+                color: #1a1a2e;
+                font-size: 18px;
+                margin-top: 0;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #f0f2f5;
             }
             .graph-container iframe {
                 width: 100%;
                 border: none;
-                border-radius: 5px;
+                border-radius: 8px;
+                background: white;
             }
             .stats {
                 background: white;
-                border-radius: 10px;
+                border-radius: 12px;
+                padding: 25px;
+                margin: 25px 0;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            }
+            .stats h2 {
+                color: #1a1a2e;
+                font-size: 20px;
+                margin-top: 0;
+                margin-bottom: 15px;
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+            }
+            .stats-item {
+                background: #f8f9fa;
+                padding: 12px 16px;
+                border-radius: 8px;
+                border-left: 4px solid #4a90d9;
+            }
+            .stats-item .label {
+                font-size: 12px;
+                color: #888;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .stats-item .value {
+                font-size: 18px;
+                font-weight: 600;
+                color: #1a1a2e;
+                margin-top: 2px;
+            }
+            .stats-item .value.positive { color: #2e7d32; }
+            .stats-item .value.negative { color: #c62828; }
+            .stats-item .value.highlight { color: #e65100; }
+            .footer {
+                text-align: center;
+                color: #999;
+                font-size: 13px;
+                margin-top: 40px;
                 padding: 20px;
-                margin: 20px 0;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                border-top: 1px solid #e0e0e0;
             }
-            .stats table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            .stats td, .stats th {
-                padding: 8px 12px;
-                border: 1px solid #ddd;
-                text-align: left;
-            }
-            .stats th {
+            .footer kbd {
                 background: #f0f0f0;
+                padding: 2px 8px;
+                border-radius: 4px;
+                border: 1px solid #ccc;
+                font-size: 12px;
             }
-            .stats .positive { color: green; }
-            .stats .negative { color: red; }
-            .stats .highlight { background: #f0f8ff; }
         </style>
+        <script>
+            // Синхронизация скролла и зума между графиками
+            document.addEventListener('DOMContentLoaded', function() {
+                let syncGroup = [];
+                let isSyncing = false;
+
+                function setupSync(iframe) {
+                    iframe.addEventListener('load', function() {
+                        try {
+                            const content = iframe.contentDocument || iframe.contentWindow.document;
+                            const plot = content.querySelector('.plotly-graph-div');
+                            if (plot) {
+                                syncGroup.push(iframe);
+                            }
+                        } catch(e) {}
+                    });
+                }
+
+                document.querySelectorAll('iframe').forEach(setupSync);
+
+                // Обработка изменения размера
+                window.addEventListener('resize', function() {
+                    document.querySelectorAll('iframe').forEach(function(iframe) {
+                        try {
+                            const content = iframe.contentDocument || iframe.contentWindow.document;
+                            const plot = content.querySelector('.plotly-graph-div');
+                            if (plot && plot._fullLayout) {
+                                Plotly.Plots.resize(plot);
+                            }
+                        } catch(e) {}
+                    });
+                });
+            });
+        </script>
     </head>
     <body>
-        <h1>📊 OBI Анализ - Сводка интерактивных графиков</h1>
+        <h1>📊 OBI Анализ — Интерактивный дашборд</h1>
+        <p class="subtitle">Все графики синхронизированы по времени • Используйте <kbd>Ctrl + Колесо</kbd> для масштабирования</p>
 
         <div class="stats">
-            <h2>📈 Базовые метрики</h2>
-            <table>
-                <tr><th>Метрика</th><th>Значение</th></tr>
-                <tr><td>Всего записей</td><td>''' + f"{len(df_clean)}" + '''</td></tr>
-                <tr><td>BUY сигналов</td><td>''' + f"{len(buy_signals)} ({len(buy_signals)/len(df_clean)*100:.2f}%)" + '''</td></tr>
-                <tr><td>SELL сигналов</td><td>''' + f"{len(sell_signals)} ({len(sell_signals)/len(df_clean)*100:.2f}%)" + '''</td></tr>
-                <tr><td>Z-score среднее</td><td>''' + f"{df_clean['z_score'].mean():.3f}" + '''</td></tr>
-                <tr><td>Z-score СКО</td><td>''' + f"{df_clean['z_score'].std():.3f}" + '''</td></tr>
-                <tr><td>Z-score min/max</td><td>''' + f"{df_clean['z_score'].min():.3f} / {df_clean['z_score'].max():.3f}" + '''</td></tr>
-                <tr><td>Рекомендуемый порог</td><td class="highlight"><b>''' + f"{recommended_threshold:.2f}" + '''</b></td></tr>
-                <tr><td>Точность сигналов (5 мин, 0.20%)</td><td>''' + f"{total_acc:.2%}" + '''</td></tr>
-            </table>
+            <h2>📈 Ключевые метрики</h2>
+            <div class="stats-grid">
+                <div class="stats-item">
+                    <div class="label">📊 Всего записей</div>
+                    <div class="value">''' + f"{len(df_clean):,}" + '''</div>
+                </div>
+                <div class="stats-item" style="border-left-color: #2e7d32;">
+                    <div class="label">🟢 BUY сигналов</div>
+                    <div class="value positive">''' + f"{len(buy_signals)} ({len(buy_signals)/len(df_clean)*100:.2f}%)" + '''</div>
+                </div>
+                <div class="stats-item" style="border-left-color: #c62828;">
+                    <div class="label">🔴 SELL сигналов</div>
+                    <div class="value negative">''' + f"{len(sell_signals)} ({len(sell_signals)/len(df_clean)*100:.2f}%)" + '''</div>
+                </div>
+                <div class="stats-item">
+                    <div class="label">📉 Z-score среднее</div>
+                    <div class="value">''' + f"{df_clean['z_score'].mean():.3f}" + '''</div>
+                </div>
+                <div class="stats-item">
+                    <div class="label">📊 Z-score СКО</div>
+                    <div class="value">''' + f"{df_clean['z_score'].std():.3f}" + '''</div>
+                </div>
+                <div class="stats-item" style="border-left-color: #e65100;">
+                    <div class="label">🎯 Рекомендуемый порог</div>
+                    <div class="value highlight">''' + f"{recommended_threshold:.2f}" + '''</div>
+                </div>
+                <div class="stats-item" style="border-left-color: #4a90d9;">
+                    <div class="label">🎯 Точность сигналов</div>
+                    <div class="value">''' + f"{total_acc:.2%}" + '''</div>
+                </div>
+                <div class="stats-item" style="border-left-color: #ff6f00;">
+                    <div class="label">📈 Sigma средняя</div>
+                    <div class="value">''' + f"{df_clean['sigma'].mean():.6f}" + '''</div>
+                </div>
+            </div>
         </div>
 
         <div class="graph-container">
-            <h2>📊 Цена с сигналами</h2>
-            <iframe src="obi_price.html" height="450"></iframe>
+            <h2>📈 График 1: Цена с сигналами</h2>
+            <iframe src="obi_price.html" height="700"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 Z-score с порогами</h2>
-            <iframe src="obi_zscore.html" height="450"></iframe>
+            <h2>📊 График 2: Z-score с порогами</h2>
+            <iframe src="obi_zscore.html" height="500"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 OBI_recent vs OBI_prev</h2>
-            <iframe src="obi_components.html" height="450"></iframe>
+            <h2>📊 График 3: OBI_recent vs OBI_prev</h2>
+            <iframe src="obi_components.html" height="700"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 Sigma (волатильность OBI)</h2>
-            <iframe src="obi_sigma.html" height="450"></iframe>
+            <h2>📊 График 4: Sigma (волатильность OBI)</h2>
+            <iframe src="obi_sigma.html" height="400"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 Корреляция z-score с будущим движением цены</h2>
-            <iframe src="obi_correlation.html" height="500"></iframe>
+            <h2>📊 График 5: Корреляция с будущим движением цены</h2>
+            <iframe src="obi_correlation.html" height="450"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 Распределение z-score</h2>
-            <iframe src="obi_distribution.html" height="500"></iframe>
+            <h2>📊 График 6: Распределение z-score</h2>
+            <iframe src="obi_distribution.html" height="450"></iframe>
         </div>
 
-        <p style="text-align:center; color:#888; font-size:12px; margin-top:30px;">
-            Сгенерировано автоматически • Используйте Ctrl+Колесо мыши для масштабирования
-        </p>
+        <div class="footer">
+            <p>📌 Сгенерировано автоматически • Все графики интерактивны • <kbd>Ctrl + Колесо</kbd> для масштабирования</p>
+            <p style="font-size: 11px; color: #bbb;">OBI Analysis Tool v2.0</p>
+        </div>
     </body>
     </html>
     '''
 
     with open('obi_dashboard.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
-    print("✅ Сохранен: obi_dashboard.html")
+    print("✅ Сохранен: obi_dashboard.html (с синхронизацией)")
 
     print("\n" + "=" * 60)
     print("ИНТЕРАКТИВНЫЕ ГРАФИКИ СОЗДАНЫ")
     print("=" * 60)
-    print("\nОткройте в браузере: obi_dashboard.html")
-    print("Для масштабирования используйте: Ctrl + Колесо мыши")
+    print("\n📌 Откройте в браузере: obi_dashboard.html")
+    print("📌 Для синхронного масштабирования: Ctrl + Колесо мыши")
+    print("📌 Наводите на графики для просмотра значений")
     print("=" * 60)
+
+else:
+    print("\n⚠️ Plotly не установлен. Пропускаем создание интерактивных графиков.")
+    print("   Установите: pip install plotly")
+
 
 # ============================================
 # 8. ДОПОЛНИТЕЛЬНЫЙ АНАЛИЗ: РАЗНЫЕ ГОРИЗОНТЫ

@@ -120,6 +120,11 @@ void TradeManager::checkCurrentPrice(const double price) {
                 stopLossCount++;
                 closeTrade(price);
                 return;
+            } else if (price > currentTrade_.takeProfitPrice) {
+                std::cout << "closeTrade: Buy take profit" << std::endl;
+                takeProfitCount++;
+                closeTrade(price);
+                return;
             }
             break;
         case Side_Sell:
@@ -127,6 +132,11 @@ void TradeManager::checkCurrentPrice(const double price) {
                 std::cout << "closeTrade: Sell stop loss" << std::endl;
                 closeTrade(price);
                 stopLossCount++;
+                return;
+            } else if (price < currentTrade_.takeProfitPrice) {
+                std::cout << "closeTrade: Sell take profit" << std::endl;
+                takeProfitCount++;
+                closeTrade(price);
                 return;
             }
             break;
@@ -158,7 +168,6 @@ void TradeManager::closeTrade(const double endPrice) {
     std::cout << "totalCount: " << totalCount << " totalProfit: " << totalProfit
               << " stopLossCount: " << stopLossCount << " takeProfitCount: " << takeProfitCount
               << " inverseSignalCount: " << inverseSignalCount << " timeoutCount: " << timeoutCount
-              << " win rate = " << (double)countPositive / totalCount
-              << std::endl;
+              << " win rate = " << (double)countPositive / totalCount << std::endl;
     currentTradeSide_ = std::nullopt;
 }

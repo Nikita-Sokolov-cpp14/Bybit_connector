@@ -8,13 +8,16 @@
 namespace {
 
 // шаг выборки, мс
-const size_t step = 100;
+const size_t step = 300;
 const size_t countIntervals = settings::baseTime.count() / step;
-const double minSigma = 0.1;
-const double maxSigma = 0.65;
+const double minSigma = 0.2;
+const double maxSigma = 1.2;
 // const size_t maxShortWinSize = 200;
 // const size_t minShortWinSize = 0;
-const double minVolume = 0.1;
+const double minVolume = 0.05;
+
+const size_t nEff = 100;
+const double alpha = 2.0 / (nEff + 1.0);
 
 } // namespace
 
@@ -128,12 +131,14 @@ void TradeFlowImbalance::calculateShort() {
     }
 
     total = sumVolSell + sumVolBuy;
+    double netFlow = 0.0;
     if (total < 1e-10) {
-        netFlowShort_ = 0.0;
-        return;
+        netFlow = 0.0;
+    } else {
+        netFlow = (sumVolBuy - sumVolSell) / total;
     }
 
-    netFlowShort_ = (sumVolBuy - sumVolSell) / total;
+    netFlowShort_ = alpha * netFlow + (1 - alpha) * netFlowShort_;
 }
 
 void TradeFlowImbalance::calculateBase() {
@@ -165,8 +170,7 @@ void TradeFlowImbalance::calculateBase() {
         netFlowIntervalData_[i] = (total < 1e-10) ? 0 : (sumVolBuy_[i] - sumVolSell_[i]) / total;
     }
 
-    // Считаем mu и sigma по 20 точкам
-    mu_ = std::accumulate(netFlowIntervalData_.begin(), netFlowIntervalData_.end(), 0.0) / 20;
+    mu_ = std::accumulate(netFlowIntervalData_.begin(), netFlowIntervalData_.end(), 0.0) / countIntervals;
 
     double sumDeltaSquare = 0.0;
     for (const auto &netFlow : netFlowIntervalData_) {

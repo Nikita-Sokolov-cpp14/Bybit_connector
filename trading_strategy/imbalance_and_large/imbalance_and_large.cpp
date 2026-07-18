@@ -118,9 +118,9 @@ void ImbalanceAndLarge::onMarketUpdate() {
     // if (signalDisbalance_.has_value() && countSignal_.load() >= settings::countSignal) {
     //     tradeManager_.checkInverseSignal(signalDisbalance_.value());
     // }
-    if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
-        tradeManager_.checkInverseSignal(signalTotal_.value());
-    }
+    // if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
+    //     tradeManager_.checkInverseSignal(signalTotal_.value());
+    // }
 }
 
 void ImbalanceAndLarge::checkSignalTotal() {
