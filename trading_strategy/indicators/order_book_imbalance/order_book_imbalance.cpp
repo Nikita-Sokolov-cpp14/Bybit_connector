@@ -9,10 +9,21 @@ namespace {
 const size_t nEff = 25;
 const double alpha = 2.0 / (nEff + 1.0);
 
-const size_t nEffFast = 100;
+const size_t nEffFast = 600;
 const double alphaFast = 2.0 / (nEffFast + 1.0);
 
+const size_t nEffSigma = 300;
+const double alphaSigma = 2.0 / (nEffSigma + 1.0);
+
+const size_t nEffMean = 1800;
+const double alphaMean = 2.0 / (nEffMean + 1.0);
+
 const size_t nStd = 2 * settings::obiAgrWindowSizePrev;
+
+const double minSigma = 0.05;
+const double maxSigma = 1.2;
+
+static const double minShift = 0.05;
 
 } // namespace
 
@@ -29,6 +40,9 @@ smaPrev_(0.0),
 sigma_(0.0),
 dwObi_(0.0),
 midPrice_(0.0),
+emaVariance_(0.0),
+emaInitialized_(false),
+emaMean_(0.0),
 loger_("../log_files/imbalance.csv") {
     loger_.recordValue("ts");
     loger_.recordValue("mid_price");
@@ -71,7 +85,8 @@ void OrderBookImbalance::setOrderbook(const OrderBook &orderbook) {
 
     midPrice_ = (orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0;
 
-    getSKO();
+    // getSKO();
+    updateSigmaEMA();
     checkSignal();
     logData();
 }
@@ -109,7 +124,12 @@ double OrderBookImbalance::calcDisbalance(const OrderBook &orderbook) {
 }
 
 void OrderBookImbalance::checkSignal() {
-    if (sigma_ < 1e-10) {
+    if (sigma_ < minSigma || sigma_ > maxSigma) {
+        signal_.store(Side_Unknown);
+        return;
+    }
+
+    if (std::abs(emaRecent_ - smaPrev_) < minShift) {
         signal_.store(Side_Unknown);
         return;
     }
@@ -142,6 +162,29 @@ void OrderBookImbalance::getSKO() {
         sumDeltaSquare += pow(aggObiStorage_[i] - disbalanceAverage_, 2);
     }
     sigma_ = sqrt(sumDeltaSquare / (nStd - 1));
+}
+
+void OrderBookImbalance::updateSigmaEMA() {
+    double currentValue = aggObiStorage_.back();
+
+    // Обновляем EMA среднего
+    if (!emaInitialized_) {
+        emaMean_ = currentValue;
+    } else {
+        emaMean_ = alphaMean * currentValue + (1 - alphaMean) * emaMean_;
+    }
+
+    // Считаем отклонение от EMA среднего
+    double deviation = currentValue - emaMean_;
+
+    if (!emaInitialized_) {
+        emaVariance_ = deviation * deviation;
+        emaInitialized_ = true;
+    } else {
+        emaVariance_ = alphaSigma * (deviation * deviation) + (1 - alphaSigma) * emaVariance_;
+    }
+
+    sigma_ = sqrt(emaVariance_);
 }
 
 void OrderBookImbalance::logData() {

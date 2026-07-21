@@ -41,6 +41,9 @@ private:
     double sigma_;
     double dwObi_;
     double midPrice_;
+    double emaVariance_; // EMA дисперсии
+    bool emaInitialized_; // Флаг инициализации
+    double emaMean_;
 
     Logger loger_;
 
@@ -49,6 +52,8 @@ private:
     void checkSignal();
 
     void getSKO();
+
+    void updateSigmaEMA();
 
     void logData();
 };

@@ -54,6 +54,7 @@ private:
     std::atomic<Side> signal_;
     std::atomic<double> midPrice_;
     double zScore_;
+    uint64_t lastCalcTime_;
     Logger loger_;
 
     void checkActualityTime();

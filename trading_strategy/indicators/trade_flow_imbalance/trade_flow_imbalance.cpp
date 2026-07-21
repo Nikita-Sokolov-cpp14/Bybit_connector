@@ -8,15 +8,15 @@
 namespace {
 
 // шаг выборки, мс
-const size_t step = 300;
+const size_t step = 1000;
 const size_t countIntervals = settings::baseTime.count() / step;
-const double minSigma = 0.2;
-const double maxSigma = 1.2;
+const double minSigma = 0.15;
+const double maxSigma = 1.5;
 // const size_t maxShortWinSize = 200;
 // const size_t minShortWinSize = 0;
 const double minVolume = 0.05;
 
-const size_t nEff = 100;
+const size_t nEff = 30;
 const double alpha = 2.0 / (nEff + 1.0);
 
 } // namespace
@@ -30,6 +30,7 @@ sumVolBuy_(),
 sumVolSell_(),
 midPrice_(0.0),
 zScore_(0.0),
+lastCalcTime_(0),
 loger_("../log_files/trade_flow.csv") {
     loger_.recordValue("ts");
     loger_.recordValue("mid_price");
@@ -67,17 +68,19 @@ void TradeFlowImbalance::setPublicTrade(const PublicTrade &publicTrade) {
         baseWindow_.push_back(tradeData);
     }
 
-    checkActualityTime();
-
     uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch())
                            .count();
+    if (now - lastCalcTime_ >= step) {
+        checkActualityTime();
 
-    calculateShort();
-    calculateBase();
-    checkSignal();
+        calculateShort();
+        calculateBase();
+        checkSignal();
 
-    logData();
+        logData();
+        lastCalcTime_ = now;
+    }
 }
 
 bool TradeFlowImbalance::hasSignal() {
@@ -170,7 +173,8 @@ void TradeFlowImbalance::calculateBase() {
         netFlowIntervalData_[i] = (total < 1e-10) ? 0 : (sumVolBuy_[i] - sumVolSell_[i]) / total;
     }
 
-    mu_ = std::accumulate(netFlowIntervalData_.begin(), netFlowIntervalData_.end(), 0.0) / countIntervals;
+    mu_ = std::accumulate(netFlowIntervalData_.begin(), netFlowIntervalData_.end(), 0.0) /
+            countIntervals;
 
     double sumDeltaSquare = 0.0;
     for (const auto &netFlow : netFlowIntervalData_) {
