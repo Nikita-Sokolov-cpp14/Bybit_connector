@@ -16,7 +16,7 @@ const double maxSigma = 1.5;
 // const size_t minShortWinSize = 0;
 const double minVolume = 0.05;
 
-const size_t nEff = 30;
+const size_t nEff = 60;
 const double alpha = 2.0 / (nEff + 1.0);
 
 } // namespace

@@ -26,7 +26,7 @@ static const size_t agregateCountObi = 50;
 //! Размер данных с истории. 1 ячейка = 1 массив агрегированных данных за выбранное время.
 static const size_t averrageAgrCount = 7200;
 //! Размер окна prev агрегированных данных.
-static const size_t obiAgrWindowSizePrev = 1800;
+static const size_t obiAgrWindowSizePrev = 2700;
 
 // Объем
 static const double defaultQty = 0.001; // TODO: Пока для BTC
@@ -38,10 +38,10 @@ static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(
 static const uint8_t leverage = 50;
 
 // TFI
-static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(120 * 1000);
-static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(600 * 1000);
+static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(180 * 1000);
+static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(900 * 1000);
 
-static const double tradeFlowCountSigmaBuy = 2.0;
-static const double tradeFlowCountSigmaSell = -2.0;
+static const double tradeFlowCountSigmaBuy = 1.0;
+static const double tradeFlowCountSigmaSell = -1.0;
 
 }

@@ -9,13 +9,13 @@ namespace {
 const size_t nEff = 25;
 const double alpha = 2.0 / (nEff + 1.0);
 
-const size_t nEffFast = 600;
+const size_t nEffFast = 300;
 const double alphaFast = 2.0 / (nEffFast + 1.0);
 
-const size_t nEffSigma = 300;
+const size_t nEffSigma = 180;
 const double alphaSigma = 2.0 / (nEffSigma + 1.0);
 
-const size_t nEffMean = 1800;
+const size_t nEffMean = 1200;
 const double alphaMean = 2.0 / (nEffMean + 1.0);
 
 const size_t nStd = 2 * settings::obiAgrWindowSizePrev;
@@ -71,7 +71,13 @@ void OrderBookImbalance::setOrderbook(const OrderBook &orderbook) {
     }
 
     //! Если не накопили данные, то и сигнал не рассматриваем
-    if (aggObiStorage_.size() < nStd) {
+    // для getSko
+    // if (aggObiStorage_.size() < nStd) {
+    //     signal_.store(Side_Unknown);
+    //     return;
+    // }
+
+    if (aggObiStorage_.size() < settings::obiAgrWindowSizePrev) {
         signal_.store(Side_Unknown);
         return;
     }
@@ -87,6 +93,12 @@ void OrderBookImbalance::setOrderbook(const OrderBook &orderbook) {
 
     // getSKO();
     updateSigmaEMA();
+
+    if (aggObiStorage_.size() < nEffSigma + settings::obiAgrWindowSizePrev) {
+        signal_.store(Side_Unknown);
+        return;
+    }
+
     checkSignal();
     logData();
 }

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
     <html>
     <head>
-        <title>OBI Анализ - Сводка графиков</title>
+        <title>TFI Анализ - Сводка графиков</title>
         <style>
             body {
                 font-family: 'Segoe UI', Arial, sans-serif;
@@ -100,28 +100,29 @@
                 border: 1px solid #ccc;
                 font-size: 12px;
             }
+            .info-note {
+                background: #fff3e0;
+                padding: 10px 20px;
+                border-radius: 8px;
+                margin: 15px 0;
+                border-left: 4px solid #ff9800;
+                font-size: 14px;
+            }
         </style>
         <script>
-            // Синхронизация скролла и зума между графиками
             document.addEventListener('DOMContentLoaded', function() {
-                let syncGroup = [];
-                let isSyncing = false;
-
-                function setupSync(iframe) {
+                document.querySelectorAll('iframe').forEach(function(iframe) {
                     iframe.addEventListener('load', function() {
                         try {
                             const content = iframe.contentDocument || iframe.contentWindow.document;
                             const plot = content.querySelector('.plotly-graph-div');
-                            if (plot) {
-                                syncGroup.push(iframe);
+                            if (plot && plot._fullLayout) {
+                                Plotly.Plots.resize(plot);
                             }
                         } catch(e) {}
                     });
-                }
+                });
 
-                document.querySelectorAll('iframe').forEach(setupSync);
-
-                // Обработка изменения размера
                 window.addEventListener('resize', function() {
                     document.querySelectorAll('iframe').forEach(function(iframe) {
                         try {
@@ -137,80 +138,79 @@
         </script>
     </head>
     <body>
-        <h1>📊 OBI Анализ — Интерактивный дашборд</h1>
-        <p class="subtitle">Все графики синхронизированы по времени • Используйте <kbd>Ctrl + Колесо</kbd> для масштабирования</p>
+        <h1>📊 TFI Анализ — Интерактивный дашборд</h1>
+        <p class="subtitle">Все графики интерактивны • Используйте <kbd>Ctrl + Колесо</kbd> для масштабирования</p>
+
+        <div class="info-note">
+            📌 <b>Оптимизация производительности:</b> Для ускорения загрузки отображается каждая 1-я точка.
+        </div>
 
         <div class="stats">
             <h2>📈 Ключевые метрики</h2>
             <div class="stats-grid">
                 <div class="stats-item">
                     <div class="label">📊 Всего записей</div>
-                    <div class="value">25,225</div>
+                    <div class="value">18,606</div>
                 </div>
                 <div class="stats-item" style="border-left-color: #2e7d32;">
                     <div class="label">🟢 BUY сигналов</div>
-                    <div class="value positive">0 (0.00%)</div>
+                    <div class="value positive">1500 (8.06%)</div>
                 </div>
                 <div class="stats-item" style="border-left-color: #c62828;">
                     <div class="label">🔴 SELL сигналов</div>
-                    <div class="value negative">4 (0.02%)</div>
+                    <div class="value negative">1288 (6.92%)</div>
                 </div>
                 <div class="stats-item">
                     <div class="label">📉 Z-score среднее</div>
-                    <div class="value">-0.006</div>
+                    <div class="value">-0.003</div>
                 </div>
                 <div class="stats-item">
                     <div class="label">📊 Z-score СКО</div>
-                    <div class="value">0.225</div>
+                    <div class="value">0.688</div>
                 </div>
                 <div class="stats-item" style="border-left-color: #e65100;">
                     <div class="label">🎯 Рекомендуемый порог</div>
-                    <div class="value highlight">0.29</div>
+                    <div class="value highlight">1.35</div>
                 </div>
                 <div class="stats-item" style="border-left-color: #4a90d9;">
                     <div class="label">🎯 Точность сигналов</div>
-                    <div class="value">0.00%</div>
+                    <div class="value"></div>
                 </div>
                 <div class="stats-item" style="border-left-color: #ff6f00;">
                     <div class="label">📈 Sigma средняя</div>
-                    <div class="value">0.388180</div>
+                    <div class="value">0.501275</div>
                 </div>
             </div>
         </div>
 
         <div class="graph-container">
-            <h2>📈 График 1: Цена с сигналами</h2>
-            <iframe src="obi_price.html" height="700"></iframe>
+            <h2>📈 График 1: Цена</h2>
+            <iframe src="tfi_price.html" height="700"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 График 2: Z-score с порогами</h2>
-            <iframe src="obi_zscore.html" height="500"></iframe>
+            <h2>📊 График 2: netFlow и mu</h2>
+            <iframe src="tfi_flow.html" height="500"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 График 3: OBI_recent vs OBI_prev</h2>
-            <iframe src="obi_components.html" height="700"></iframe>
+            <h2>📊 График 3: Z-score с порогами</h2>
+            <iframe src="tfi_zscore.html" height="500"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 График 4: Sigma (волатильность OBI)</h2>
-            <iframe src="obi_sigma.html" height="400"></iframe>
+            <h2>📊 График 4: Sigma (волатильность netFlow)</h2>
+            <iframe src="tfi_sigma.html" height="400"></iframe>
         </div>
 
         <div class="graph-container">
-            <h2>📊 График 5: Корреляция с будущим движением цены</h2>
-            <iframe src="obi_correlation.html" height="450"></iframe>
-        </div>
-
-        <div class="graph-container">
-            <h2>📊 График 6: Распределение z-score</h2>
-            <iframe src="obi_distribution.html" height="450"></iframe>
+            <h2>📊 График 5: Распределение z-score</h2>
+            <iframe src="tfi_distribution.html" height="450"></iframe>
         </div>
 
         <div class="footer">
             <p>📌 Сгенерировано автоматически • Все графики интерактивны • <kbd>Ctrl + Колесо</kbd> для масштабирования</p>
-            <p style="font-size: 11px; color: #bbb;">OBI Analysis Tool v2.0</p>
+            <p style="font-size: 11px; color: #bbb;">TFI Analysis Tool v2.0 (без отображения сигналов)</p>
         </div>
     </body>
     </html>
