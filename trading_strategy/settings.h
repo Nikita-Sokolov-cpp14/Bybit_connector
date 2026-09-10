@@ -5,7 +5,7 @@
 namespace settings {
 
 //!< Глубина стакана для расчета дисбаланса.
-static const size_t disbalanceDepthCalc = 50;
+static const size_t disbalanceDepthCalc = 20;
 
 //!< Размер истории средней цены.
 static const size_t historyMidPriceSize = 50;
@@ -41,7 +41,7 @@ static const uint8_t leverage = 50;
 static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(180 * 1000);
 static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(900 * 1000);
 
-static const double tradeFlowCountSigmaBuy = 1.0;
-static const double tradeFlowCountSigmaSell = -1.0;
+static const double tradeFlowCountSigmaBuy = 0.65;
+static const double tradeFlowCountSigmaSell = -0.65;
 
 }

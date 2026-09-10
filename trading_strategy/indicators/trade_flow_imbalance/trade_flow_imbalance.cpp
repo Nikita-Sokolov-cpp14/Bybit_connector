@@ -10,6 +10,10 @@ namespace {
 // шаг выборки, мс
 const size_t step = 1000;
 const size_t countIntervals = settings::baseTime.count() / step;
+
+const size_t shortStep = 5000; // 5 секунд
+const size_t shortIntervals = settings::shortTime.count() / shortStep;
+
 const double minSigma = 0.15;
 const double maxSigma = 1.5;
 // const size_t maxShortWinSize = 200;
@@ -121,27 +125,37 @@ void TradeFlowImbalance::checkActualityTime() {
 }
 
 void TradeFlowImbalance::calculateShort() {
-    double sumVolBuy = 0.0;
-    double sumVolSell = 0.0;
-    double total = 0.0;
+    uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+                           .count();
+
+    std::array<double, shortIntervals> shortIntervalData {};
+    std::array<double, shortIntervals> sumVolBuy {};
+    std::array<double, shortIntervals> sumVolSell {};
 
     for (const auto &trade : shortWindow_) {
-        if (isBuy(trade)) {
-            sumVolBuy += trade.v;
-        } else {
-            sumVolSell += trade.v;
+        int index = (trade.T - (now - settings::shortTime.count())) / shortStep;
+        if (index >= 0 && index < shortIntervals) {
+            if (isBuy(trade)) {
+                sumVolBuy[index] += trade.v;
+            } else {
+                sumVolSell[index] += trade.v;
+            }
         }
     }
 
-    total = sumVolSell + sumVolBuy;
-    double netFlow = 0.0;
-    if (total < 1e-10) {
-        netFlow = 0.0;
-    } else {
-        netFlow = (sumVolBuy - sumVolSell) / total;
+    for (int i = 0; i < shortIntervals; ++i) {
+        double total = sumVolBuy[i] + sumVolSell[i];
+        shortIntervalData[i] = (total < 1e-10) ? 0 : (sumVolBuy[i] - sumVolSell[i]) / total;
     }
 
-    netFlowShort_ = alpha * netFlow + (1 - alpha) * netFlowShort_;
+    double avgNetFlow = 0.0;
+    if (!shortIntervalData.empty()) {
+        double sumNetFlow = std::accumulate(shortIntervalData.begin(), shortIntervalData.end(), 0.0);
+        avgNetFlow = sumNetFlow / shortIntervalData.size();
+    }
+
+    netFlowShort_ = alpha * avgNetFlow + (1 - alpha) * netFlowShort_;
 }
 
 void TradeFlowImbalance::calculateBase() {
