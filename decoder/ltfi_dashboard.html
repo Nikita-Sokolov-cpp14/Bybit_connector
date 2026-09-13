@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><title>LTFI Анализ — сводка</title>
+<style>
+ body { font-family:'Segoe UI',Arial,sans-serif; background:#f0f2f5; margin:0; padding:20px; }
+ h1 { color:#1a1a2e; text-align:center; font-size:26px; }
+ .subtitle { text-align:center; color:#666; font-size:14px; margin-bottom:20px; }
+ .stats { background:white; border-radius:12px; padding:20px; margin:20px 0; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+ .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+ .stats-item { background:#f8f9fa; padding:10px 14px; border-radius:8px; border-left:4px solid #4a90d9; }
+ .stats-item .label { font-size:11px; color:#888; text-transform:uppercase; }
+ .stats-item .value { font-size:17px; font-weight:600; color:#1a1a2e; margin-top:2px; }
+ .stats-item .value.pos { color:#2e7d32; } .stats-item .value.neg { color:#c62828; }
+ .graph { background:white; border-radius:12px; margin:20px 0; padding:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+ .graph iframe { width:100%; border:none; border-radius:8px; }
+ table { border-collapse:collapse; width:100%; font-size:13px; }
+ td, th { border:1px solid #e0e0e0; padding:6px 10px; text-align:right; }
+ th { background:#f8f9fa; }
+</style></head>
+<body>
+<h1>📊 LTFI — длинный индикатор потока (часовой горизонт)</h1>
+<p class="subtitle">Прокси накопленного потока; проверка корреляции с будущим движением на 60–720 мин</p>
+<div class="stats"><div class="stats-grid">
+ <div class="stats-item"><div class="label">Записей (лог)</div><div class="value">7,032</div></div>
+ <div class="stats-item"><div class="label">Период</div><div class="value">12.07.2026 – 23.07.2026</div></div>
+ <div class="stats-item"><div class="label">Баров (1 мин)</div><div class="value">7,032</div></div>
+ <div class="stats-item"><div class="label">Base rate направл. (6ч)</div><div class="value">48.6%</div></div>
+ <div class="stats-item"><div class="label">Base TP-доля (6ч)</div><div class="value">25.0%</div></div>
+ <div class="stats-item"><div class="label">Лучший конфиг (EV тест)</div><div class="value">-34.8 бп</div></div>
+ <div class="stats-item"><div class="label">Лучший конфиг (фича/H)</div><div class="value">comb_W180 / 6ч</div></div>
+</div></div>
+<div class="graph"><h3>📈 Цена + интегральный поток (W=3ч)</h3><iframe src="ltfi_price.html" height="520"></iframe></div>
+<div class="graph"><h3>🌡 Корреляционная матрица intz (feature) × форвард-горизонт</h3><iframe src="ltfi_correlation.html" height="420"></iframe></div>
+<div class="graph"><h3>📅 Стабильность корреляции по дням (это главный фильтр от ложных выводов)</h3><iframe src="ltfi_consistency.html" height="420"></iframe></div>
+<div class="graph"><h3>💰 Кривые: TP-доля/направление/EV по порогам (H=6ч)</h3><iframe src="ltfi_curves.html" height="520"></iframe></div>
+<div class="graph"><h3>🗺 EV на тесте по сетке TP × SL (комбо-сигнал)</h3><iframe src="ltfi_heatmap.html" height="440"></iframe></div>
+<div class="graph"><h3>📅 EV по дням на тесте (лучший комбо-конфиг)</h3><iframe src="ltfi_days.html" height="370"></iframe></div>
+<div class="footer" style="text-align:center;color:#999;font-size:12px;margin-top:30px">
+ LTFI Analysis Tool v1.0 • данные: trade_flow.csv (netFlow — нормированный поток, объёмный CVD не восстановим)</div>
+</body></html>

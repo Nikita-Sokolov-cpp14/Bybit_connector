@@ -100,7 +100,7 @@ void OrderBookImbalance::setOrderbook(const OrderBook &orderbook) {
     }
 
     checkSignal();
-    logData();
+    // logData();
 }
 
 bool OrderBookImbalance::hasSignal() {

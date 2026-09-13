@@ -76,7 +76,7 @@ void ImbalanceAndLarge::onMarketUpdate() {
     signalObi_ = orderBookImbalance_.getSignal();
 
     checkSignalTotal();
-    logData();
+    // logData();
     if (!signalTotal_.has_value()) {
         return;
     }

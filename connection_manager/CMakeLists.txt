@@ -17,4 +17,5 @@ target_link_libraries(connection_manager PRIVATE
     json_parser
     trading_strategy
     utils
+    loger
 )

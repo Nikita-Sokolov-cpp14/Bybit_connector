@@ -21,6 +21,7 @@
 #include "utils/config.h"
 #include "utils/ini_reader.h"
 #include "trading_strategy/base_trading_strategy.h"
+#include "loger/loger.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
@@ -74,6 +75,7 @@ private:
     std::unique_ptr<std::jthread> privateThread_;
     std::unique_ptr<std::jthread> orderSenderThread_;
     BaseTradingStrategy *tradingStrategy_;
+    Logger loger_;
 
     ssl::context createSSLContext();
 
@@ -94,4 +96,9 @@ private:
     void setupPrivateDataCallbacks();
 
     void setStrategyOrderSender();
+
+    void logPublicTrades(const PublicTrade &publicTrade);
+    void logPublicTradeData(const uint64_t ts, const double midPrice, const PublicTrade::Data &publicTrade);
+
+    void writeHeaderlogPublicTrade();
 };

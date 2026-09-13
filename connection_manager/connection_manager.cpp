@@ -12,8 +12,10 @@ privateDataHandler_(std::make_shared<PrivateDataHandler>(privateIoc_, sslCtx_, a
         authConfig_.apiSecret, messages_, "Bybit-PrivateData/1.0")),
 orderSender_(std::make_shared<OrderSender>(orderSenderIoc_, sslCtx_, authConfig_.apiKey,
         authConfig_.apiSecret, "Bybit-HFT-OrderSender/1.0")),
-tradingStrategy_(nullptr) {
+tradingStrategy_(nullptr),
+loger_("../log_files/public_trade_data.csv") {
     std::cout << "ConnectionManager constructor " << std::endl;
+    writeHeaderlogPublicTrade();
 }
 
 ConnectionManager::~ConnectionManager() {
@@ -181,6 +183,7 @@ void ConnectionManager::notifyTradeUpdate() {
     std::lock_guard lg(publicTrade_.mt);
     if (tradingStrategy_) {
         tradingStrategy_->setPublicTradeData(publicTrade_);
+        logPublicTrades(publicTrade_);
     }
 }
 
@@ -218,4 +221,53 @@ void ConnectionManager::setStrategyOrderSender() {
         std::cout << "send order to  orderSender_" << std::endl;
         return orderSender_->placeOrder(orderRequest);
     });
+}
+
+void ConnectionManager::logPublicTrades(const PublicTrade &publicTrade) {
+    //! TODO: Для простоты
+    double midPrice = 0.0;
+    {
+        std::lock_guard lg(orderBook_.mt);
+        midPrice = (orderBook_.asks[0] + orderBook_.bids[0]) / 2.0;
+    }
+
+    for (size_t i = 0; i < publicTrade.data.size(); ++i) {
+        logPublicTradeData(publicTrade.ts, midPrice, publicTrade.data[i]);
+    }
+}
+
+void ConnectionManager::logPublicTradeData(const uint64_t ts, const double midPrice,
+        const PublicTrade::Data &publicTrade) {
+    loger_.recordValue(ts);
+    loger_.recordValue(midPrice);
+
+    loger_.recordValue(publicTrade.T);
+    loger_.recordValue(publicTrade.v);
+    loger_.recordValue(publicTrade.p);
+    loger_.recordValue(publicTrade.L);
+    loger_.recordValue(publicTrade.BT);
+    loger_.recordValue(publicTrade.i);
+    loger_.recordValue(publicTrade.RPI);
+    loger_.recordValue(publicTrade.S);
+    loger_.recordValue(publicTrade.s);
+    loger_.recordValue(publicTrade.seq);
+    loger_.endStr();
+}
+
+void ConnectionManager::writeHeaderlogPublicTrade() {
+    loger_.recordValue("ts");
+    loger_.recordValue("mid_price");
+
+    loger_.recordValue("T");
+    loger_.recordValue("v");
+    loger_.recordValue("p");
+    loger_.recordValue("L");
+    loger_.recordValue("BT");
+    loger_.recordValue("i");
+    loger_.recordValue("RPI");
+    loger_.recordValue("S");
+    loger_.recordValue("s");
+    loger_.recordValue("seq");
+
+    loger_.endStr();
 }
