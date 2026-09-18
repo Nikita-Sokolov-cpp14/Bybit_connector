@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 add_library(indicators
     order_book_imbalance/order_book_imbalance.cpp
     trade_flow_imbalance/trade_flow_imbalance.cpp
+    price_flow_divergence/price_flow_divergence.cpp
 )
 
 target_link_libraries(indicators PRIVATE

@@ -8,6 +8,7 @@
 #include <numeric>
 #include "indicators/order_book_imbalance/order_book_imbalance.h"
 #include "indicators/trade_flow_imbalance/trade_flow_imbalance.h"
+#include "indicators/price_flow_divergence/price_flow_divergence.h"
 #include "loger/loger.h"
 
 // struct TradeRecord {
@@ -46,8 +47,10 @@ private:
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
     std::optional<Side> signalTfi_;
     std::optional<Side> signalObi_;
+    std::optional<Side> signalPfd_;
     std::optional<Side> signalTotal_;
 
+    PriceFlowDivergence priceFlowDivergence_;
     OrderBookImbalance orderBookImbalance_;
     TradeFlowImbalance tradeFlowImbalance_;
 

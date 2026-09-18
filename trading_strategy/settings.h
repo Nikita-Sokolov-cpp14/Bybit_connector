@@ -44,4 +44,16 @@ static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(900 
 static const double tradeFlowCountSigmaBuy = 0.65;
 static const double tradeFlowCountSigmaSell = -0.65;
 
-}
+// PFD (Price-Flow Divergence), формула comb_W360 из decoder_LTFI.py.
+
+//! Шаг выборки индикатора.
+static const std::chrono::milliseconds pfdIntervalStep = std::chrono::milliseconds(60 * 1000);
+//! Число интервалов в окне W индикатора. 60 с * 360 = 6 часов.
+static const size_t pfdWindowSize = 360;
+//! Порог на comb (безразмерный комбо-сигнал).
+//! Buy (моментум): цена обгоняет поток -> comb >= +pfdSigma.
+//! Sell (моментум): цена отстаёт от потока -> comb <= -pfdSigma.
+//! Тюнинговать по train/test из decoder_LTFI.py (пороги ~2-3).
+static const double pfdSigma = 2.5;
+
+} // namespace settings

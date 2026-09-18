@@ -34,6 +34,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
     midPrices_.push_back(currentMidPrice_.load());
     tradeFlowImbalance_.setMidPrice(currentMidPrice_.load());
+    priceFlowDivergence_.setMidPrice(currentMidPrice_.load());
 
     tradeManager_.checkCurrentPrice(currentMidPrice_.load());
 
@@ -43,6 +44,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
 
 void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
     tradeFlowImbalance_.setPublicTrade(publicTrade);
+    priceFlowDivergence_.setPublicTrade(publicTrade);
     //! TODO: После этой опреации у publicTrade больше нет данных.
     //! TODO: Нужно успеть обработать обновление сделок до прихода новых.
     // Предполагается, что onMarketUpdate работает меньше 1 мс. За это время новая
@@ -74,6 +76,7 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
 void ImbalanceAndLarge::onMarketUpdate() {
     signalTfi_ = tradeFlowImbalance_.getSignal();
     signalObi_ = orderBookImbalance_.getSignal();
+    signalPfd_ = priceFlowDivergence_.getSignal();
 
     checkSignalTotal();
     // logData();
@@ -118,15 +121,25 @@ void ImbalanceAndLarge::onMarketUpdate() {
     // if (signalDisbalance_.has_value() && countSignal_.load() >= settings::countSignal) {
     //     tradeManager_.checkInverseSignal(signalDisbalance_.value());
     // }
-    // if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
-    //     tradeManager_.checkInverseSignal(signalTotal_.value());
-    // }
+    if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
+        tradeManager_.checkInverseSignal(signalTotal_.value());
+    }
 }
 
 void ImbalanceAndLarge::checkSignalTotal() {
-    if ((signalTfi_ == Side_Buy) && (signalObi_ == Side_Buy)) {
+    // if ((signalTfi_ == Side_Buy) && (signalObi_ == Side_Buy) &&
+    //         (signalPfd_ == Side_Buy)) {
+    //     signalTotal_ = Side_Buy;
+    // } else if ((signalTfi_ == Side_Sell) && (signalObi_ == Side_Sell) &&
+    //         (signalPfd_ == Side_Sell)) {
+    //     signalTotal_ = Side_Sell;
+    // } else {
+    //     signalTotal_ = std::nullopt;
+    // }
+
+    if (signalPfd_ == Side_Buy) {
         signalTotal_ = Side_Buy;
-    } else if ((signalTfi_ == Side_Sell) && (signalObi_ == Side_Sell)) {
+    } else if (signalPfd_ == Side_Sell) {
         signalTotal_ = Side_Sell;
     } else {
         signalTotal_ = std::nullopt;

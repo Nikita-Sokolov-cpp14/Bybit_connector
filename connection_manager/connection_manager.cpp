@@ -246,7 +246,7 @@ void ConnectionManager::logPublicTradeData(const uint64_t ts, const double midPr
     loger_.recordValue(publicTrade.p);
     loger_.recordValue(publicTrade.L);
     loger_.recordValue(publicTrade.BT);
-    loger_.recordValue(publicTrade.i);
+    // loger_.recordValue(publicTrade.i);
     loger_.recordValue(publicTrade.RPI);
     loger_.recordValue(publicTrade.S);
     loger_.recordValue(publicTrade.s);
@@ -263,7 +263,7 @@ void ConnectionManager::writeHeaderlogPublicTrade() {
     loger_.recordValue("p");
     loger_.recordValue("L");
     loger_.recordValue("BT");
-    loger_.recordValue("i");
+    // loger_.recordValue("i");
     loger_.recordValue("RPI");
     loger_.recordValue("S");
     loger_.recordValue("s");
