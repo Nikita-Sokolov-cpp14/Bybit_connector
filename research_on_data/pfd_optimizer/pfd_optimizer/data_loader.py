@@ -16,7 +16,14 @@ def load_aggregated_1s(csv_path: str | Path) -> pd.DataFrame:
     - vwap: float
     """
     path = Path(csv_path)
-    df = pd.read_csv(path)
+    # Try to detect separator (tab or comma)
+    try:
+        df = pd.read_csv(path, sep=None, engine="python")
+    except Exception:
+        try:
+            df = pd.read_csv(path, sep="\t")
+        except Exception:
+            df = pd.read_csv(path)
 
     # Normalize column names if any spaces
     df.columns = [c.strip() for c in df.columns]

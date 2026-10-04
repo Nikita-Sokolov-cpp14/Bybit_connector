@@ -28,3 +28,4 @@ build_windows/
 cacert.pem
 log_files/
 research_on_data/aggregated_1s/
+research_on_data/pfd_optimizer/output_debug/
