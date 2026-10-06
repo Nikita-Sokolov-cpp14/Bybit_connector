@@ -1,8 +1,8 @@
 # config.yaml
 walk_forward:
-  n_folds: 5
-  walk_forward_mode: expanding  # expanding or rolling
-  objective: sharpe  # sharpe, profit_factor, net_pnl, calmar
+  n_folds: 7
+  walk_forward_mode: rolling  # expanding or rolling
+  objective: profit_factor  # sharpe, profit_factor, net_pnl, calmar
 
 backtest:
   fee_bps: 16.0  # 0.16%

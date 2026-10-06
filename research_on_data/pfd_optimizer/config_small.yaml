@@ -1,7 +1,8 @@
 walk_forward:
-  n_folds: 3
-  walk_forward_mode: expanding
-  objective: sharpe
+  n_folds: 5
+  walk_forward_mode: rolling  # expanding or rolling
+  objective: net_pnl  # sharpe, profit_factor, net_pnl, calmar
+
 
 backtest:
   fee_bps: 16.0
@@ -9,9 +10,9 @@ backtest:
 
 params:
   interval_sec: [60, 180]
-  window_size: [120, 360]
+  window_size: [60, 120, 360]
   sigma: [1.5, 2.0, 2.5]
   price_source: [vwap]
-  take_profit: [0.005, 0.01]
+  take_profit: [0.005]
   stop_loss: [0.005]
   max_hold_sec: [3600, 7200]
