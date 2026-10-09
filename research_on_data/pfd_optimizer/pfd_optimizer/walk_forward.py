@@ -33,7 +33,7 @@ def _build_param_grid(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     return grid
 
 
-def _infer_time_split(df_1s: pd.DataFrame, n_folds: int, wf_mode: str) -> List[Tuple[int,int,int,int]]:
+def _infer_time_split_by_days(df_1s: pd.DataFrame, n_folds: int, wf_mode: str) -> List[Tuple[int,int,int,int]]:
     """
     Return list of folds: (train_start_ts, train_end_ts, test_start_ts, test_end_ts) in ms
     Split by calendar days based on ts (ms UTC). Use day boundaries.
@@ -49,19 +49,7 @@ def _infer_time_split(df_1s: pd.DataFrame, n_folds: int, wf_mode: str) -> List[T
     total_days = max(1, (end_day - start_day) // day_ms + 1)
     # simple split: assign days to folds sequentially for WF
     fold_days = max(1, total_days // max(1,n_folds))
-    folds = []
-    for f in range(n_folds):
-        d0_train = start_day + f*fold_days*day_ms
-        d1_train = start_day + (f+1)*fold_days*day_ms - 1
-        d0_test  = d1_train + 1
-        d1_test  = d0_test + fold_days*day_ms - 1
-        if f == n_folds-1:
-            d1_test = ts_max
-            # expand train to include prev if expanding? handled by mode
-        # adjust by mode: train includes all previous folds? expanding vs rolling
-        # rolling: train is just this fold block? but WF usually train previous, test next
-        # implement: train = [start_day .. d1_train], test = [d0_test .. d1_test] but rolling window of one block? or expanding history
-        folds.append((d0_train, d1_train, d0_test, d1_test))
+
     # rebuild with WF logic: train = previous K days, test = next M days
     M = fold_days
     splits = []
@@ -82,6 +70,41 @@ def _infer_time_split(df_1s: pd.DataFrame, n_folds: int, wf_mode: str) -> List[T
         splits.append((train_start, train_end, test_start, test_end))
     return splits
 
+def _infer_time_split_by_bars(df_1s, n_folds, wf_mode):
+    # NOTE: Размер train и test совпадают. Нужно подумать - брать ли разные размеры.
+    """
+    Режет данные на n_folds фолдов по числу 1s-баров.
+
+    Логика:
+      - step = n // (n_folds + 1) — размер одного блока.
+        "+1" — потому что нужно n_folds train-блоков И n_folds test-блоков,
+        идущих встык: [train_1][test_1][train_2][test_2]...[train_n][test_n].
+        Всего (n_folds + 1) блоков, последний test замыкает.
+      - Для expanding: train всегда [0 .. i*step-1], test [i*step .. (i+1)*step-1].
+      - Для rolling: train [(i-1)*step .. i*step-1], test [i*step .. (i+1)*step-1].
+      - Хвост (n - (n_folds+1)*step баров) отбрасывается — он < n_folds + 1.
+
+    Возвращает: список (train_start_ts, train_end_ts, test_start_ts, test_end_ts) в мс.
+    """
+
+    n = len(df_1s)
+    if n == 0 or n_folds < 1:
+        return []
+
+    step = n // (n_folds + 1)     # +1 — под резерв последнего test
+    if step < 1:
+        return []
+
+    ts = df_1s["ts"].values
+    splits = []
+    for i in range(1, n_folds + 1):
+        train_start_idx = 0 if wf_mode == "expanding" else (i - 1) * step
+        train_end_idx   = i * step - 1
+        test_start_idx  = i * step
+        test_end_idx    = (i + 1) * step - 1
+        splits.append((int(ts[train_start_idx]), int(ts[train_end_idx]),
+                       int(ts[test_start_idx]), int(ts[test_end_idx])))
+    return splits
 
 def _count_in_pos_sec(trades_df: pd.DataFrame, total_sec: int) -> int:
     if trades_df.empty or total_sec <= 0:
@@ -110,12 +133,22 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
     fee_bps = float(bt_cfg.get("fee_bps", 16.0))
     conservative = bool(bt_cfg.get("conservative_intrabar", True))
 
-    splits = _infer_time_split(df1, n_folds, wf_mode)
+    # splits = _infer_time_split_by_days(df1, n_folds, wf_mode)
+    splits = _infer_time_split_by_bars(df1, n_folds, wf_mode)
+
     fold_results_list = []
 
     for f, (tr_s, tr_e, te_s, te_e) in enumerate(splits, start=1):
+        # TODO: Переделать на индексы
         df1_tr = df1[(df1["ts"] >= tr_s) & (df1["ts"] <= tr_e)].copy()
         df1_te = df1[(df1["ts"] >= te_s) & (df1["ts"] <= te_e)].copy()
+
+        agg_cache = {}
+        for iv in sorted(set(int(p["interval_sec"]) for p in grid)):
+            d = aggregate_intervals(df1_tr, iv)
+            d = attach_close_last_ts(d, df1_tr, iv)
+            agg_cache[iv] = d
+
         # find best on train
         best_score = -10**18
         best_params = None
@@ -123,8 +156,7 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
         best_trades_tr = None
         for p in tqdm(grid, desc=f"Fold {f}/{len(splits)} grid"):
             # train
-            dint_tr = aggregate_intervals(df1_tr, int(p["interval_sec"]))
-            dint_tr = attach_close_last_ts(dint_tr, df1_tr, int(p["interval_sec"]))
+            dint_tr = agg_cache[int(p["interval_sec"])]
             dint_tr = compute_pfd_signals(dint_tr, int(p["window_size"]), float(p["sigma"]), str(p["price_source"]))
             tr_tr = backtest_on_intervals(dint_tr, df1_tr, float(p["take_profit"]), float(p["stop_loss"]), int(p["max_hold_sec"]), fee_bps, conservative)
             # signals counts approx

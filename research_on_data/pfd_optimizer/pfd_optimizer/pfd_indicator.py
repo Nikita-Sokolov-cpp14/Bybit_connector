@@ -2,13 +2,6 @@
 import numpy as np
 import pandas as pd
 
-
-def _interval_key(ts_ms: int, interval_sec: int) -> int:
-    """Bucket start timestamp (ms) by interval_sec."""
-    iv_ms = interval_sec * 1000
-    return (ts_ms // iv_ms) * iv_ms
-
-
 def aggregate_intervals(df_1s: pd.DataFrame, interval_sec: int) -> pd.DataFrame:
     """
     Aggregate 1s data into intervals of interval_sec.
@@ -25,7 +18,8 @@ def aggregate_intervals(df_1s: pd.DataFrame, interval_sec: int) -> pd.DataFrame:
         return pd.DataFrame()
 
     df = df_1s.copy()
-    df["ts_interval"] = df["ts"].apply(lambda x: _interval_key(x, interval_sec))
+    iv_ms = interval_sec * 1000
+    df["ts_interval"] = (df["ts"] // iv_ms) * iv_ms
 
     g = df.groupby("ts_interval", sort=True)
 

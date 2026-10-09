@@ -1,7 +1,7 @@
 walk_forward:
   n_folds: 5
   walk_forward_mode: rolling  # expanding or rolling
-  objective: net_pnl  # sharpe, profit_factor, net_pnl, calmar
+  objective: net_pnl # sharpe_trades, profit_factor, net_pnl_pct, calmar
 
 
 backtest:

@@ -2,7 +2,7 @@
 walk_forward:
   n_folds: 7
   walk_forward_mode: rolling  # expanding or rolling
-  objective: profit_factor  # sharpe, profit_factor, net_pnl, calmar
+  objective: profit_factor  # sharpe_trades, profit_factor, net_pnl_pct, calmar
 
 backtest:
   fee_bps: 16.0  # 0.16%
