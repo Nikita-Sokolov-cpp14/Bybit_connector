@@ -214,6 +214,12 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
     test_days = wf_cfg.get("test_days")
     min_trades = int(wf_cfg.get("min_trades", 1))
     min_win_rate = float(wf_cfg.get("min_win_rate", 0.0))
+    min_profit_factor = float(wf_cfg.get("min_profit_factor", 0.0))
+    _max_dd = wf_cfg.get("max_drawdown_pct")
+    max_drawdown_pct = float(_max_dd) if _max_dd is not None else None
+    _min_exp = wf_cfg.get("min_expectancy_pct")
+    min_expectancy_pct = float(_min_exp) if _min_exp is not None else None
+    min_total_trades = int(wf_cfg.get("min_total_trades", 0))
 
     bt_cfg = cfg.get("backtest", {})
     fee_bps = float(bt_cfg.get("fee_bps", 16.0))
@@ -311,6 +317,9 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
                             objective,
                             min_trades=min_trades,
                             min_win_rate=min_win_rate,
+                            min_profit_factor=min_profit_factor,
+                            max_drawdown_pct=max_drawdown_pct,
+                            min_expectancy_pct=min_expectancy_pct,
                         )
                         if score > -1e17:
                             prev = best_by_fold.get(f)
@@ -372,6 +381,7 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
     if not df_f.empty:
         for c in [
             "test_net_pnl_pct",
+            "test_expectancy_pct",
             "test_num_trades",
             "test_win_rate",
             "test_profit_factor",
@@ -416,6 +426,8 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
             mean_test_net_pnl_pct=("test_net_pnl_pct", "mean"),
             median_test_win_rate=("test_win_rate", "median"),
             mean_test_win_rate=("test_win_rate", "mean"),
+            median_test_expectancy_pct=("test_expectancy_pct", "median"),
+            mean_test_expectancy_pct=("test_expectancy_pct", "mean"),
             median_test_num_trades=("test_num_trades", "median"),
             total_test_trades=("test_num_trades", "sum"),
             median_test_profit_factor=("test_profit_factor", "median"),
@@ -437,6 +449,22 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
         summary.to_csv(outdir / "all_configs_test_summary.csv", index=False)
         summary.head(10).to_csv(outdir / "top10_configs.csv", index=False)
 
+        # Expectancy-oriented top-10 with the same risk filters used for the
+        # train objective. This is the primary table for the intraday-to-swing
+        # search described in the README.
+        exp = summary.copy()
+        if min_total_trades > 0:
+            exp = exp[exp["total_test_trades"] >= min_total_trades]
+        if min_profit_factor > 0:
+            exp = exp[exp["median_test_profit_factor"] >= min_profit_factor]
+        if max_drawdown_pct is not None:
+            exp = exp[exp["median_test_max_dd_pct"] <= max_drawdown_pct]
+        exp = exp.sort_values(
+            ["median_test_expectancy_pct", "median_test_net_pnl_pct"],
+            ascending=[False, False],
+        )
+        exp.head(10).to_csv(outdir / "top10_expectancy.csv", index=False)
+
     meta = {
         "n_folds": n_folds,
         "walk_forward_mode": wf_mode,
@@ -447,6 +475,10 @@ def optimize(config_path: str, data_path: str, output_dir: str = "output") -> Di
         "conservative_intrabar": conservative,
         "min_trades": min_trades,
         "min_win_rate": min_win_rate,
+        "min_profit_factor": min_profit_factor,
+        "max_drawdown_pct": max_drawdown_pct,
+        "min_expectancy_pct": min_expectancy_pct,
+        "min_total_trades": min_total_trades,
         "grid_size": len(grid),
         "signal_param_sets": len(signal_keys),
         "exit_param_sets": len(exit_keys),

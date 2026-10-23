@@ -45,6 +45,34 @@ It writes `output/research/direction_accuracy.csv` with long/short accuracy,
 mean net return after fees, and accuracy per chronological block (a cheap
 stability check).
 
+Early-exit research:
+
+```bash
+python research_exit.py --data ../aggregated_1s/aggregated_1s.csv \
+  --thresholds none,0,0.5,1,1.5,2,2.5,3 --out output/research
+```
+
+It exits a position when the same `comb` score turns opposite (long:
+`comb <= -T`, short: `comb >= +T`) and writes
+`output/research/exit_test_summary.csv`. Result on the best 6-24h config:
+**the opposite-PFD exit does not improve the strategy** - it cuts winners and
+reduces net PnL/PF. Baseline: +0.383% mean PnL/trade, PF 2.13, +1.684%
+mean net/fold. Best opposite-exit variant (T=3.0): +0.311%, PF 1.91, +1.493%.
+
+Trailing-stop research:
+
+```bash
+python research_trailing.py --data ../aggregated_1s/aggregated_1s.csv \
+  --out output/research
+```
+
+It starts trailing after `activation` profit and trails the best high/low by
+`distance`, keeping the initial 0.5% stop before activation. Result: trailing
+does **not** improve net PnL. A tight 0.5% trail after +0.25% raises win rate
+to 60.7% and median Sharpe to 0.94 (baseline 0.51) and slightly lowers max DD,
+but mean net/fold falls from +1.684% to +1.344%. Loose trails are equivalent
+to the baseline. Details are in `PFD_REPORT.txt` section 4.9.
+
 ## PFD logic (matches C++)
 
 For each `interval_sec` bucket:
@@ -120,6 +148,9 @@ absolute PnL numbers.
 - Objective: `sharpe` (`sharpe_trades`), `profit_factor`, `net_pnl`
   (`net_pnl_pct`) or `calmar`. Aliases are normalised.
 - `min_trades` / `min_win_rate` reject unreliable parameter sets.
+- Risk constraints: `min_profit_factor`, `max_drawdown_pct`,
+  `min_expectancy_pct`, and `min_total_trades` (used for the final top-10
+  table). A train config that violates a constraint is never selected.
 - Metrics are trade-based Sharpe `mean/std(ddof=1) * sqrt(N)` (not annualised),
   net PnL%, win rate (net of fees), gross win rate, profit factor, max drawdown
   on the closed-trade equity curve, avg hold, Buy/Sell signal counts,
@@ -131,8 +162,9 @@ absolute PnL numbers.
 - `aggregate_test.csv` — median/mean/std/min/max and % profitable folds.
 - `all_configs_test_metrics.csv` — test metrics of **every** config on every fold.
 - `all_configs_test_summary.csv` — per-config medians over folds.
-- `top10_configs.csv` — top-10 by **median(test_sharpe)** across all test folds
-  (the previous version only sorted the per-fold winners).
+- `top10_configs.csv` — top-10 by **median(test_sharpe)** across all test folds.
+- `top10_expectancy.csv` — top-10 by **median(test_expectancy_pct)** with
+  `min_total_trades`, `min_profit_factor` and `max_drawdown_pct` filters.
 - `summary.json` — run metadata and elapsed time.
 
 ## Performance
@@ -149,6 +181,34 @@ The current version:
 On this machine the full `config.yaml` grid (18,144 configs × 7 folds) over the
 9.7-day file runs in ~4 minutes instead of ~2 hours. The reduced
 `config_small.yaml` runs in ~1.5 seconds.
+
+## Expectancy + risk-constrained search (6-24h)
+
+`config_expectancy.yaml` runs a 6-24h grid with:
+
+```yaml
+objective: expectancy
+min_trades: 3
+min_profit_factor: 1.2
+max_drawdown_pct: 2.0
+min_expectancy_pct: 0.0
+min_total_trades: 20
+```
+
+Result (10,368 configs, 51,840 backtests, ~95 s): best mean test expectancy
+configuration is `interval=60s, W=120, sigma=3.0, confirm=1, intz_weight=1.0,
+vol_window=720, vol_ratio>=0.8, TP=2%, SL=0.5%, hold=24h`:
+
+- 22 test trades
+- mean expectancy +0.432%/trade, median +0.266%
+- mean net PnL +1.684%/fold, median +1.332%
+- mean win rate 55.3%, median 60%
+- median PF 1.81, median max DD 0.91%
+- 80% profitable folds
+
+It is saved in `config_expectancy_best.yaml`. This is an ex-post evaluation
+on 36 days; fold 4 is negative and the sample is small, so out-of-sample
+validation is required.
 
 ## Regime-filter test results (original comb, intz_weight = 1.0)
 

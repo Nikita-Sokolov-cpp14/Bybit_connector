@@ -78,9 +78,13 @@ def compute_metrics(
         "tp_count": 0,
         "sl_count": 0,
         "timeout_count": 0,
+        "signal_count": 0,
+        "trail_count": 0,
         "tp_rate": 0.0,
         "sl_rate": 0.0,
         "timeout_rate": 0.0,
+        "signal_rate": 0.0,
+        "trail_rate": 0.0,
         "long_trades": 0,
         "short_trades": 0,
     }
@@ -132,6 +136,8 @@ def compute_metrics(
     tp_count = int(np.sum(reasons == "tp")) if len(reasons) else 0
     sl_count = int(np.sum(reasons == "sl")) if len(reasons) else 0
     to_count = int(np.sum(reasons == "timeout")) if len(reasons) else 0
+    sig_count = int(np.sum(reasons == "signal")) if len(reasons) else 0
+    trail_count = int(np.sum(reasons == "trail")) if len(reasons) else 0
 
     sides = trades_df["side"].to_numpy() if "side" in trades_df else np.array([])
     long_n = int(np.sum(sides == 1)) if len(sides) else 0
@@ -159,9 +165,13 @@ def compute_metrics(
         "tp_count": tp_count,
         "sl_count": sl_count,
         "timeout_count": to_count,
+        "signal_count": sig_count,
+        "trail_count": trail_count,
         "tp_rate": tp_count / n,
         "sl_rate": sl_count / n,
         "timeout_rate": to_count / n,
+        "signal_rate": sig_count / n,
+        "trail_rate": trail_count / n,
         "long_trades": long_n,
         "short_trades": short_n,
     }
@@ -181,10 +191,25 @@ def score_metrics(
     objective: str,
     min_trades: int = 0,
     min_win_rate: float = 0.0,
+    min_profit_factor: float = 0.0,
+    max_drawdown_pct: float | None = None,
+    min_expectancy_pct: float | None = None,
 ) -> float:
-    """Objective with optional trade-count / win-rate constraints."""
+    """
+    Objective with optional risk constraints.
+
+    A configuration that violates any constraint gets -1e18, so it can never
+    be selected as the train-best. This lets us optimise expectancy while
+    requiring e.g. PF >= 1.2 and maxDD <= 2%.
+    """
     if metrics.get("num_trades", 0) < int(min_trades):
         return -1e18
     if metrics.get("win_rate", 0.0) < float(min_win_rate):
+        return -1e18
+    if metrics.get("profit_factor", 0.0) < float(min_profit_factor):
+        return -1e18
+    if max_drawdown_pct is not None and metrics.get("max_drawdown_pct", 0.0) > float(max_drawdown_pct):
+        return -1e18
+    if min_expectancy_pct is not None and metrics.get("expectancy_pct", 0.0) < float(min_expectancy_pct):
         return -1e18
     return objective_value(metrics, objective)

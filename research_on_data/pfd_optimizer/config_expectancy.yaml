@@ -1,0 +1,43 @@
+# Intraday-to-swing search (6-24h): optimise expectancy subject to risk limits.
+# Objective: expectancy_pct (net, per trade).
+# Constraints on train: trades >= 3, PF >= 1.2, maxDD <= 2%, expectancy >= 0.
+# Top-10 expectancy table additionally requires >= 20 test trades in total.
+walk_forward:
+  n_folds: 5
+  walk_forward_mode: rolling
+  objective: expectancy
+  train_days: 6
+  test_days: 6
+  min_trades: 3
+  min_win_rate: 0.0
+  min_profit_factor: 1.2
+  max_drawdown_pct: 2.0
+  min_expectancy_pct: 0.0
+  min_total_trades: 20
+
+backtest:
+  fee_bps: 16.0
+  conservative_intrabar: true
+
+params:
+  interval_sec: [60]
+  window_size: [120, 360]
+  sigma: [2.0, 2.5, 3.0]
+  price_source: [vwap]
+  signal_mode: [momentum]
+  confirm_intervals: [0, 1]
+  trend_ema_span: [0, 360]
+  trend_filter_mode: [aligned]
+  direction: [both]
+  pz_weight: [1.0]
+  intz_weight: [0.0, 0.5, 1.0]
+  trend_strength_min: [0.0]
+  autocorr_window: [0]
+  autocorr_mode: [follow]
+  autocorr_threshold: [0.0]
+  vol_window: [0, 720]
+  vol_ratio_min: [0.0, 0.8]
+  vol_ratio_max: [1.0e9, 1.2]
+  take_profit: [0.01, 0.015, 0.02]
+  stop_loss: [0.005, 0.01]
+  max_hold_sec: [21600, 43200, 86400]

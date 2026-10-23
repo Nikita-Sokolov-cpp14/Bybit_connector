@@ -131,3 +131,37 @@ else: signal = 0
   PFD_REPORT.txt, раздел 4.6 и раздел 5.
 
 ================================================================================
+
+Дополнение по expectancy (2026-10-23):
+- Добавлена оптимизация objective=expectancy с ограничениями PF >= 1.2,
+  maxDD <= 2%, expectancy >= 0, total_test_trades >= 20.
+- Лучший вариант: interval=60s, W=120, sigma=3.0, confirm=1,
+  intz_weight=1.0, vol_window=720, vol_ratio >= 0.8,
+  TP=2%, SL=0.5%, hold=24ч.
+- Результат: 22 test-сделки, mean expectancy +0.432%/сделку,
+  mean net PnL +1.684%/фолд, median +1.332%, median PF 1.81,
+  median DD 0.91%, 80% прибыльных фолдов.
+- Конфиг: research_on_data/pfd_optimizer/config_expectancy_best.yaml
+- Подробности: PFD_REPORT.txt, раздел 4.7 и 5.2.
+
+Дополнение по early-exit (2026-10-23):
+- Проверялся выход по противоположному PFD (comb <= -T для long,
+  comb >= +T для short) на лучшем конфиге TP=2% / SL=0.5% / hold=24ч.
+- Результат: не улучшает. Baseline: 22 сделки, mean PnL +0.383%,
+  PF 2.13, mean net +1.684%/фолд. Лучший opposite-exit (T=3.0):
+  24 сделки, +0.311%, PF 1.91, +1.493%/фолд.
+- При T=0..2.0 результат существенно хуже: сигнал срабатывает на
+  обычном откате и режет прибыльные сделки.
+- Скрипт: research_on_data/pfd_optimizer/research_exit.py
+
+Дополнение по trailing-stop (2026-10-23):
+- Проверялся trailing-stop на лучшем конфиге TP=2% / SL=0.5% / hold=24ч.
+- Результат: net PnL не улучшается. Loose trailing (1.5%/1.5%) практически
+  совпадает с baseline: +1.689% против +1.684% на фолд, но срабатывает
+  всего 1 раз.
+- Tight trailing (0.5% после +0.25%) повышает win rate до 60.7% и median
+  Sharpe до 0.94 (baseline 0.51), снижает max DD, но net падает до +1.344%.
+- Очень tight trailing (0.25%) разрушает стратегию: win rate 16%, PF 0.31.
+- Вывод: для максимального net лучше фиксированный TP/SL. Trailing имеет
+  смысл только как риск-менеджмент. Следующий шаг - partial TP + trailing.
+- Скрипт: research_on_data/pfd_optimizer/research_trailing.py
