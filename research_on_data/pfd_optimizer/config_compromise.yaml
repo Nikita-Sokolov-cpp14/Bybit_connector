@@ -1,0 +1,38 @@
+# Compromise variant: original comb (intz_weight=1.0), longer hold and wider TP,
+# tight SL, volatility regime >= 0.8 * 12h median. TP is 1.5% (wider than the
+# original 0.5-1% target), so this is a different target profile.
+walk_forward:
+  n_folds: 5
+  walk_forward_mode: rolling
+  objective: sharpe
+  train_days: 6
+  test_days: 6
+  min_trades: 1
+  min_win_rate: 0.0
+
+backtest:
+  fee_bps: 16.0
+  conservative_intrabar: true
+
+params:
+  interval_sec: [60]
+  window_size: [120]
+  sigma: [3.0]
+  price_source: [vwap]
+  signal_mode: [momentum]
+  confirm_intervals: [1]
+  trend_ema_span: [0]
+  trend_filter_mode: [aligned]
+  direction: [both]
+  pz_weight: [1.0]
+  intz_weight: [1.0]
+  trend_strength_min: [0.0]
+  autocorr_window: [0]
+  autocorr_mode: [follow]
+  autocorr_threshold: [0.0]
+  vol_window: [720]
+  vol_ratio_min: [0.8]
+  vol_ratio_max: [1000000000.0]   # upper bound disabled
+  take_profit: [0.015]
+  stop_loss: [0.005]
+  max_hold_sec: [86400]

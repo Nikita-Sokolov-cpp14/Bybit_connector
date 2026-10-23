@@ -307,8 +307,121 @@ min_trades=5:
       высокая комиссия 0.16% на сторону, TP/SL 0.5-1% срезают движение
       раньше, чем оно успевает реализоваться.
 
+
+4.6. Что дает увеличение TP/SL
+
+Отдельно проверялись широкие TP/SL и более длинное удержание. Сигнал:
+исходный comb = pz - intz (intz_weight=1.0), W=120, sigma=3.0, confirm=1,
+direction=both, фильтр волатильности sigPx >= 0.8 * rolling_median(sigPx, 720).
+
+Сравнение вариантов (test, 5 фолдов, 36 дней):
+
+  Вариант                                  Сделок  Win rate  Mean net PnL  Median Sharpe  MaxDD   Прибыльных
+  TP 1%,   SL 0.5%, hold 4ч (база)            23     60.8%      +0.321%        0.144       0.76%   80%
+  TP 1%,   SL 0.5%, hold 24ч                  20     66.3%      +0.620%        0.218       0.82%   80%
+  TP 1.5%, SL 0.5%, hold 24ч                  23     56.8%      +1.151%        0.731       0.82%   80%
+  TP 2%,   SL 0.5%, hold 24ч                  22     55.3%      +1.684%        0.514       0.91%   80%
+  TP 1%,   SL 1.5%, hold 8ч                   21     52.0%      +0.288%        0.409       0.51%   80%
+  TP 2%,   SL 2%,   hold 24ч                  17     49.0%      +0.212%        0.606       1.27%   60%
+  TP 3%,   SL 3%,   hold 24ч                  14     50.0%      +0.345%        0.415       1.27%   80%
+  TP 1%,   SL 5%,   hold 24ч                  17     66.9%      +0.065%        0.000       1.27%   60%
+
+Выводы:
+
+  1. Увеличение только SL не дает преимущества. Win rate может вырасти
+     (TP 1%, SL 5% -> 66.9%), но прибыль почти исчезает.
+  2. Лучший результат дает не широкий SL, а более длинное удержание и
+     более широкий TP при tight SL. Оптимум на этом файле:
+     TP 1.5-2%, SL 0.5%, hold 12-24ч.
+  3. Симметричное увеличение TP и SL (2%/2%, 3%/3%) тоже иногда дает плюс,
+     но сделок становится 14-17, win rate ~50%, и результат зависит от
+     нескольких крупных движений.
+  4. Чистый time-exit (TP/SL огромные) на pz дает 25 сделок, 59.3% win rate,
+     +0.83% mean PnL, но DD 3.8% и время в позиции 45-75%. Без стопа рискованно.
+
+Компромиссный вариант:
+
+  TP 1.5%, SL 0.5%, max_hold 24ч, vol_ratio >= 0.8 (верхняя граница отключена).
+  Это уже не цель "0.5-1%", а цель "1.5% за 6-24 часа", поэтому вариант
+  выделен отдельно от исходного ТЗ.
+
+  Результат (config_compromise.yaml):
+    23 test-сделки
+    mean win rate 56.8%, median 60.0%
+    mean net PnL +1.151% на фолд, median +1.540%
+    median Sharpe 0.731, median profit factor 1.82
+    median max DD 0.82%
+    median time in position 27.7%
+    прибыльных фолдов 80% (4 из 5)
+
+  По фолдам:
+    fold 1: 4 сделки, win 75.0%, net +2.720%, PF 4.32, Sharpe 1.360
+    fold 2: 7 сделок, win 57.1%, net +2.012%, PF 1.82, Sharpe 0.731
+    fold 3: 5 сделок, win 60.0%, net +0.761%, PF 1.46, Sharpe 0.340
+    fold 4: 4 сделки, win 25.0%, net -1.280%, PF 0.48, Sharpe -0.640
+    fold 5: 3 сделки, win 66.7%, net +1.540%, PF 2.88, Sharpe 0.770
+
+  Ограничения: всего 23 сделки, fold 4 убыточный, средний hold 6-10.5 часов.
+  Обязательна проверка на новых данных.
+
 --------------------------------------------------------------------------------
-5. РЕКОМЕНДАЦИИ
+5. ВСЕ ПАРАМЕТРЫ КОМПРОМИССНОГО ВАРИАНТА
+--------------------------------------------------------------------------------
+
+Файл: config_compromise.yaml
+
+walk_forward:
+  n_folds: 5
+  walk_forward_mode: rolling
+  objective: sharpe
+  train_days: 6
+  test_days: 6
+  min_trades: 1
+  min_win_rate: 0.0
+
+backtest:
+  fee_bps: 16.0
+  conservative_intrabar: true
+
+params:
+  interval_sec: [60]
+  window_size: [120]
+  sigma: [3.0]
+  price_source: [vwap]
+  signal_mode: [momentum]
+  confirm_intervals: [1]
+  trend_ema_span: [0]
+  trend_filter_mode: [aligned]
+  direction: [both]
+  pz_weight: [1.0]
+  intz_weight: [1.0]
+  trend_strength_min: [0.0]
+  autocorr_window: [0]
+  autocorr_mode: [follow]
+  autocorr_threshold: [0.0]
+  vol_window: [720]
+  vol_ratio_min: [0.8]
+  vol_ratio_max: [1000000000.0]
+  take_profit: [0.015]
+  stop_loss: [0.005]
+  max_hold_sec: [86400]
+
+Пояснения:
+  - interval_sec=60: один интервал = 60 секунд.
+  - window_size=120: окно 2 часа (120 * 60с).
+  - sigma=3.0: порог на comb.
+  - confirm_intervals=1: нужен предыдущий сигнал того же знака.
+  - direction=both: разрешены и long, и short.
+  - vol_window=720: 12 часов для rolling-медианы волатильности.
+  - vol_ratio_min=0.8: торгуем только если текущий sigPx >= 0.8 * медианы.
+  - vol_ratio_max=1e9: верхняя граница отключена.
+  - take_profit=0.015: TP 1.5%.
+  - stop_loss=0.005: SL 0.5%.
+  - max_hold_sec=86400: максимум 24 часа.
+  - train_days/test_days=6: авто-разбиение 36 дней / (5+1) = 6.
+
+--------------------------------------------------------------------------------
+6. РЕКОМЕНДАЦИИ
 --------------------------------------------------------------------------------
 
 1. Собрать больше истории, покрывающей тренд, range и развороты.
@@ -321,7 +434,7 @@ min_trades=5:
    profit factor, net PnL и числа сделок.
 
 --------------------------------------------------------------------------------
-6. ФАЙЛЫ
+7. ФАЙЛЫ
 --------------------------------------------------------------------------------
 
 Основной код:
@@ -335,15 +448,16 @@ min_trades=5:
     config.yaml          - полная сетка по ТЗ
     config_small.yaml    - быстрая сетка
     config_accuracy.yaml - исследование direction/accuracy
-    config_regime.yaml   - лучший вариант с фильтром волатильности
+    config_regime.yaml   - вариант с фильтром волатильности, TP 1% / hold 4ч
+    config_compromise.yaml - компромиссный вариант TP 1.5% / SL 0.5% / hold 24ч
 
 Диагностика:
     research_pfd.py      - directional accuracy по горизонтам и блокам
 
 Запуск:
     cd research_on_data/pfd_optimizer
-    python run_optimization.py --config config_regime.yaml \
-        --data ../aggregated_1s/aggregated_1s.csv --output output_regime
+    python run_optimization.py --config config_compromise.yaml \
+        --data ../aggregated_1s/aggregated_1s.csv --output output_compromise
 
     python research_pfd.py --data ../aggregated_1s/aggregated_1s.csv \
         --interval 60 --window 360 --horizons 120,240,360 \
