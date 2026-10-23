@@ -1,8 +1,12 @@
+# Reduced grid for quick checks.
 walk_forward:
   n_folds: 5
-  walk_forward_mode: rolling  # expanding or rolling
-  objective: net_pnl # sharpe_trades, profit_factor, net_pnl_pct, calmar
-
+  walk_forward_mode: rolling
+  objective: net_pnl           # sharpe, profit_factor, net_pnl, calmar
+  train_days: 3                # optional; derived from n_folds when omitted
+  test_days: 2
+  min_trades: 3
+  min_win_rate: 0.0
 
 backtest:
   fee_bps: 16.0

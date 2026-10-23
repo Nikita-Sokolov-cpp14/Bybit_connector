@@ -1,0 +1,37 @@
+# Best robust regime-filter variant from the 35-day walk-forward run.
+# Original comb = pz - intz (intz_weight = 1.0), volatility regime filter on.
+walk_forward:
+  n_folds: 5
+  walk_forward_mode: rolling
+  objective: sharpe
+  train_days: 6
+  test_days: 6
+  min_trades: 1
+  min_win_rate: 0.0
+
+backtest:
+  fee_bps: 16.0
+  conservative_intrabar: true
+
+params:
+  interval_sec: [60]
+  window_size: [120]
+  sigma: [3.0]
+  price_source: [vwap]
+  signal_mode: [momentum]
+  confirm_intervals: [1]
+  trend_ema_span: [0]
+  trend_filter_mode: [aligned]
+  direction: [both]
+  pz_weight: [1.0]
+  intz_weight: [1.0]
+  trend_strength_min: [0.0]
+  autocorr_window: [0]
+  autocorr_mode: [follow]
+  autocorr_threshold: [0.0]
+  vol_window: [720]          # 12h at 60s intervals
+  vol_ratio_min: [0.8]       # volatility >= 0.8 * rolling median
+  vol_ratio_max: [1.2]       # volatility <= 1.2 * rolling median
+  take_profit: [0.01]
+  stop_loss: [0.005]
+  max_hold_sec: [14400]

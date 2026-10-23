@@ -1,12 +1,16 @@
-# config.yaml
+# Full grid search (default spec).
 walk_forward:
   n_folds: 7
-  walk_forward_mode: rolling  # expanding or rolling
-  objective: profit_factor  # sharpe_trades, profit_factor, net_pnl_pct, calmar
+  walk_forward_mode: rolling   # expanding or rolling
+  objective: sharpe            # sharpe, profit_factor, net_pnl, calmar
+  # train_days: 5              # optional, default: total_days // (n_folds + 1)
+  # test_days: 5
+  min_trades: 5                # ignore configs with fewer train trades
+  min_win_rate: 0.0
 
 backtest:
-  fee_bps: 16.0  # 0.16%
-  conservative_intrabar: true
+  fee_bps: 16.0                # 0.16% per side (taker + slippage)
+  conservative_intrabar: true  # same-second TP+SL -> SL first
 
 params:
   interval_sec: [10, 20, 30, 60, 120, 180, 300]

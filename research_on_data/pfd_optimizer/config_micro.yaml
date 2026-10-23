@@ -1,7 +1,12 @@
+# One configuration, two folds: smoke test.
 walk_forward:
   n_folds: 2
   walk_forward_mode: expanding
-  objective: sharpe_trades # sharpe_trades, profit_factor, net_pnl_pct, calmar
+  objective: sharpe
+  train_days: 3
+  test_days: 2
+  min_trades: 1
+  min_win_rate: 0.0
 
 backtest:
   fee_bps: 16.0

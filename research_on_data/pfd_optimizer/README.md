@@ -1,14 +1,18 @@
 # PFD Hyperparameter Optimizer
 
-Offline grid search + walk-forward for **Price-Flow Divergence (PFD)** indicator on Bybit 1s aggregated data.
+Offline grid search + walk-forward for **Price-Flow Divergence (PFD)** on Bybit
+1-second aggregated data.
 
 ## Input
 
-CSV: `research_on_data/aggregated_1s/aggregated_1s.csv`
+`research_on_data/aggregated_1s/aggregated_1s.csv`
 
 Columns: `ts, open, high, low, close, buy_vol, sell_vol, trade_count, vwap`
 - `ts` — UTC ms (start of second), int64
-- prices float, volumes float, `trade_count` int, `vwap` float
+- prices/volumes float, `trade_count` int, `vwap` float
+
+The loader detects tab/comma/semicolon, sorts by `ts`, removes duplicate
+timestamps and drops unusable rows.
 
 ## Install
 
@@ -20,57 +24,192 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python run_optimization.py --config config.yaml --data ../aggregated_1s/aggregated_1s.csv --output output
+python run_optimization.py \
+  --config config.yaml \
+  --data ../aggregated_1s/aggregated_1s.csv \
+  --output output
 ```
 
-Or:
+Quick checks:
+- `config_micro.yaml` — one configuration, smoke test.
+- `config_small.yaml` — reduced grid.
+- `config_accuracy.yaml` — direction/accuracy research grid (see below).
+
+Directional-accuracy research without the full backtest:
+
 ```bash
-bash example_run.sh
+python research_pfd.py --data ../aggregated_1s/aggregated_1s.csv   --interval 60 --window 360 --horizons 120,240,360   --intz-weights 0,0.5,1.0 --trend-emas 0,120,360 --out output/research
 ```
 
-## Config (config.yaml)
-
-Grid matches spec:
-- `interval_sec`: [10,20,30,60,120,180,300]
-- `window_size W`: [30,60,120,180,360,720]
-- `sigma`: [1.0,1.5,2.0,2.5,3.0,3.5]
-- `price_source`: [vwap, close]
-- `take_profit`: [0.005,0.0075,0.01] (0.5–1.0%)
-- `stop_loss`: [0.0025,0.005,0.01]
-- `max_hold_sec`: [1800,3600,7200,14400]
-
-Walk-forward:
-- `n_folds` (default 5), `walk_forward_mode` {expanding, rolling}, `objective` {sharpe, profit_factor, net_pnl, calmar}
-
-Backtest:
-- `fee_bps` 16.0 (0.16%), `conservative_intrabar` true (SL first on same-second TP/SL)
+It writes `output/research/direction_accuracy.csv` with long/short accuracy,
+mean net return after fees, and accuracy per chronological block (a cheap
+stability check).
 
 ## PFD logic (matches C++)
 
-1. Aggregate by `interval_sec`: `buyAcc`, `sellAcc`, `flow=(buy-sell)/(buy+sell)` if sum>1e-12 else 0. `price_mid` = last second `vwap` or `close` by `price_source`.
-2. Buffers `price_series`, `flow_series` length `W+1`. Signal only when filled.
-3. `tr = price_series[-1]/price_series[0]-1` (W intervals)
-4. `rets_i = price_series[i]/price_series[i-1]-1`, i in 1..W, `sigPx = sqrt(var(rets, ddof=1))*sqrt(W)`
-5. `flow_window = flow_series[-W:]`, `stdFlow = sqrt(var(flow_window,ddof=1))`, `intz = meanFlow*sqrt(W)/stdFlow`
-6. Guards `sigPx<1e-9 or stdFlow<1e-9` -> `comb=0`. `comb = tr/sigPx - intz`. Signal +1 if `comb>=sigma`, -1 if `comb<=-sigma`, else 0.
+For each `interval_sec` bucket:
+1. `buyAcc=sum(buy_vol)`, `sellAcc=sum(sell_vol)`,
+   `flow=(buyAcc-sellAcc)/(buyAcc+sellAcc)` (0 if total < 1e-12).
+2. `price_mid` = last second `vwap` or `close` (`price_source`).
+3. Buffers `price_series`, `flow_series` have length `W+1`; no signal until full.
+4. `tr = p[i]/p[i-W]-1`.
+5. `rets = p[j]/p[j-1]-1`, `j=i-W+1..i`,
+   `sigPx = std(rets, ddof=1) * sqrt(W)`.
+6. `flow_window = flow[i-W:i]` (last **W**, not W+1),
+   `intz = mean(flow_window) * sqrt(W) / std(flow_window, ddof=1)`.
+7. `pz = tr / sigPx`, `comb = pz - intz`.
+   Guard: `sigPx < 1e-9` or `stdFlow < 1e-9` -> neutral.
+8. `comb >= sigma` -> Buy, `comb <= -sigma` -> Sell.
+
+The implementation is fully vectorised (pandas rolling + NumPy) and is checked
+against the C++/naive loop on synthetic data.
+
+### Research extensions (optional, default = original spec)
+
+Additional grid keys can be added to `params`:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `signal_mode` | `momentum` | `momentum` or `reversal` (opposite sign) |
+| `confirm_intervals` | `0` | require N previous signals of the same side |
+| `trend_ema_span` | `0` | EMA span in intervals; 0 = off |
+| `trend_filter_mode` | `aligned` | `aligned` (Buy above EMA) or `against` |
+| `direction` | `both` | `both`, `long`, `short` |
+| `pz_weight` | `1.0` | weight of `pz` in the score |
+| `intz_weight` | `1.0` | weight of `intz` in the score |
+| `trend_strength_min` | `0.0` | min `|price/EMA-1|` for the trend filter |
+| `autocorr_window` | `0` | rolling window for lag-1 return autocorrelation; 0 = off |
+| `autocorr_mode` | `follow` | `follow` (only trade positive autocorr) or `fade` (flip in negative autocorr) |
+| `autocorr_threshold` | `0.0` | min absolute autocorrelation |
+| `vol_window` | `0` | rolling window for the volatility median; 0 = off |
+| `vol_ratio_min` | `0.0` | min `sigPx / rolling_median(sigPx)` |
+| `vol_ratio_max` | `1e9` | max `sigPx / rolling_median(sigPx)` |
+
+The score is `pz_weight * pz - intz_weight * intz`. Setting
+`intz_weight: 0` gives pure price momentum, which is a useful control and is
+often better for 4–6h horizons than the default `comb`.
 
 ## Backtest
 
-- One position. New signals ignored while in position.
-- Entry: on signal, entry price = `close` of the signal second/interval (close_interval/close_last).
-- Exit first of: TP, SL (by high/low intrabar), timeout `max_hold_sec`. If TP and SL in same second -> SL first (conservative). Fees 2x (entry+exit).
+- One position at a time; signals while in position are ignored.
+- Entry: close of the second in which the signal is produced
+  (`close_last_ts` / `close_last`).
+- Exit: first of TP, SL, timeout.
+- TP/SL are checked on every 1s `high`/`low` of the holding period.
+- Same 1s bar hits TP and SL -> SL wins when
+  `conservative_intrabar: true`.
+- Fees: `fee_bps` on **both** entry and exit (default 16 bps per side).
+- Timeout closes at the last available 1s close before `max_hold_sec`.
+- Short PnL is `-(exit/entry - 1)` (fixed; the old code used `entry/exit-1`).
+- Trades are clipped to the fold boundary; positions still open at the test
+  end are closed at the last available close.
 
-## Metrics
+Note: entry at the close of the signal second is what the specification asks
+for, but it is slightly optimistic for live execution (the signal is only
+known after that second closes). Add a realistic entry delay before trusting
+absolute PnL numbers.
 
-Net PnL%, Trades, Win rate, Profit Factor, **Sharpe by trades** `mean/std*sqrt(N)` (per-trade, not annualized), Max DD (closed-trade equity), Avg hold sec, Buy/Sell signals, % time in position, Calmar, Expectancy, Avg win/loss, Largest win/loss.
+## Walk-forward
 
-## Outputs (output/)
+- Day-based splits. `train_days` / `test_days` can be set explicitly; when
+  omitted, `block = total_days // (n_folds + 1)` and both are set to `block`.
+- `walk_forward_mode`: `expanding` (train from the first day) or `rolling`
+  (fixed-length train window).
+- Indicator history is computed **causally on the full series** and then sliced.
+  This gives the test fold a proper warm-up without leaking future data.
+- Objective: `sharpe` (`sharpe_trades`), `profit_factor`, `net_pnl`
+  (`net_pnl_pct`) or `calmar`. Aliases are normalised.
+- `min_trades` / `min_win_rate` reject unreliable parameter sets.
+- Metrics are trade-based Sharpe `mean/std(ddof=1) * sqrt(N)` (not annualised),
+  net PnL%, win rate (net of fees), gross win rate, profit factor, max drawdown
+  on the closed-trade equity curve, avg hold, Buy/Sell signal counts,
+  % time in position, Calmar, expectancy, and TP/SL/timeout breakdown.
 
-- `results_per_fold.csv` — train/test metrics + best params per fold
-- `aggregate_test.csv` — median/mean/std/min/max + % profitable folds
-- `top10_configs.csv` — top-10 by `median(test_sharpe)` (based on fold bests)
-- `summary.json`
+## Outputs (`output/`)
 
-## Notes
+- `results_per_fold.csv` — best train config per fold + train/test metrics.
+- `aggregate_test.csv` — median/mean/std/min/max and % profitable folds.
+- `all_configs_test_metrics.csv` — test metrics of **every** config on every fold.
+- `all_configs_test_summary.csv` — per-config medians over folds.
+- `top10_configs.csv` — top-10 by **median(test_sharpe)** across all test folds
+  (the previous version only sorted the per-fold winners).
+- `summary.json` — run metadata and elapsed time.
 
-Grid can be large (thousands). For quick tests reduce ranges in `config.yaml`. Walk-forward uses calendar day splits. All calculations match C++ logic precisely.
+## Performance
+
+The original implementation recomputed the indicator in Python loops and
+rescanned every second for every interval (`O(n_intervals * max_hold)`).
+The current version:
+
+- vectorises interval aggregation and rolling statistics;
+- computes raw PFD components once per `(interval, W, price_source)`;
+- reuses signal arrays across all TP/SL/hold combinations;
+- backtests with NumPy first-passage searches instead of pandas row iteration.
+
+On this machine the full `config.yaml` grid (18,144 configs × 7 folds) over the
+9.7-day file runs in ~4 minutes instead of ~2 hours. The reduced
+`config_small.yaml` runs in ~1.5 seconds.
+
+## Regime-filter test results (original comb, intz_weight = 1.0)
+
+A separate 5-fold rolling run on the 35-day file tested 62,208 configurations
+with trend-strength, autocorrelation and volatility filters (311,040
+backtests, ~9 min). The baseline without regime filters had **zero**
+configurations with >=10 test trades and positive mean net PnL.
+
+The volatility filter was the only one that helped systematically:
+
+- `vol_window=720` (12h at 60s), `vol_ratio=0.8..1.2` selects normal-volatility
+  periods.
+- Best balanced config: `interval=60s, W=120, sigma=3.0, direction=both,
+  TP=1%, SL=0.5%, hold=4h` -> 23 test trades, mean win rate 60.8%,
+  mean net PnL +0.321%/fold, 80% profitable folds, median Sharpe 0.14.
+  It is saved in `config_regime.yaml`.
+- Best by median test Sharpe (`vol_ratio_min=0.8`, no upper cap,
+  TP=1%, SL=0.75%): 29 trades, median Sharpe 0.23, mean net PnL +0.10%,
+  60% profitable folds.
+- Autocorrelation (`follow` or `fade`) and pure trend-strength filters did not
+  produce a positive configuration with >=20 trades in this sample.
+
+This is an improvement over the no-filter baseline, but it is still a modest
+and regime-dependent edge, not a reliable 70% accuracy.
+
+## Accuracy findings (35-day file, Sep–Oct 2026)
+
+Directional accuracy was measured on forward returns (before TP/SL path) and
+with the event-driven backtest.
+
+- The default `comb = pz - intz` has only ~50–60% directional accuracy at
+  1–4h horizons over the whole sample.
+- `pz` alone (`intz_weight: 0`) is better for longer horizons: at
+  `interval=60s, W=360`, 4h horizon, extreme `pz` + aligned EMA filter gives
+  ~73–76% directional accuracy and positive return after 0.32% round-trip
+  costs — **but only in trending regimes**.
+- Those signals cluster in the two strong trend blocks of the sample. In the
+  three middle weeks (range/reversal) the same rule gives 0–30% accuracy.
+  Therefore 70% is not robust on this file; it is regime-dependent.
+- In the walk-forward test, the best configs with at least 20 test trades have
+  median test Sharpe ~0.2–0.6, median win rate ~50–60%, and are still fragile.
+  Configs that show 70–78% win rate have only 7–11 test trades, which is not
+  statistically meaningful.
+
+Recommendations before trusting a 70% target:
+
+1. Collect more history covering several trend/range/reversal regimes.
+2. Prefer pure `pz` (`intz_weight = 0`) or a smaller `intz_weight` for 4–6h
+   horizons; the `intz` term is mostly a short-horizon flow-exhaustion signal.
+3. Use a regime filter (trend strength / autocorrelation / volatility) and
+   report accuracy per regime, not only pooled.
+4. Consider time exits at 4–6h with wider stops; 0.5–1% TP with 0.16% per-side
+   cost needs either >70% accuracy (symmetric TP/SL) or a favourable TP/SL
+   ratio.
+5. Validate on out-of-sample data collected after the parameter search.
+
+## Tests / sanity checks
+
+There is no standalone test suite, but the following were checked manually:
+
+- Python PFD components match a direct naive implementation of the C++ loops.
+- The NumPy backtester matches a row-by-row reference implementation on
+  synthetic data (TP/SL/timeout, conservative same-bar rule, long/short PnL).
+- Short PnL now uses the correct sign.
