@@ -13,17 +13,28 @@
 #include "loger/loger.h"
 
 /**
- * @brief Дивергенция цены и потока: comb = pz - intz (формула comb_W360 из decoder_LTFI.py).
+ * @brief Дивергенция цены и потока: comb = pz - intz.
  * @details
  *  - intz = t-статистика накопленного потока за окно W:
  *           intz = mean(flow) * sqrt(W) / std(flow);
  *  - pz   = нормированный моментум цены за окно W:
  *           pz = (curPrice / price(t-W) - 1) / (std(ret) * sqrt(W));
  *  - comb = pz - intz.
- *  Эмпирика на логах (decoder_LTFI.py): высокий comb (цена обгоняет поток)
- *  предсказывает продолжение движения вверх, низкий comb — движение вниз.
- *  Поэтому моментум-интерпретация (обратная старой версии "поток ведёт, цена догоняет"):
+ *  Моментум-интерпретация:
  *   comb >= +pfdSigma -> Buy; comb <= -pfdSigma -> Sell.
+ *
+ *  Дополнительно (параметры в settings.h):
+ *  - pfdConfirmIntervals: сигнал подтверждается, если предыдущие N сырых
+ *    сигналов были того же знака. Для N=1 это значит, что текущий и
+ *    предыдущий интервалы дали одинаковый Buy/Sell.
+ *  - pfdVolWindowSize / pfdVolRatioMin/Max: режимный фильтр волатильности.
+ *    Торгуем только если текущий sigPx находится в заданном диапазоне
+ *    относительно rolling-медианы sigPx за pfdVolWindowSize интервалов.
+ *    Пока окно не заполнено, сигналы подавляются (warmup).
+ *
+ *  ВАЖНО: offline-исследование использовало price_source=vwap
+ *  (VWAP последней секунды интервала). В C++ используется mid-price из
+ *  стакана (setMidPrice), поэтому live-сигналы могут отличаться.
  */
 class PriceFlowDivergence {
 public:
@@ -49,6 +60,10 @@ private:
     boost::circular_buffer<double> priceSeries_;
     //! Нормированный поток ((buyVol - sellVol) / (buyVol + sellVol)) за интервал.
     boost::circular_buffer<double> flowSeries_;
+    //! История sigPx для режимного фильтра волатильности.
+    boost::circular_buffer<double> sigPxSeries_;
+    //! История сырых сигналов для подтверждения (N предыдущих интервалов).
+    boost::circular_buffer<Side> rawSignalSeries_;
 
     double tr_;
     double sigPx_;
@@ -57,6 +72,9 @@ private:
     double pz_;
     double intz_;
     double comb_;
+
+    //! Разрешена ли торговля текущим режимом волатильности.
+    bool volOk_;
 
     std::atomic<Side> signal_;
 
@@ -68,6 +86,7 @@ private:
     void calcLastStats(const boost::circular_buffer<double> &buf, size_t count, double &mean,
             double &stdv);
 
+    void updateVolatilityRegime();
     void checkSignal();
 
     bool isBuy(const PublicTrade::Data &trade);

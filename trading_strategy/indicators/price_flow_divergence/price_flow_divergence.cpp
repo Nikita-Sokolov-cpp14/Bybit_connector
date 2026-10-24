@@ -1,8 +1,18 @@
 #include "price_flow_divergence.h"
 #include "settings.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <vector>
+
+//! Основной вариант: TP 2.0% / SL 0.5% / hold 24h, без trailing-stop.
+//! Консервативный вариант: TP 1.5% / SL 0.5% / hold 24h.
+//! Для него достаточно изменить coefTakeProfit в settings.h:
+//!     coefTakeProfit = 1.5 / 100.0;
+//! Индикатор, SL и timeout при этом не меняются. По offline-бэктесту
+//! TP 1.5% дает меньший mean net PnL, но больший median net и более
+//! мягкий профиль (меньше зависимость от отдельных крупных движений).
 
 PriceFlowDivergence::PriceFlowDivergence() :
 midPrice_(0.0),
@@ -11,12 +21,15 @@ sellVolAccum_(0.0),
 lastCalcTime_(0),
 priceSeries_(settings::pfdWindowSize + 1),
 flowSeries_(settings::pfdWindowSize + 1),
+sigPxSeries_(settings::pfdVolWindowSize),
+rawSignalSeries_(settings::pfdConfirmIntervals),
 tr_(0.0),
 sigPx_(0.0),
 stdFlow_(0.0),
 pz_(0.0),
 intz_(0.0),
 comb_(0.0),
+volOk_(true),
 signal_(Side_Unknown),
 loger_("../log_files/price_flow_divergence.csv") {
     loger_.recordValue("ts");
@@ -118,7 +131,10 @@ void PriceFlowDivergence::rollInterval() {
         pz_ = 0.0;
         intz_ = 0.0;
         comb_ = 0.0;
-        signal_.store(Side_Unknown);
+        volOk_ = false;
+        //! Важно обновить историю сырых сигналов (Unknown), чтобы
+        //! подтверждение не переносилось через невалидный интервал.
+        checkSignal();
         logData();
         return;
     }
@@ -128,6 +144,7 @@ void PriceFlowDivergence::rollInterval() {
 
     comb_ = pz_ - intz_;
 
+    updateVolatilityRegime();
     checkSignal();
     logData();
 }
@@ -154,14 +171,70 @@ void PriceFlowDivergence::calcLastStats(const boost::circular_buffer<double> &bu
     stdv = std::sqrt(sumDeltaSquare / (count - 1));
 }
 
-void PriceFlowDivergence::checkSignal() {
-    if (comb_ >= settings::pfdSigma) {
-        signal_.store(Side_Buy);
-    } else if (comb_ <= -settings::pfdSigma) {
-        signal_.store(Side_Sell);
-    } else {
-        signal_.store(Side_Unknown);
+void PriceFlowDivergence::updateVolatilityRegime() {
+    if (settings::pfdVolWindowSize < 2) {
+        volOk_ = true;
+        return;
     }
+
+    //! В rolling-медиану добавляем только валидные значения sigPx, чтобы
+    //! нули warmup-периода не занижали медиану.
+    if (sigPx_ >= 1e-9) {
+        sigPxSeries_.push_back(sigPx_);
+    }
+
+    if (sigPxSeries_.size() < sigPxSeries_.capacity()) {
+        volOk_ = false; //! warmup: пока окно не заполнено, не торгуем
+        return;
+    }
+
+    std::vector<double> values(sigPxSeries_.begin(), sigPxSeries_.end());
+    const size_t middle = values.size() / 2;
+    std::nth_element(values.begin(), values.begin() + middle, values.end());
+    double median = values[middle];
+    if (values.size() % 2 == 0) {
+        //! Для чётного размера pandas rolling.median() усредняет два
+        //! центральных значения. Повторяем это поведение.
+        const double lower = *std::max_element(values.begin(), values.begin() + middle);
+        median = 0.5 * (lower + median);
+    }
+
+    volOk_ = median > 0.0 && sigPx_ >= settings::pfdVolRatioMin * median &&
+            sigPx_ <= settings::pfdVolRatioMax * median;
+}
+
+void PriceFlowDivergence::checkSignal() {
+    Side rawSignal = Side_Unknown;
+    if (comb_ >= settings::pfdSigma) {
+        rawSignal = Side_Buy;
+    } else if (comb_ <= -settings::pfdSigma) {
+        rawSignal = Side_Sell;
+    }
+
+    Side confirmedSignal = rawSignal;
+
+    if (settings::pfdConfirmIntervals > 0) {
+        //! Нужны N предыдущих сырых сигналов того же знака.
+        if (rawSignalSeries_.size() < rawSignalSeries_.capacity()) {
+            confirmedSignal = Side_Unknown;
+        } else {
+            for (const Side previous : rawSignalSeries_) {
+                if (previous != rawSignal) {
+                    confirmedSignal = Side_Unknown;
+                    break;
+                }
+            }
+        }
+        rawSignalSeries_.push_back(rawSignal);
+    }
+
+    //! Режимный фильтр волатильности применяется после подтверждения,
+    //! как в offline-исследовании.
+    if (!volOk_) {
+        confirmedSignal = Side_Unknown;
+    }
+
+    signal_.store(confirmedSignal);
 }
 
 bool PriceFlowDivergence::isBuy(const PublicTrade::Data &trade) {
