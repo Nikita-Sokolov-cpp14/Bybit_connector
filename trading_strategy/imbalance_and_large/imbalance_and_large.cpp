@@ -13,11 +13,11 @@ publicTrades_(settings::historyPublicTradeSize),
 currentBestAskPrice_(0.0),
 currentBestBidPrice_(0.0),
 currentMidPrice_(0.0),
-signalTfi_(std::nullopt),
-signalObi_(std::nullopt),
+// signalTfi_(std::nullopt),
+// signalObi_(std::nullopt),
 signalTotal_(std::nullopt),
-orderBookImbalance_(),
-tradeFlowImbalance_(),
+// orderBookImbalance_(),
+// tradeFlowImbalance_(),
 loger_("../log_files/total_signals.csv") {
     loger_.recordValue("ts");
     loger_.recordValue("mid_price");
@@ -28,12 +28,12 @@ loger_("../log_files/total_signals.csv") {
 }
 
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
-    orderBookImbalance_.setOrderbook(orderbook);
+    // orderBookImbalance_.setOrderbook(orderbook);
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
     midPrices_.push_back(currentMidPrice_.load());
-    tradeFlowImbalance_.setMidPrice(currentMidPrice_.load());
+    // tradeFlowImbalance_.setMidPrice(currentMidPrice_.load());
     priceFlowDivergence_.setMidPrice(currentMidPrice_.load());
 
     tradeManager_.checkCurrentPrice(currentMidPrice_.load());
@@ -43,7 +43,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
 }
 
 void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
-    tradeFlowImbalance_.setPublicTrade(publicTrade);
+    // tradeFlowImbalance_.setPublicTrade(publicTrade);
     priceFlowDivergence_.setPublicTrade(publicTrade);
     //! TODO: После этой опреации у publicTrade больше нет данных.
     //! TODO: Нужно успеть обработать обновление сделок до прихода новых.
@@ -74,8 +74,8 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
-    signalTfi_ = tradeFlowImbalance_.getSignal();
-    signalObi_ = orderBookImbalance_.getSignal();
+    // signalTfi_ = tradeFlowImbalance_.getSignal();
+    // signalObi_ = orderBookImbalance_.getSignal();
     signalPfd_ = priceFlowDivergence_.getSignal();
 
     checkSignalTotal();
@@ -121,9 +121,9 @@ void ImbalanceAndLarge::onMarketUpdate() {
     // if (signalDisbalance_.has_value() && countSignal_.load() >= settings::countSignal) {
     //     tradeManager_.checkInverseSignal(signalDisbalance_.value());
     // }
-    if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
-        tradeManager_.checkInverseSignal(signalTotal_.value());
-    }
+    // if (tradeManager_.hasOpenTrade() && signalTotal_.has_value()) {
+    //     tradeManager_.checkInverseSignal(signalTotal_.value());
+    // }
 }
 
 void ImbalanceAndLarge::checkSignalTotal() {
@@ -151,8 +151,8 @@ void ImbalanceAndLarge::logData() {
             std::chrono::system_clock::now().time_since_epoch())
                                .count());
     loger_.recordValue(currentMidPrice_.load());
-    loger_.recordValue(signalObi_.value_or(Side_Unknown));
-    loger_.recordValue(signalTfi_.value_or(Side_Unknown));
+    // loger_.recordValue(signalObi_.value_or(Side_Unknown));
+    // loger_.recordValue(signalTfi_.value_or(Side_Unknown));
     loger_.recordValue(signalTotal_.value_or(Side_Unknown));
     loger_.endStr();
 }

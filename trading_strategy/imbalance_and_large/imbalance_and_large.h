@@ -45,14 +45,14 @@ private:
      */
     boost::circular_buffer<double> midPrices_;
     boost::circular_buffer<std::vector<PublicTrade::Data> > publicTrades_;
-    std::optional<Side> signalTfi_;
-    std::optional<Side> signalObi_;
+    // std::optional<Side> signalTfi_;
+    // std::optional<Side> signalObi_;
     std::optional<Side> signalPfd_;
     std::optional<Side> signalTotal_;
 
     PriceFlowDivergence priceFlowDivergence_;
-    OrderBookImbalance orderBookImbalance_;
-    TradeFlowImbalance tradeFlowImbalance_;
+    // OrderBookImbalance orderBookImbalance_;
+    // TradeFlowImbalance tradeFlowImbalance_;
 
     Logger loger_;
 
