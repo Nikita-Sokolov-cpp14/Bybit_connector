@@ -58,7 +58,8 @@ private:
     bool waitCancelCloseLimitOrder_;
     bool tradeIsOpen_;
 
-    void checkMainOrder(const OrderStatus &orderStatus);
+    void checkOpenLimitOrderOrder(const OrderStatus &orderStatus);
+    void checkOpenMarketOrderOrder(const OrderStatus &orderStatus);
     // void checkStopLoss(const OrderStatus &orderStatus);
     // void checkTakeProfit(const OrderStatus &orderStatus);
     void checkCloseLimitOrder(const OrderStatus &orderStatus);

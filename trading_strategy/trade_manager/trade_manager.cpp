@@ -17,6 +17,7 @@ int timeoutCount = 0;
 
 int countLimitOpenMiss = 0;
 int countLimitOpenFilled = 0;
+int countMarketOpenFilled = 0;
 int countLimitCloseMiss = 0;
 int countLimitCloseFilled = 0;
 int countCloseMarket = 0;
@@ -63,16 +64,14 @@ void TradeManager::setOrder(const OrderMainData &order) {
     }
 
     //! TODO: Заменить на более читаемое
-    const uint64_t orderTypeId = orderLinkId % 10;
-    if (orderTypeId == 1) { // Основной ордер
-        checkMainOrder(it->second);
-        // } else if (orderTypeId == 2) { // стоп
-        //     checkStopLoss(it->second);
-        // } else if (orderTypeId == 3) { // тейк
-        //     checkTakeProfit(it->second);
-    } else if (orderTypeId == 4) { // выход по лимитному ордеру
+    const uint64_t orderTypeId = GetOrderTypeId(orderLinkId);
+    if (orderTypeId == Trade::idOpenLimitOrder) { // открывающий лимитный ордер
+        checkOpenLimitOrderOrder(it->second);
+    } else if (orderTypeId == Trade::idOpenMarketOrder) { // открывающий рыночный
+        checkOpenMarketOrderOrder(it->second);
+    } else if (orderTypeId == Trade::idCloseLimitOrder) { // выход по лимитному ордеру
         checkCloseLimitOrder(it->second);
-    } else if (orderTypeId == 5) { // выход по рыночному ордеру
+    } else if (orderTypeId == Trade::idCloseMarketOrder) { // выход по рыночному ордеру
         checkCloseMarketOrder(it->second);
     }
 }
@@ -214,7 +213,7 @@ void TradeManager::checkCurrentPrice(const double price) {
     }
 }
 
-void TradeManager::checkMainOrder(const OrderStatus &orderStatus) {
+void TradeManager::checkOpenLimitOrderOrder(const OrderStatus &orderStatus) {
     if (orderStatus == OrderStatus_Filled) { // ордер исполнен
         countLimitOpenFilled++;
         startTrade = std::chrono::steady_clock::now();
@@ -227,11 +226,23 @@ void TradeManager::checkMainOrder(const OrderStatus &orderStatus) {
             currentTradeSide_ = currentTrade_.openLimitOrder.side;
         }
         // Ордер исполнен. Вошли в сделку. Можно выставлять TP и SL
-        // currentTrade_.makeTPSLOrders(currentPrice, currentTradeSide_.value());
         currentTrade_.calcSLTP(currentTrade_.openLimitOrder.price, currentTradeSide_.value());
         waitOpenLimitOrder_ = false;
     } else if (orderStatus == OrderStatus_Cancelled) {
+        currentTrade_.makeTradeByMarketOrder(currentTradeSide_.value());
+    }
+}
+
+void TradeManager::checkOpenMarketOrderOrder(const OrderStatus &orderStatus) {
+    if (orderStatus == OrderStatus_Filled) { // ордер исполнен
+        countMarketOpenFilled++;
+        startTrade = std::chrono::steady_clock::now();
+        openPrice = currentPrice;
+        // Ордер исполнен. Вошли в сделку. Можно выставлять TP и SL
+        currentTrade_.calcSLTP(openPrice, currentTradeSide_.value());
+    } else if (orderStatus == OrderStatus_Cancelled) {
         currentTradeSide_ = std::nullopt;
+        tradeIsOpen_ = false;
     }
 }
 
@@ -330,7 +341,7 @@ void TradeManager::checkSLTP() {
 void TradeManager::cancelOpenLimitOrder() {
     waitOpenLimitOrder_ = false;
     currentTrade_.cancelOrder(currentTrade_.openLimitOrder.req_id);
-    currentTradeSide_ = std::nullopt;
+    // currentTradeSide_ = std::nullopt;
 }
 
 bool TradeManager::sideIsEqual(const Side &side) {

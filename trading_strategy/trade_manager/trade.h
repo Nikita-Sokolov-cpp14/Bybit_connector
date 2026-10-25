@@ -11,8 +11,17 @@
 #include "data_structures/order_request.h"
 #include "data_structures/order.h"
 
+uint64_t GetOrderTypeId(const uint64_t orderLinkId);
+
 struct Trade {
     Trade();
+
+    static const uint32_t idOpenLimitOrder = 1;
+    static const uint32_t idOpenMarketOrder = 2;
+    static const uint32_t idStopLoss = 3;
+    static const uint32_t idTakeProfit = 4;
+    static const uint32_t idCloseLimitOrder = 5;
+    static const uint32_t idCloseMarketOrder = 6;
 
     // Функциональный объект для отправки ордеров
     using OrderSender = std::function<bool(const OrderRequest &)>;
@@ -21,6 +30,7 @@ struct Trade {
     OrderRequest stopLoss;
     OrderRequest takeProfit;
     OrderRequest openLimitOrder;
+    OrderRequest openMarketOrder;
     OrderRequest closeLimitOrder;
     OrderRequest closeMarketOrder;
     OrderRequest orderCancel;
@@ -39,6 +49,7 @@ struct Trade {
     void clearStatuses();
 
     bool makeTradeByLimitOrder(const double price, const Side &side);
+    bool makeTradeByMarketOrder(const Side &side);
     bool makeTPSLOrders(const double price, const Side &side);
     bool makeCloseLimitOrder(const double price, const Side &side);
     bool makeCloseMarketOrder(const Side &side);

@@ -26,3 +26,5 @@ experiment/
 win_libraries/
 build_windows/
 cacert.pem
+research_on_data/
+log_files/

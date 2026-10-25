@@ -6,15 +6,9 @@
 
 #include "settings.h"
 
-namespace {
-
-const uint32_t idOpenOrder = 1;
-const uint32_t idStopLoss = 2;
-const uint32_t idTakeProfit = 3;
-const uint32_t idCloseLimitOrder = 4;
-const uint32_t idCloseMarketOrder = 5;
-
-} // namespace
+uint64_t GetOrderTypeId(const uint64_t orderLinkId) {
+    return orderLinkId % 10;
+}
 
 Trade::Trade() :
 orderSender(),
@@ -53,6 +47,12 @@ orderIsFilled(false) {
     openLimitOrder.leverage = settings::leverage;
     strcpy(openLimitOrder.symbol, "BTCUSDT");
 
+    openMarketOrder.typeOrderRequest = TypeOrderRequest_New;
+    openMarketOrder.order_type = OrderType_Market;
+    openMarketOrder.qty = settings::defaultQty;
+    openMarketOrder.leverage = settings::leverage;
+    strcpy(openMarketOrder.symbol, "BTCUSDT");
+
     closeLimitOrder.typeOrderRequest = TypeOrderRequest_New;
     closeLimitOrder.order_type = OrderType_Limit;
     closeLimitOrder.qty = settings::defaultQty;
@@ -80,7 +80,7 @@ bool Trade::makeTradeByLimitOrder(const double price, const Side &side) {
     ordersStatus.clear();
 
     openLimitOrder.typeOrderRequest = TypeOrderRequest_New;
-    openLimitOrder.req_id = currentTradeNumber * 10 + idOpenOrder; // Основной ордер +1
+    openLimitOrder.req_id = currentTradeNumber * 10 + idOpenLimitOrder; // Открывающий лимитный ордер +1
     openLimitOrder.side = side;
     openLimitOrder.price = price;
     openLimitOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -89,6 +89,21 @@ bool Trade::makeTradeByLimitOrder(const double price, const Side &side) {
     ordersStatus[openLimitOrder.req_id] = OrderStatus_Unknown;
 
     return sendOrder(openLimitOrder);
+}
+
+bool Trade::makeTradeByMarketOrder(const Side &side) {
+    //!< NOTE: Рыночный ордер отправляется, если лимитный был неудачным.
+    // текущая сделка с точки зрения ordersStatus продолжается.
+
+    openMarketOrder.typeOrderRequest = TypeOrderRequest_New;
+    openMarketOrder.req_id = currentTradeNumber * 10 + idOpenMarketOrder; // Открывающий рыночный ордер +1
+    openMarketOrder.side = side;
+    openMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+                                          .count();
+    ordersStatus[openMarketOrder.req_id] = OrderStatus_Unknown;
+
+    return sendOrder(openMarketOrder);
 }
 
 bool Trade::makeTPSLOrders(const double price, const Side &side) {
