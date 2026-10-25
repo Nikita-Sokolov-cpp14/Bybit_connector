@@ -63,16 +63,22 @@ void TradeManager::setOrder(const OrderMainData &order) {
         it->second = order.orderStatus;
     }
 
-    //! TODO: Заменить на более читаемое
-    const uint64_t orderTypeId = GetOrderTypeId(orderLinkId);
-    if (orderTypeId == Trade::idOpenLimitOrder) { // открывающий лимитный ордер
-        checkOpenLimitOrderOrder(it->second);
-    } else if (orderTypeId == Trade::idOpenMarketOrder) { // открывающий рыночный
-        checkOpenMarketOrderOrder(it->second);
-    } else if (orderTypeId == Trade::idCloseLimitOrder) { // выход по лимитному ордеру
-        checkCloseLimitOrder(it->second);
-    } else if (orderTypeId == Trade::idCloseMarketOrder) { // выход по рыночному ордеру
-        checkCloseMarketOrder(it->second);
+    const Trade::OrderType orderType = currentTrade_.getOrderType(orderLinkId);
+    switch (orderType) {
+        case Trade::OrderType_OpenLimitOrder:
+            checkOpenLimitOrderOrder(it->second);
+            break;
+        case Trade::OrderType_OpenMarketOrder:
+            checkOpenMarketOrderOrder(it->second);
+            break;
+        case Trade::OrderType_CloseLimitOrder:
+            checkCloseLimitOrder(it->second);
+            break;
+        case Trade::OrderType_CloseMarketOrder:
+            checkCloseMarketOrder(it->second);
+            break;
+        default:
+            break;
     }
 }
 

@@ -11,24 +11,26 @@
 #include "data_structures/order_request.h"
 #include "data_structures/order.h"
 
-uint64_t GetOrderTypeId(const uint64_t orderLinkId);
-
 struct Trade {
     Trade();
 
-    static const uint32_t idOpenLimitOrder = 1;
-    static const uint32_t idOpenMarketOrder = 2;
-    static const uint32_t idStopLoss = 3;
-    static const uint32_t idTakeProfit = 4;
-    static const uint32_t idCloseLimitOrder = 5;
-    static const uint32_t idCloseMarketOrder = 6;
+    static const uint64_t multiplier = 10;
+
+    /**
+     * @brief Тип ордера внутри сделки.
+     */
+    enum OrderType {
+        OrderType_Unknown = 0,
+        OrderType_OpenLimitOrder,
+        OrderType_OpenMarketOrder,
+        OrderType_CloseLimitOrder,
+        OrderType_CloseMarketOrder
+    };
 
     // Функциональный объект для отправки ордеров
     using OrderSender = std::function<bool(const OrderRequest &)>;
     OrderSender orderSender;
 
-    OrderRequest stopLoss;
-    OrderRequest takeProfit;
     OrderRequest openLimitOrder;
     OrderRequest openMarketOrder;
     OrderRequest closeLimitOrder;
@@ -50,7 +52,6 @@ struct Trade {
 
     bool makeTradeByLimitOrder(const double price, const Side &side);
     bool makeTradeByMarketOrder(const Side &side);
-    bool makeTPSLOrders(const double price, const Side &side);
     bool makeCloseLimitOrder(const double price, const Side &side);
     bool makeCloseMarketOrder(const Side &side);
 
@@ -63,4 +64,8 @@ struct Trade {
     bool sendOrder(const OrderRequest &order);
 
     bool replaceLimitOpenOrder(double price);
+
+    OrderType getOrderType(const uint64_t orderLinkId);
+
+    uint64_t makeReqId(const OrderType &orderType);
 };

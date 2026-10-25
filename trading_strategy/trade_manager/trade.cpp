@@ -6,10 +6,6 @@
 
 #include "settings.h"
 
-uint64_t GetOrderTypeId(const uint64_t orderLinkId) {
-    return orderLinkId % 10;
-}
-
 Trade::Trade() :
 orderSender(),
 tradeNumber(22510),
@@ -18,29 +14,6 @@ takeProfitPrice(0.0),
 stopLossPrice(0.0),
 orderIsPlaced(false),
 orderIsFilled(false) {
-    // orderOpenTrade.typeOrderRequest = TypeOrderRequest_New;
-    // //! TODO: Подумать - открывать рыночным или лимитным
-    // // orderOpenTrade.order_type = OrderType_Limit;
-    // orderOpenTrade.order_type = OrderType_Market;
-    // orderOpenTrade.qty = settings::defaultQty;
-    // //! TODO: Для лимитного ордера нужно указать цену чуть ниже
-    // // orderOpenTrade.price = price +- ;
-    // orderOpenTrade.leverage = settings::leverage;
-    // strcpy(orderOpenTrade.symbol, "BTCUSDT");
-
-    stopLoss.typeOrderRequest = TypeOrderRequest_New;
-    stopLoss.order_type = OrderType_Market;
-    stopLoss.qty = settings::defaultQty;
-    stopLoss.leverage = settings::leverage;
-    stopLoss.closeOnTrigger = true;
-    strcpy(stopLoss.symbol, "BTCUSDT");
-
-    takeProfit.typeOrderRequest = TypeOrderRequest_New;
-    takeProfit.order_type = OrderType_Limit;
-    takeProfit.qty = settings::defaultQty;
-    takeProfit.leverage = settings::leverage;
-    strcpy(takeProfit.symbol, "BTCUSDT");
-
     openLimitOrder.typeOrderRequest = TypeOrderRequest_New;
     openLimitOrder.order_type = OrderType_Limit;
     openLimitOrder.qty = settings::defaultQty;
@@ -80,7 +53,7 @@ bool Trade::makeTradeByLimitOrder(const double price, const Side &side) {
     ordersStatus.clear();
 
     openLimitOrder.typeOrderRequest = TypeOrderRequest_New;
-    openLimitOrder.req_id = currentTradeNumber * 10 + idOpenLimitOrder; // Открывающий лимитный ордер +1
+    openLimitOrder.req_id = makeReqId(OrderType_OpenLimitOrder); // Открывающий лимитный ордер +1
     openLimitOrder.side = side;
     openLimitOrder.price = price;
     openLimitOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -96,40 +69,18 @@ bool Trade::makeTradeByMarketOrder(const Side &side) {
     // текущая сделка с точки зрения ordersStatus продолжается.
 
     openMarketOrder.typeOrderRequest = TypeOrderRequest_New;
-    openMarketOrder.req_id = currentTradeNumber * 10 + idOpenMarketOrder; // Открывающий рыночный ордер +1
+    openMarketOrder.req_id = makeReqId(OrderType_OpenMarketOrder); // Открывающий рыночный ордер +1
     openMarketOrder.side = side;
     openMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
-                                          .count();
+                                           .count();
     ordersStatus[openMarketOrder.req_id] = OrderStatus_Unknown;
 
     return sendOrder(openMarketOrder);
 }
 
-bool Trade::makeTPSLOrders(const double price, const Side &side) {
-    calcSLTP(price, side);
-
-    stopLoss.req_id = currentTradeNumber * 10 + idStopLoss; //! TODO: +2 - это стоп
-    stopLoss.triggerPrice = stopLossPrice;
-    stopLoss.triggerSide = (side == Side_Buy) ? Side_Sell : Side_Buy;
-    stopLoss.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now().time_since_epoch())
-                                    .count();
-    ordersStatus[stopLoss.req_id] = OrderStatus_Unknown;
-
-    takeProfit.req_id = currentTradeNumber * 10 + idTakeProfit; //! TODO: +3 - это тейк
-    takeProfit.side = (side == Side_Buy) ? Side_Sell : Side_Buy;
-    takeProfit.price = takeProfitPrice;
-    takeProfit.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now().time_since_epoch())
-                                      .count();
-    ordersStatus[takeProfit.req_id] = OrderStatus_Unknown;
-
-    return (sendOrder(stopLoss) && sendOrder(takeProfit));
-}
-
 bool Trade::makeCloseLimitOrder(const double price, const Side &side) {
-    closeLimitOrder.req_id = currentTradeNumber * 10 + idCloseLimitOrder;
+    closeLimitOrder.req_id = makeReqId(OrderType_CloseLimitOrder);
     closeLimitOrder.side = side;
     closeLimitOrder.price = price;
     closeLimitOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -141,7 +92,7 @@ bool Trade::makeCloseLimitOrder(const double price, const Side &side) {
 }
 
 bool Trade::makeCloseMarketOrder(const Side &side) {
-    closeMarketOrder.req_id = currentTradeNumber * 10 + idCloseMarketOrder;
+    closeMarketOrder.req_id = makeReqId(OrderType_CloseMarketOrder);
     closeMarketOrder.side = side;
     closeMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
@@ -203,4 +154,46 @@ bool Trade::replaceLimitOpenOrder(double price) {
     openLimitOrder.price = price;
 
     return sendOrder(openLimitOrder);
+}
+
+Trade::OrderType Trade::getOrderType(const uint64_t orderLinkId) {
+    uint64_t type = orderLinkId % multiplier;
+
+    switch (type) {
+        case 1:
+            return OrderType_OpenLimitOrder;
+        case 2:
+            return OrderType_OpenMarketOrder;
+        case 3:
+            return OrderType_CloseLimitOrder;
+        case 4:
+            return OrderType_CloseMarketOrder;
+        default:
+            break;
+    }
+
+    return OrderType_Unknown;
+}
+
+uint64_t Trade::makeReqId(const OrderType &orderType) {
+    uint64_t id = 0;
+
+    switch (orderType) {
+        case OrderType_OpenLimitOrder:
+            id = 1;
+            break;
+        case OrderType_OpenMarketOrder:
+            id = 2;
+            break;
+        case OrderType_CloseLimitOrder:
+            id = 3;
+            break;
+        case OrderType_CloseMarketOrder:
+            id = 4;
+            break;
+        default:
+            break;
+    }
+
+    return currentTradeNumber * multiplier + id;
 }
