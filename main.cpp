@@ -28,13 +28,15 @@ int main() {
         ImbalanceAndLarge strategy;
         ConnectionManager connectionManager;
         connectionManager.subscribeStrategy(&strategy);
-        strategy.start(); // Запускает торговый поток
 
         connectionManager.connect();
 
         // std::jthread tr(addNewOrders, std::ref(connectionManager));
         // std::jthread tr(cancelOrders, std::ref(connectionManager));
         // std::jthread tr(replaceOrders, std::ref(connectionManager));
+
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        strategy.start(); // Запускает торговый поток
 
         std::cout << "Press Enter to stop..." << std::endl;
         std::cin.get();

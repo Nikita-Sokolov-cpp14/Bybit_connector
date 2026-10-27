@@ -6,24 +6,32 @@
 #include <optional>
 
 #include "data_structures/order_request.h"
+#include "data_structures/order.h"
+#include "data_structures/position.h"
 #include "trade.h"
 
 class TradeManager {
 public:
+    struct OrderMainData {
+        std::string_view orderId; // 5. ID ордера
+        std::string_view orderLinkId; // 6. Клиентский ID
+        Side side; // 7. Сторона
+
+        OrderStatus orderStatus; // 8. Статус (Filled/PartiallyFilled/Cancelled)
+    };
+
     TradeManager();
 
-    // Функциональный объект для отправки ордеров
-    using OrderSender = std::function<bool(const OrderRequest &)>;
-
-    void setOrderSender(OrderSender orderSender);
+    void setOrderSender(Trade::OrderSender orderSender);
+    void setOrder(const OrderMainData &order);
+    void setPosition(const PositionHFT &position);
 
     void makeTrade(const double price, const Side &side);
 
     bool hasOpenBuyTrade() const;
     bool hasOpenSellTrade() const;
 
-    void closeBuyTrade();
-    void closeSellTrade();
+    void closeTrade();
 
     // Проверить - не противоположный ли сигнал?
     void checkInverseSignal(const Side &side);
@@ -33,19 +41,39 @@ public:
     void checkCurrentPrice(const double price);
 
 private:
-    OrderSender orderSender_;
-
     std::optional<Side> currentTradeSide_;
     Trade currentTrade_;
 
-    // std::atomic<double> priceOpen_;
-    // std::atomic<double> priceDlose_;
-
     double openPrice;
+    double closePrice;
     double currentPrice;
-    
-    std::chrono::_V2::steady_clock::time_point startTrade;
 
-    void openTrade();
-    void closeTrade(const double endPrice);
+    std::chrono::_V2::steady_clock::time_point startTrade;
+    std::chrono::_V2::steady_clock::time_point timePlaceOpenOrder_;
+    std::chrono::_V2::steady_clock::time_point timePlaceCloseOrder_;
+
+    bool waitOpenLimitOrder_;
+    bool waitCloseLimitOrder_;
+    bool waitCloseMarketOrder_;
+    bool waitCancelCloseLimitOrder_;
+    bool tradeIsOpen_;
+
+    void checkOpenLimitOrderOrder(const OrderStatus &orderStatus);
+    void checkOpenMarketOrderOrder(const OrderStatus &orderStatus);
+    // void checkStopLoss(const OrderStatus &orderStatus);
+    // void checkTakeProfit(const OrderStatus &orderStatus);
+    void checkCloseLimitOrder(const OrderStatus &orderStatus);
+    void checkCloseMarketOrder(const OrderStatus &orderStatus);
+
+    void checkSLTP();
+
+    void cancelOpenLimitOrder();
+
+    bool sideIsEqual(const Side &side);
+
+    void moveOpenOrderToPrice();
+
+    bool checkProfit();
+
+    void printData();
 };

@@ -7,7 +7,12 @@
 #include "data_structures/public_trade.h"
 
 ImbalanceAndLarge::ImbalanceAndLarge() :
+orderMainData_(),
+disbalanceAverage_(0),
+orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
+needCheckCurPrice_(false),
+orderIsUpdate_(false),
 midPrices_(settings::historyMidPriceSize),
 publicTrades_(settings::historyPublicTradeSize),
 currentBestAskPrice_(0.0),
@@ -36,7 +41,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     // tradeFlowImbalance_.setMidPrice(currentMidPrice_.load());
     priceFlowDivergence_.setMidPrice(currentMidPrice_.load());
 
-    tradeManager_.checkCurrentPrice(currentMidPrice_.load());
+    needCheckCurPrice_.store(true);
 
     newData_.store(true);
     dataCV_.notify_all();
@@ -56,21 +61,36 @@ void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
 }
 
 void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
-    std::cout << "ImbalanceAndLarge::setOrder" << std::endl;
-    std::cout << "id " << order.id << std::endl;
-    std::cout << "orderLinkId " << order.orderLinkId << std::endl;
-    std::cout << "side " << order.side << std::endl;
-    std::cout << "orderStatus " << order.orderStatus << std::endl;
-    std::cout << "orderType " << order.orderType << std::endl;
-    std::cout << "price " << order.price << std::endl;
-    std::cout << "qty " << order.qty << std::endl;
+    // std::cout << "ImbalanceAndLarge::setOrder" << std::endl;
+    // std::cout << "id " << order.id << std::endl;
+    // std::cout << "orderLinkId " << order.orderLinkId << std::endl;
+    // std::cout << "side " << order.side << std::endl;
+    // std::cout << "orderStatus " << order.orderStatus << std::endl;
+    // std::cout << "orderType " << order.orderType << std::endl;
+    // std::cout << "price " << order.price << std::endl;
+    // std::cout << "qty " << order.qty << std::endl;
+    // tradeManager_.setOrder(order);
+
+    {
+        std::lock_guard lg(orderMt_);
+        orderMainData_.orderId = order.orderId;
+        orderMainData_.orderLinkId = order.orderLinkId;
+        orderMainData_.side = order.side;
+        orderMainData_.orderStatus = order.orderStatus;
+    }
+
+    newData_.store(true);
+    orderIsUpdate_.store(true);
+    dataCV_.notify_all();
 }
 
 void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
-    std::cout << "ImbalanceAndLarge::setPosition" << std::endl;
-    std::cout << "id " << position.id << std::endl;
-    std::cout << "side " << position.side << std::endl;
-    std::cout << "size " << position.size << std::endl;
+    // std::cout << "ImbalanceAndLarge::setPosition" << std::endl;
+    // std::cout << "id " << position.id << std::endl;
+    // std::cout << "side " << position.side << std::endl;
+    // std::cout << "size " << position.size << std::endl;
+    // newData_.store(true);
+    // tradeManager_.setPosition(position);
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {

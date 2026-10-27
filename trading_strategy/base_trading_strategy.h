@@ -36,7 +36,7 @@ public:
         return running_;
     }
 
-    void setOrderSender(TradeManager::OrderSender orderSender);
+    void setOrderSender(Trade::OrderSender orderSender);
 
 protected:
     std::condition_variable dataCV_;

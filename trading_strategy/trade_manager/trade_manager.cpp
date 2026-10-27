@@ -1,6 +1,8 @@
 #include "trade_manager.h"
-
 #include "settings.h"
+#include "json_parser/base_json_parser.h"
+
+#include <string>
 
 namespace {
 
@@ -13,47 +15,99 @@ int takeProfitCount = 0;
 int inverseSignalCount = 0;
 int timeoutCount = 0;
 
+int countLimitOpenMiss = 0;
+int countLimitOpenFilled = 0;
+int countMarketOpenFilled = 0;
+int countLimitCloseMiss = 0;
+int countLimitCloseFilled = 0;
+int countCloseMarket = 0;
+
+int maxCountTrades = 5;
+
+inline double CalcLimitPrice(const double price, const Side &side) {
+    double delta = settings::spaceToLimitPrice * price;
+    if (side == Side_Buy) {
+        delta *= -1.0;
+    }
+    return price + delta;
+}
+
 } // namespace
 
 TradeManager::TradeManager() :
-orderSender_(),
 currentTradeSide_(std::nullopt),
 // priceOpen_(0.0),
 // priceDlose_(0.0)
 openPrice(0.0),
-currentPrice(0.0) {
+closePrice(0.0),
+currentPrice(0.0),
+waitOpenLimitOrder_(false),
+waitCloseLimitOrder_(false),
+waitCloseMarketOrder_(false),
+waitCancelCloseLimitOrder_(false),
+tradeIsOpen_(false) {
 }
 
-void TradeManager::setOrderSender(OrderSender orderSender) {
+void TradeManager::setOrderSender(Trade::OrderSender orderSender) {
     //! TODO: Добавить nutex на установку отправителя ордеров
-    orderSender_ = orderSender;
+    currentTrade_.orderSender = orderSender;
+}
+
+void TradeManager::setOrder(const OrderMainData &order) {
+    uint64_t orderLinkId = convertTo<uint64_t>(order.orderLinkId);
+    auto it = currentTrade_.ordersStatus.find(orderLinkId);
+    if (it == currentTrade_.ordersStatus.end()) {
+        std::cout << "TradeManager::setOrder: Unknown order" << std::endl;
+        return;
+    } else {
+        it->second = order.orderStatus;
+    }
+
+    const Trade::OrderType orderType = currentTrade_.getOrderType(orderLinkId);
+    switch (orderType) {
+        case Trade::OrderType_OpenLimitOrder:
+            checkOpenLimitOrderOrder(it->second);
+            break;
+        case Trade::OrderType_OpenMarketOrder:
+            checkOpenMarketOrderOrder(it->second);
+            break;
+        case Trade::OrderType_CloseLimitOrder:
+            checkCloseLimitOrder(it->second);
+            break;
+        case Trade::OrderType_CloseMarketOrder:
+            checkCloseMarketOrder(it->second);
+            break;
+        default:
+            break;
+    }
+}
+
+void TradeManager::setPosition(const PositionHFT &position) {
 }
 
 void TradeManager::makeTrade(const double price, const Side &side) {
-    if (hasOpenTrade()) {
-        if (currentTradeSide_.value() == Side_Buy && side == Side_Buy) {
-            startTrade = std::chrono::steady_clock::now();
-        } else if (currentTradeSide_.value() == Side_Sell && side == Side_Sell) {
-            startTrade = std::chrono::steady_clock::now();
-        }
-
+    if (totalCount > maxCountTrades) {
         return;
     }
-    std::cout << "time = " << std::chrono::steady_clock::now().time_since_epoch() << " ";
-    startTrade = std::chrono::steady_clock::now();
-    openPrice = price;
 
-    currentTradeSide_ = side;
-    currentTrade_.makeTrade(price, side);
+    if (hasOpenTrade()) {
+        if (sideIsEqual(side)) {
+            startTrade = std::chrono::steady_clock::now();
+        }
+        return;
+    }
 
-    bool openIsPlace = false;
-    bool stopIsPlace = false;
-    bool takeIsPlace = false;
-    // if (orderSender_) {
-    //     openIsPlace = orderSender_(currentTrade_.orderOpenTrade);
-    //     stopIsPlace = orderSender_(currentTrade_.stopLoss);
-    //     takeIsPlace = orderSender_(currentTrade_.takeProfit);
-    // }
+    currentTradeSide_ = std::nullopt;
+    std::cout << "side: " << side
+              << " time: " << std::chrono::steady_clock::now().time_since_epoch() << std::endl;
+    currentTrade_.clearStatuses();
+    if (currentTrade_.makeTradeByLimitOrder(CalcLimitPrice(price, side), side)) {
+        timePlaceOpenOrder_ = std::chrono::steady_clock::now();
+        currentTradeSide_ = side;
+        waitOpenLimitOrder_ = true;
+    } else {
+        std::cout << "TradeManager::makeTrade: can't make trade" << std::endl;
+    }
 }
 
 bool TradeManager::hasOpenBuyTrade() const {
@@ -72,28 +126,53 @@ bool TradeManager::hasOpenSellTrade() const {
     return currentTradeSide_.value() == Side_Sell;
 }
 
-void TradeManager::closeBuyTrade() {
-    std::cout << " TradeManager::closeBuyTrade "
-              << " time = " << std::chrono::steady_clock::now().time_since_epoch() << std::endl;
-    inverseSignalCount++;
-    closeTrade(currentPrice);
-    currentTradeSide_ = std::nullopt;
-}
-
-void TradeManager::closeSellTrade() {
-    std::cout << " TradeManager::closeSellTrade "
-              << " time = " << std::chrono::steady_clock::now().time_since_epoch() << std::endl;
-    inverseSignalCount++;
-    closeTrade(currentPrice);
-    currentTradeSide_ = std::nullopt;
-}
-
 void TradeManager::checkInverseSignal(const Side &side) {
-    if (hasOpenBuyTrade() && side == Side_Sell) {
-        closeBuyTrade();
-    } else if (hasOpenSellTrade() && side == Side_Buy) {
-        closeSellTrade();
+    // Если лимитный ордер на вход не выполнен, то сделка не открыта и обратный сигнал не рассматриваем
+    if (!hasOpenTrade()) {
+        return;
     }
+
+    if (waitOpenLimitOrder_) {
+        if (sideIsEqual(side)) {
+            timePlaceOpenOrder_ = std::chrono::steady_clock::now();
+            //! NOTE: Нужно переместить ордер ближе к текущей цене.
+            // moveOpenOrderToPrice();
+        } else {
+            cancelOpenLimitOrder();
+        }
+    }
+
+    if (waitCloseLimitOrder_ && checkProfit()) {
+        if (sideIsEqual(side)) {
+            timePlaceCloseOrder_ = std::chrono::steady_clock::now();
+        }
+    }
+
+    if (!tradeIsOpen_) {
+        return;
+    }
+
+    if (currentTradeSide_ == side) {
+        return;
+    }
+
+    if (waitCloseLimitOrder_) {
+        return;
+    }
+
+    closeTrade();
+}
+
+void TradeManager::closeTrade() {
+    Side side = (currentTradeSide_ == Side_Buy) ? Side_Sell : Side_Buy;
+
+    const double limitPrice = CalcLimitPrice(currentPrice, side);
+    if (!currentTrade_.makeCloseLimitOrder(limitPrice, side)) {
+        std::cout << "TradeManager::closeTrade: can't place close limit order" << std::endl;
+        return;
+    }
+    waitCloseLimitOrder_ = true;
+    timePlaceCloseOrder_ = std::chrono::steady_clock::now();
 }
 
 bool TradeManager::hasOpenTrade() const {
@@ -106,68 +185,209 @@ void TradeManager::checkCurrentPrice(const double price) {
         return;
     }
 
-    if (std::chrono::steady_clock::now() - startTrade > settings::tradeTimeOut) {
+    if (tradeIsOpen_ && (std::chrono::steady_clock::now() - startTrade > settings::tradeTimeOut) &&
+            !waitCloseLimitOrder_ && !waitCloseMarketOrder_) {
         std::cout << "close by timeout " << std::endl;
         timeoutCount++;
-        closeTrade(price);
+        closeTrade();
         return;
     }
 
-    switch (currentTradeSide_.value()) {
-        case Side_Buy:
-            if (price < currentTrade_.stopLossPrice) {
-                std::cout << "closeTrade: Buy stop loss" << std::endl;
-                stopLossCount++;
-                closeTrade(price);
-                return;
-            } else if (price > currentTrade_.takeProfitPrice) {
-                std::cout << "closeTrade: Buy take profit" << std::endl;
-                takeProfitCount++;
-                closeTrade(price);
-                return;
-            }
-            break;
-        case Side_Sell:
-            if (price > currentTrade_.stopLossPrice) {
-                std::cout << "closeTrade: Sell stop loss" << std::endl;
-                closeTrade(price);
-                stopLossCount++;
-                return;
-            } else if (price < currentTrade_.takeProfitPrice) {
-                std::cout << "closeTrade: Sell take profit" << std::endl;
-                takeProfitCount++;
-                closeTrade(price);
-                return;
-            }
-            break;
-        default:
-            break;
+    //! NOTE: Ожидаем взятие лимитного ордера и прошло время ожидания больше допустимого.
+    if (waitOpenLimitOrder_ &&
+            (std::chrono::steady_clock::now() - timePlaceOpenOrder_ >
+                    settings::waitOpenLimitOrderTime)) {
+        countLimitOpenMiss++;
+        std::cout << "limit open order not released " << std::endl;
+        cancelOpenLimitOrder();
+        return;
+    }
+
+    if (waitCloseLimitOrder_ && !waitCloseMarketOrder_ &&
+            (std::chrono::steady_clock::now() - timePlaceCloseOrder_ >
+                    settings::waitCloseLimitOrderTime)) {
+        countLimitCloseMiss++;
+        waitCloseLimitOrder_ = false;
+        std::cout << "limit close order not released " << std::endl;
+        waitCancelCloseLimitOrder_ = true;
+        currentTrade_.cancelOrder(currentTrade_.closeLimitOrder.req_id);
+        return;
+    }
+
+    if (!waitCloseLimitOrder_ && !waitCancelCloseLimitOrder_ && !waitCloseMarketOrder_) {
+        checkSLTP();
     }
 }
 
-void TradeManager::openTrade() {
+void TradeManager::checkOpenLimitOrderOrder(const OrderStatus &orderStatus) {
+    if (orderStatus == OrderStatus_Filled) { // ордер исполнен
+        countLimitOpenFilled++;
+        startTrade = std::chrono::steady_clock::now();
+        openPrice = currentTrade_.openLimitOrder.price;
+        tradeIsOpen_ = true;
+        //! NOTE: На случай, если отправили отмену ордера, а он в этот момент исполнился.
+        if (waitOpenLimitOrder_ == false) {
+            std::cout << "limit open order canceled but released" << std::endl;
+            countLimitOpenMiss--;
+            currentTradeSide_ = currentTrade_.openLimitOrder.side;
+        }
+        // Ордер исполнен. Вошли в сделку. Можно выставлять TP и SL
+        currentTrade_.calcSLTP(currentTrade_.openLimitOrder.price, currentTradeSide_.value());
+        waitOpenLimitOrder_ = false;
+    } else if (orderStatus == OrderStatus_Cancelled) {
+        currentTrade_.makeTradeByMarketOrder(currentTradeSide_.value());
+    }
 }
 
-void TradeManager::closeTrade(const double endPrice) {
-    double profit = endPrice - openPrice;
-    if (currentTradeSide_.value() == Side_Sell) {
-        profit *= -1.0;
+void TradeManager::checkOpenMarketOrderOrder(const OrderStatus &orderStatus) {
+    if (orderStatus == OrderStatus_Filled) { // ордер исполнен
+        countMarketOpenFilled++;
+        startTrade = std::chrono::steady_clock::now();
+        openPrice = currentPrice;
+        // Ордер исполнен. Вошли в сделку. Можно выставлять TP и SL
+        currentTrade_.calcSLTP(openPrice, currentTradeSide_.value());
+    } else if (orderStatus == OrderStatus_Cancelled) {
+        currentTradeSide_ = std::nullopt;
+        tradeIsOpen_ = false;
     }
-    if (profit > 0.0) {
-        countPositive++;
+}
+
+// void TradeManager::checkStopLoss(const OrderStatus &orderStatus) {
+//     if (orderStatus == OrderStatus_Filled) {
+//         currentTradeSide_ = std::nullopt;
+//         if (!currentTrade_.cancelOrder(currentTrade_.closeLimitOrder.req_id) ||
+//                 !currentTrade_.cancelOrder(currentTrade_.takeProfit.req_id)) {
+//             std::cout << "TradeManager::checkStopLoss: can't send orders" << std::endl;
+//             return;
+//         }
+//     }
+// }
+
+// void TradeManager::checkTakeProfit(const OrderStatus &orderStatus) {
+//     if (orderStatus == OrderStatus_Filled) {
+//         currentTradeSide_ = std::nullopt;
+
+//         if (!currentTrade_.cancelOrder(currentTrade_.closeLimitOrder.req_id) ||
+//                 !currentTrade_.cancelOrder(currentTrade_.stopLoss.req_id)) {
+//             std::cout << "TradeManager::checkTakeProfit: can't send orders" << std::endl;
+//             return;
+//         }
+//     }
+// }
+
+void TradeManager::checkCloseLimitOrder(const OrderStatus &orderStatus) {
+    if (orderStatus == OrderStatus_Filled) {
+        closePrice = currentTrade_.closeLimitOrder.price;
+        tradeIsOpen_ = false;
+        countLimitCloseFilled++;
+        printData();
+        currentTradeSide_ = std::nullopt;
+        waitCancelCloseLimitOrder_ = false;
+
+        //! NOTE: На случай, если отправили отмену ордера, а он в этот момент исполнился.
+        if (!waitCloseLimitOrder_) {
+            std::cout << "limit close order canceled but released" << std::endl;
+            countLimitCloseMiss--;
+        }
+    } else if (orderStatus == OrderStatus_Cancelled) {
+        waitCancelCloseLimitOrder_ = false;
+        Side side = (currentTradeSide_ == Side_Buy) ? Side_Sell : Side_Buy;
+        if (currentTrade_.makeCloseMarketOrder(side)) {
+            waitCloseMarketOrder_ = true;
+            closePrice = currentPrice;
+        }
     }
 
-    profit -= 43.0;
-    double profitPercent = profit / endPrice;
+    // if (!currentTrade_.cancelOrder(currentTrade_.takeProfit.req_id) ||
+    //         !currentTrade_.cancelOrder(currentTrade_.stopLoss.req_id)) {
+    //     std::cout << "TradeManager::checkCloseLimitOrder: can't send orders" << std::endl;
+    // }
+}
 
-    totalCount++;
+void TradeManager::checkCloseMarketOrder(const OrderStatus &orderStatus) {
+    if (orderStatus == OrderStatus_Filled) {
+        tradeIsOpen_ = false;
+        countCloseMarket++;
+        printData();
+        currentTradeSide_ = std::nullopt;
+        waitCloseMarketOrder_ = false;
+    }
+}
+
+void TradeManager::checkSLTP() {
+    if (!hasOpenTrade()) {
+        return;
+    }
+
+    if (currentTrade_.ordersStatus[currentTrade_.openLimitOrder.req_id] != OrderStatus_Filled) {
+        return;
+    }
+
+    if (currentTradeSide_ == Side_Sell && (currentPrice >= currentTrade_.stopLossPrice)) {
+        std::cout << "TradeManager::checkSLTP: stop loss sell trade" << std::endl;
+        if (currentTrade_.makeCloseMarketOrder(Side_Buy)) {
+            waitCloseMarketOrder_ = true;
+        }
+    } else if (currentTradeSide_ == Side_Buy && (currentPrice <= currentTrade_.stopLossPrice)) {
+        std::cout << "TradeManager::checkSLTP: stop loss buy trade" << std::endl;
+        if (currentTrade_.makeCloseMarketOrder(Side_Sell)) {
+            waitCloseMarketOrder_ = true;
+        }
+    }
+
+    if (currentTradeSide_ == Side_Sell && (currentPrice <= currentTrade_.takeProfitPrice)) {
+        std::cout << "TradeManager::checkSLTP: take profit sell trade" << std::endl;
+        closeTrade();
+    } else if (currentTradeSide_ == Side_Buy && (currentPrice >= currentTrade_.takeProfitPrice)) {
+        std::cout << "TradeManager::checkSLTP: take profit buy trade" << std::endl;
+        closeTrade();
+    }
+}
+
+void TradeManager::cancelOpenLimitOrder() {
+    waitOpenLimitOrder_ = false;
+    currentTrade_.cancelOrder(currentTrade_.openLimitOrder.req_id);
+    // currentTradeSide_ = std::nullopt;
+}
+
+bool TradeManager::sideIsEqual(const Side &side) {
+    if ((currentTradeSide_ == Side_Buy && side == Side_Buy) ||
+            (currentTradeSide_ == Side_Sell && side == Side_Sell)) {
+        return true;
+    }
+
+    return false;
+}
+
+void TradeManager::moveOpenOrderToPrice() {
+    if (!currentTrade_.replaceLimitOpenOrder(
+                CalcLimitPrice(currentPrice, currentTradeSide_.value()))) {
+        std::cout << "TradeManager::moveOpenOrderToPrice: can't replace order" << std::endl;
+    }
+}
+
+bool TradeManager::checkProfit() {
+    if ((currentTradeSide_ == Side_Buy) && (currentPrice > openPrice)) {
+        return true;
+    } else if ((currentTradeSide_ == Side_Sell) && (currentPrice < openPrice)) {
+        return true;
+    }
+
+    return false;
+}
+
+void TradeManager::printData() {
+    double profit = closePrice - openPrice;
+    if (currentTradeSide_ == Side_Sell) {
+        profit *= -1;
+    }
     totalProfit += profit;
-    totalProfitPercent += profitPercent;
-    std::cout << "time = " << std::chrono::steady_clock::now().time_since_epoch();
-    std::cout << " profit: " << profit << std::endl;
-    std::cout << "totalCount: " << totalCount << " totalProfit: " << totalProfit
-              << " stopLossCount: " << stopLossCount << " takeProfitCount: " << takeProfitCount
-              << " inverseSignalCount: " << inverseSignalCount << " timeoutCount: " << timeoutCount
-              << " win rate = " << (double)countPositive / totalCount << std::endl;
-    currentTradeSide_ = std::nullopt;
+    totalCount++;
+
+    std::cout << "profit: " << profit << " total profit: " << totalProfit
+              << " count open limit: " << countLimitOpenFilled
+              << " miss open: " << countLimitOpenMiss << " close limit: " << countLimitCloseFilled
+              << " close market: " << countCloseMarket
+              << " miss close limit: " << countLimitCloseMiss << std::endl;
+    std::cout << "===============" << std::endl;
 }

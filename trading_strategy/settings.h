@@ -49,6 +49,12 @@ static const double coefStopLoss = 0.5 / 100.0; // В долях. 0.5%
 static const std::chrono::milliseconds tradeTimeOut = std::chrono::milliseconds(24 * 3600 * 1000);
 static const uint8_t leverage = 50;
 
+// Отступ лимитной цены для лимитного ордера при входе в сделку
+static const double spaceToLimitPrice = 0.0001 / 100.0;
+
+static const std::chrono::milliseconds waitOpenLimitOrderTime = std::chrono::milliseconds(5000);
+static const std::chrono::milliseconds waitCloseLimitOrderTime = std::chrono::milliseconds(5000);
+
 // TFI
 static const std::chrono::milliseconds shortTime = std::chrono::milliseconds(180 * 1000);
 static const std::chrono::milliseconds baseTime = std::chrono::milliseconds(900 * 1000);
