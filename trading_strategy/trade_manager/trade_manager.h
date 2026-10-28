@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iostream>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -43,7 +44,7 @@ enum CloseReason {
 
 class TradeManager {
 public:
-    TradeManager();
+    explicit TradeManager(bool enableLogs = true);
 
     void setOrderSender(Trade::OrderSender orderSender);
     void setOrder(const OrderEvent &order);
@@ -98,8 +99,8 @@ private:
     CloseReason closeReason_ = CloseReason_None;
     bool openByMarket_ = false;
 
-    Logger ordersLoger_;
-    Logger tradesLoger_;
+    std::unique_ptr<Logger> ordersLoger_;
+    std::unique_ptr<Logger> tradesLoger_;
 
     void handleOpenLimitOrder(const OrderEvent &order);
     void handleOpenMarketOrder(const OrderEvent &order);

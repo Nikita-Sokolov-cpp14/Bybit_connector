@@ -1,8 +1,9 @@
 #pragma once
 
-#include "websocket_client/order_sender.h"
-#include "connection_manager/connection_manager.h"
-
-void addNewOrders(ConnectionManager &connectionManager);
-void cancelOrders(ConnectionManager &connectionManager);
-void replaceOrders(ConnectionManager &connectionManager);
+/**
+ * @brief Проверка жизненного цикла лимитного ордера на реальном/demo счете.
+ * @details Отправляет безопасные (далекие от рынка) лимитные ордера, ждёт
+ * подтверждения order.create, затем отменяет их и ждёт статус Cancelled.
+ * @return 0 - все проверки прошли, иначе 1.
+ */
+int runCheckPlaceOrders();

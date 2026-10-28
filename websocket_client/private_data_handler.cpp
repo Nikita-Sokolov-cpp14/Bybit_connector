@@ -169,7 +169,7 @@ void PrivateDataHandler::checkStatus() {
             // ВОТ ЗДЕСЬ - подписываемся после успешной аутентификации!
             subscribeToStreams();
         } else {
-            std::cerr << "Ошибка аутентификации!" << std::endl;
+            std::cerr << "Ошибка аутентификации: " << statusMessage_.retMessage << std::endl;
             scheduleReconnect();
             return;
         }

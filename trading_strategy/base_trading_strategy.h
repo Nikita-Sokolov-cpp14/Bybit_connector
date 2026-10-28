@@ -14,6 +14,10 @@
 
 class BaseTradingStrategy {
 public:
+    explicit BaseTradingStrategy(bool enableTradeLogs = true) :
+    tradeManager_(enableTradeLogs) {
+    }
+
     virtual ~BaseTradingStrategy();
 
     virtual void setOrderbook(const OrderBook &orderbook) {

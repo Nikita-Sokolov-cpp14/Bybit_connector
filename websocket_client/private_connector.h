@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "base_websocket_client.h"
 
 // Класс WebSocket клиента для Bybit
@@ -12,7 +14,7 @@ public:
 protected:
     StatusMessage statusMessage_;
     StatusJsonParser statusParser_;
-    bool authenticated_;
+    std::atomic<bool> authenticated_ {false};
 
     // Таймер для ожидания аутентификации
     net::steady_timer auth_timer_;

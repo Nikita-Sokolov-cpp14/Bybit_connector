@@ -44,6 +44,11 @@ void OrderSender::setOrderResultCallback(OrderResultCallback callback) {
 }
 
 bool OrderSender::placeOrder(const OrderRequest &orderRequest) {
+    if (!authenticated_.load(std::memory_order_relaxed)) {
+        std::cout << "OrderSender::placeOrder: not authenticated yet" << std::endl;
+        return false;
+    }
+
     bool result = false;
 
     switch (orderRequest.typeOrderRequest) {
@@ -194,11 +199,12 @@ void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
 void OrderSender::checkStatus() {
     if (orderOperation_.retCode == 0) {
         std::cout << "Аутентификация успешна!" << std::endl;
-        authenticated_ = true;
+        authenticated_.store(true, std::memory_order_relaxed);
         auth_timer_.cancel(); // Отменяем таймаут
         sendNext();
     } else {
-        std::cerr << "Ошибка аутентификации!" << std::endl;
+        std::cerr << "Ошибка аутентификации: retCode=" << orderOperation_.retCode
+                  << " retMsg=" << orderOperation_.retMsg << std::endl;
         scheduleReconnect();
         return;
     }

@@ -42,6 +42,7 @@ public:
     void reconnectPrivateHandler();
 
     bool placeOrder(const OrderRequest &orderRequest);
+    bool isOrderSenderReady();
 
     void subscribeStrategy(BaseTradingStrategy *tradingStrategy);
 

@@ -134,46 +134,51 @@ inline double CalcLimitPrice(const double price, const Side &side) {
 
 } // namespace
 
-TradeManager::TradeManager() :
-ordersLoger_("../log_files/orders.csv"),
-tradesLoger_("../log_files/trades.csv") {
-    ordersLoger_.recordValue("ts_local_ms");
-    ordersLoger_.recordValue("trade_number");
-    ordersLoger_.recordValue("event");
-    ordersLoger_.recordValue("role");
-    ordersLoger_.recordValue("order_link_id");
-    ordersLoger_.recordValue("exchange_order_id");
-    ordersLoger_.recordValue("side");
-    ordersLoger_.recordValue("order_type");
-    ordersLoger_.recordValue("status");
-    ordersLoger_.recordValue("requested_price");
-    ordersLoger_.recordValue("qty");
-    ordersLoger_.recordValue("avg_fill_price");
-    ordersLoger_.recordValue("cum_exec_qty");
-    ordersLoger_.recordValue("leaves_qty");
-    ordersLoger_.recordValue("cum_fee");
-    ordersLoger_.recordValue("exchange_updated_ms");
-    ordersLoger_.recordValue("local_recv_ms");
-    ordersLoger_.recordValue("latency_us");
-    ordersLoger_.endStr();
+TradeManager::TradeManager(bool enableLogs) {
+    if (!enableLogs) {
+        return;
+    }
 
-    tradesLoger_.recordValue("trade_number");
-    tradesLoger_.recordValue("side");
-    tradesLoger_.recordValue("open_time_ms");
-    tradesLoger_.recordValue("close_time_ms");
-    tradesLoger_.recordValue("hold_ms");
-    tradesLoger_.recordValue("entry_type");
-    tradesLoger_.recordValue("close_reason");
-    tradesLoger_.recordValue("open_price");
-    tradesLoger_.recordValue("close_price");
-    tradesLoger_.recordValue("qty");
-    tradesLoger_.recordValue("notional_usdt");
-    tradesLoger_.recordValue("gross_pnl");
-    tradesLoger_.recordValue("fees");
-    tradesLoger_.recordValue("net_pnl");
-    tradesLoger_.recordValue("net_pnl_pct");
-    tradesLoger_.recordValue("total_net_pnl");
-    tradesLoger_.endStr();
+    ordersLoger_ = std::make_unique<Logger>("../log_files/orders.csv");
+    tradesLoger_ = std::make_unique<Logger>("../log_files/trades.csv");
+
+    ordersLoger_->recordValue("ts_local_ms");
+    ordersLoger_->recordValue("trade_number");
+    ordersLoger_->recordValue("event");
+    ordersLoger_->recordValue("role");
+    ordersLoger_->recordValue("order_link_id");
+    ordersLoger_->recordValue("exchange_order_id");
+    ordersLoger_->recordValue("side");
+    ordersLoger_->recordValue("order_type");
+    ordersLoger_->recordValue("status");
+    ordersLoger_->recordValue("requested_price");
+    ordersLoger_->recordValue("qty");
+    ordersLoger_->recordValue("avg_fill_price");
+    ordersLoger_->recordValue("cum_exec_qty");
+    ordersLoger_->recordValue("leaves_qty");
+    ordersLoger_->recordValue("cum_fee");
+    ordersLoger_->recordValue("exchange_updated_ms");
+    ordersLoger_->recordValue("local_recv_ms");
+    ordersLoger_->recordValue("latency_us");
+    ordersLoger_->endStr();
+
+    tradesLoger_->recordValue("trade_number");
+    tradesLoger_->recordValue("side");
+    tradesLoger_->recordValue("open_time_ms");
+    tradesLoger_->recordValue("close_time_ms");
+    tradesLoger_->recordValue("hold_ms");
+    tradesLoger_->recordValue("entry_type");
+    tradesLoger_->recordValue("close_reason");
+    tradesLoger_->recordValue("open_price");
+    tradesLoger_->recordValue("close_price");
+    tradesLoger_->recordValue("qty");
+    tradesLoger_->recordValue("notional_usdt");
+    tradesLoger_->recordValue("gross_pnl");
+    tradesLoger_->recordValue("fees");
+    tradesLoger_->recordValue("net_pnl");
+    tradesLoger_->recordValue("net_pnl_pct");
+    tradesLoger_->recordValue("total_net_pnl");
+    tradesLoger_->endStr();
 }
 
 void TradeManager::setOrderSender(Trade::OrderSender orderSender) {
@@ -872,78 +877,90 @@ void TradeManager::resetTradeState() {
 }
 
 void TradeManager::logOrderSent(const OrderRequest &order, const char *role, bool success) {
+    if (!ordersLoger_) {
+        return;
+    }
+
     const uint64_t now = systemTimeMs();
-    ordersLoger_.recordValue(now);
-    ordersLoger_.recordValue(currentTrade_.currentTradeNumber);
-    ordersLoger_.recordValue(success ? "SENT" : "SEND_FAILED");
-    ordersLoger_.recordValue(role);
-    ordersLoger_.recordValue(order.req_id);
-    ordersLoger_.recordValue("");
-    ordersLoger_.recordValue(sideToString(order.side));
-    ordersLoger_.recordValue(orderTypeToString(order.order_type));
-    ordersLoger_.recordValue(success ? "Sent" : "SendFailed");
-    ordersLoger_.recordValue(order.price);
-    ordersLoger_.recordValue(order.qty);
-    ordersLoger_.recordValue(0.0);
-    ordersLoger_.recordValue(0.0);
-    ordersLoger_.recordValue(0.0);
-    ordersLoger_.recordValue(0.0);
-    ordersLoger_.recordValue(0);
-    ordersLoger_.recordValue(now);
-    ordersLoger_.recordValue(0);
-    ordersLoger_.endStr();
+    ordersLoger_->recordValue(now);
+    ordersLoger_->recordValue(currentTrade_.currentTradeNumber);
+    ordersLoger_->recordValue(success ? "SENT" : "SEND_FAILED");
+    ordersLoger_->recordValue(role);
+    ordersLoger_->recordValue(order.req_id);
+    ordersLoger_->recordValue("");
+    ordersLoger_->recordValue(sideToString(order.side));
+    ordersLoger_->recordValue(orderTypeToString(order.order_type));
+    ordersLoger_->recordValue(success ? "Sent" : "SendFailed");
+    ordersLoger_->recordValue(order.price);
+    ordersLoger_->recordValue(order.qty);
+    ordersLoger_->recordValue(0.0);
+    ordersLoger_->recordValue(0.0);
+    ordersLoger_->recordValue(0.0);
+    ordersLoger_->recordValue(0.0);
+    ordersLoger_->recordValue(0);
+    ordersLoger_->recordValue(now);
+    ordersLoger_->recordValue(0);
+    ordersLoger_->endStr();
 }
 
 void TradeManager::logOrderUpdate(const OrderEvent &order, Trade::OrderType orderType) {
+    if (!ordersLoger_) {
+        return;
+    }
+
     const uint64_t now = systemTimeMs();
     const uint64_t latencyUs = (order.recvTimeMs > 0 && order.updatedTime > 0 &&
             order.recvTimeMs >= order.updatedTime)
             ? (order.recvTimeMs - order.updatedTime) * 1000
             : 0;
 
-    ordersLoger_.recordValue(now);
-    ordersLoger_.recordValue(currentTrade_.currentTradeNumber);
-    ordersLoger_.recordValue("UPDATE");
-    ordersLoger_.recordValue(orderRoleToString(orderType));
-    ordersLoger_.recordValue(order.orderLinkId);
-    ordersLoger_.recordValue(order.orderId);
-    ordersLoger_.recordValue(sideToString(order.side));
-    ordersLoger_.recordValue(orderRoleToString(orderType));
-    ordersLoger_.recordValue(orderStatusToString(order.status));
-    ordersLoger_.recordValue(order.price);
-    ordersLoger_.recordValue(order.qty);
-    ordersLoger_.recordValue(order.avgPrice);
-    ordersLoger_.recordValue(order.cumExecQty);
-    ordersLoger_.recordValue(order.leavesQty);
-    ordersLoger_.recordValue(order.cumExecFee);
-    ordersLoger_.recordValue(order.updatedTime);
-    ordersLoger_.recordValue(order.recvTimeMs);
-    ordersLoger_.recordValue(latencyUs);
-    ordersLoger_.endStr();
+    ordersLoger_->recordValue(now);
+    ordersLoger_->recordValue(currentTrade_.currentTradeNumber);
+    ordersLoger_->recordValue("UPDATE");
+    ordersLoger_->recordValue(orderRoleToString(orderType));
+    ordersLoger_->recordValue(order.orderLinkId);
+    ordersLoger_->recordValue(order.orderId);
+    ordersLoger_->recordValue(sideToString(order.side));
+    ordersLoger_->recordValue(orderRoleToString(orderType));
+    ordersLoger_->recordValue(orderStatusToString(order.status));
+    ordersLoger_->recordValue(order.price);
+    ordersLoger_->recordValue(order.qty);
+    ordersLoger_->recordValue(order.avgPrice);
+    ordersLoger_->recordValue(order.cumExecQty);
+    ordersLoger_->recordValue(order.leavesQty);
+    ordersLoger_->recordValue(order.cumExecFee);
+    ordersLoger_->recordValue(order.updatedTime);
+    ordersLoger_->recordValue(order.recvTimeMs);
+    ordersLoger_->recordValue(latencyUs);
+    ordersLoger_->endStr();
 }
 
 void TradeManager::logTradeResult(double grossPnl, double fees, double netPnl,
         double netPnlPercent) {
+    if (!tradesLoger_) {
+        return;
+    }
+
     const Side side = currentTradeSide_.value_or(Side_Unknown);
     const uint64_t holdMs = (closeFillTimeMs >= openFillTimeMs && openFillTimeMs > 0)
             ? (closeFillTimeMs - openFillTimeMs)
             : 0;
 
-    tradesLoger_.recordValue(currentTrade_.currentTradeNumber);
-    tradesLoger_.recordValue(sideToString(side));
-    tradesLoger_.recordValue(openFillTimeMs);
-    tradesLoger_.recordValue(closeFillTimeMs);
-    tradesLoger_.recordValue(holdMs);
-    tradesLoger_.recordValue(openByMarket_ ? "market" : "limit");
-    tradesLoger_.recordValue(closeReasonToString(closeReason_));
-    tradesLoger_.recordValue(openPrice);
-    tradesLoger_.recordValue(closePrice);
-    tradesLoger_.recordValue(closeQty);
-    tradesLoger_.recordValue(openPrice * closeQty);
-    tradesLoger_.recordValue(grossPnl);
-    tradesLoger_.recordValue(fees);
-    tradesLoger_.recordValue(netPnl);
-    tradesLoger_.recordValue(netPnlPercent);
-    tradesLoger_.recordValue(totalProfit);
-    tradesLoger_.endStr();
+    tradesLoger_->recordValue(currentTrade_.currentTradeNumber);
+    tradesLoger_->recordValue(sideToString(side));
+    tradesLoger_->recordValue(openFillTimeMs);
+    tradesLoger_->recordValue(closeFillTimeMs);
+    tradesLoger_->recordValue(holdMs);
+    tradesLoger_->recordValue(openByMarket_ ? "market" : "limit");
+    tradesLoger_->recordValue(closeReasonToString(closeReason_));
+    tradesLoger_->recordValue(openPrice);
+    tradesLoger_->recordValue(closePrice);
+    tradesLoger_->recordValue(closeQty);
+    tradesLoger_->recordValue(openPrice * closeQty);
+    tradesLoger_->recordValue(grossPnl);
+    tradesLoger_->recordValue(fees);
+    tradesLoger_->recordValue(netPnl);
+    tradesLoger_->recordValue(netPnlPercent);
+    tradesLoger_->recordValue(totalProfit);
+    tradesLoger_->endStr();
 }

@@ -1,10 +1,8 @@
 #include <iostream>
 
 #include "connection_manager/connection_manager.h"
-#include "check_place_orders/check_place_orders.h"
 #include "p999_latency/check_latency.h"
 #include "check_parsing/check_parsing.h"
-#include "check_place_orders/check_place_orders.h"
 #include "trading_strategy/imbalance_and_large/imbalance_and_large.h"
 
 #ifdef _WIN32
@@ -30,10 +28,6 @@ int main() {
         connectionManager.subscribeStrategy(&strategy);
 
         connectionManager.connect();
-
-        // std::jthread tr(addNewOrders, std::ref(connectionManager));
-        // std::jthread tr(cancelOrders, std::ref(connectionManager));
-        // std::jthread tr(replaceOrders, std::ref(connectionManager));
 
         std::this_thread::sleep_for(std::chrono::seconds(10));
         strategy.start(); // Запускает торговый поток

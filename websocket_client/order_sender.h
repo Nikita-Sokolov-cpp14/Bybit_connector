@@ -18,6 +18,10 @@ public:
 
     bool placeOrder(const OrderRequest &orderRequest);
 
+    bool isAuthenticated() const {
+        return authenticated_.load(std::memory_order_relaxed);
+    }
+
     using OrderResultCallback = std::function<void(const OrderRequestResult &)>;
     void setOrderResultCallback(OrderResultCallback callback);
 

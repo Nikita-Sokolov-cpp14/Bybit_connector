@@ -110,6 +110,15 @@ void ConnectionManager::reconnectPrivateHandler() {
     setupPrivateDataCallbacks();
 }
 
+bool ConnectionManager::isOrderSenderReady() {
+    std::shared_ptr<OrderSender> orderSender;
+    {
+        std::lock_guard lock(orderSenderMutex_);
+        orderSender = orderSender_;
+    }
+    return orderSender && orderSender->isAuthenticated();
+}
+
 bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
     std::shared_ptr<OrderSender> orderSender;
     {
