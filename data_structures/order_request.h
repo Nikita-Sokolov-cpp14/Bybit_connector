@@ -67,6 +67,20 @@ struct OrderRequest {
     int priority() const;
 };
 
+/**
+ * @brief Ответ биржи на запрос order.create / order.cancel / order.amend.
+ * @details Это подтверждение запроса, а не статус исполнения ордера.
+ * Исполнение приходит отдельно в order-канал.
+ */
+struct OrderRequestResult {
+    OrderRequest request;
+    bool success = false;
+    int retCode = 0;
+    std::string retMsg;
+    std::string exchangeOrderId;
+    std::string exchangeOrderLinkId;
+};
+
 
 // структура нового отправляемого ордера
 // {

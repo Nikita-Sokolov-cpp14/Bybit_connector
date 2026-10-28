@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <iostream>
 #include <mutex>
 
@@ -76,7 +77,7 @@ private:
     std::unique_ptr<std::jthread> publicThread_;
     std::unique_ptr<std::jthread> privateThread_;
     std::unique_ptr<std::jthread> orderSenderThread_;
-    BaseTradingStrategy *tradingStrategy_;
+    std::atomic<BaseTradingStrategy *> tradingStrategy_ {nullptr};
     Logger loger_;
 
     ssl::context createSSLContext();
@@ -98,6 +99,7 @@ private:
     void setupPrivateDataCallbacks();
 
     void setStrategyOrderSender();
+    void setOrderSenderResultCallback();
 
     void logPublicTrades(const PublicTrade &publicTrade);
     void logPublicTradeData(const uint64_t ts, const double midPrice, const PublicTrade::Data &publicTrade);

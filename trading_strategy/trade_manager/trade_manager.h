@@ -47,6 +47,7 @@ public:
 
     void setOrderSender(Trade::OrderSender orderSender);
     void setOrder(const OrderEvent &order);
+    void onOrderRequestResult(const OrderRequestResult &result);
     void setPosition(const PositionHFT &position);
 
     void makeTrade(const double price, const Side &side);
@@ -110,6 +111,7 @@ private:
     void sendCloseMarket(double qty);
 
     void checkSLTP();
+    void retryClose();
 
     void finishTrade();
 

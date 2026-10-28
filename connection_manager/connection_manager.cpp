@@ -12,10 +12,10 @@ privateDataHandler_(std::make_shared<PrivateDataHandler>(privateIoc_, sslCtx_, a
         authConfig_.apiSecret, messages_, "Bybit-PrivateData/1.0")),
 orderSender_(std::make_shared<OrderSender>(orderSenderIoc_, sslCtx_, authConfig_.apiKey,
         authConfig_.apiSecret, "Bybit-HFT-OrderSender/1.0")),
-tradingStrategy_(nullptr),
 loger_("../log_files/public_trade_data.csv") {
     std::cout << "ConnectionManager constructor " << std::endl;
     writeHeaderlogPublicTrade();
+    setOrderSenderResultCallback();
 }
 
 ConnectionManager::~ConnectionManager() {
@@ -36,7 +36,7 @@ ConnectionManager::~ConnectionManager() {
     }
 
     // Обнулить указатель
-    tradingStrategy_ = nullptr;
+    tradingStrategy_.store(nullptr);
 }
 
 void ConnectionManager::connect() {
@@ -88,6 +88,7 @@ void ConnectionManager::reconnectOrderSender() {
         orderSender_ = std::move(newOrderSender);
     }
     setOrderSenderReconnectCallback();
+    setOrderSenderResultCallback();
 }
 
 void ConnectionManager::reconnectPublicHandler() {
@@ -122,8 +123,9 @@ bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
 }
 
 void ConnectionManager::subscribeStrategy(BaseTradingStrategy *tradingStrategy) {
-    tradingStrategy_ = tradingStrategy;
+    tradingStrategy_.store(tradingStrategy);
     setStrategyOrderSender();
+    setOrderSenderResultCallback();
 }
 
 ssl::context ConnectionManager::createSSLContext() {
@@ -196,16 +198,18 @@ void ConnectionManager::setOrderSenderReconnectCallback() {
 void ConnectionManager::notifyOrderbookUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(orderBook_.mt);
-    if (tradingStrategy_) {
-        tradingStrategy_->setOrderbook(orderBook_);
+    BaseTradingStrategy *strategy = tradingStrategy_.load();
+    if (strategy) {
+        strategy->setOrderbook(orderBook_);
     }
 }
 
 void ConnectionManager::notifyTradeUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(publicTrade_.mt);
-    if (tradingStrategy_) {
-        tradingStrategy_->setPublicTradeData(publicTrade_);
+    BaseTradingStrategy *strategy = tradingStrategy_.load();
+    if (strategy) {
+        strategy->setPublicTradeData(publicTrade_);
         logPublicTrades(publicTrade_);
     }
 }
@@ -213,15 +217,17 @@ void ConnectionManager::notifyTradeUpdate() {
 void ConnectionManager::notifyOrderUpdate() {
     //! TODO: Придумать решение без mutex
     std::lock_guard lg(orderHFT_.mt);
-    if (tradingStrategy_) {
-        tradingStrategy_->setOrder(orderHFT_);
+    BaseTradingStrategy *strategy = tradingStrategy_.load();
+    if (strategy) {
+        strategy->setOrder(orderHFT_);
     }
 }
 
 void ConnectionManager::notifyPositionUpdate() {
     std::lock_guard lg(positionHFT_.mt);
-    if (tradingStrategy_) {
-        // tradingStrategy_->setPosition(positionHFT_);
+    BaseTradingStrategy *strategy = tradingStrategy_.load();
+    if (strategy) {
+        // strategy->setPosition(positionHFT_);
     }
 }
 
@@ -240,8 +246,31 @@ void ConnectionManager::setupPrivateDataCallbacks() {
 }
 
 void ConnectionManager::setStrategyOrderSender() {
-    tradingStrategy_->setOrderSender([this](const OrderRequest &orderRequest) {
+    BaseTradingStrategy *strategy = tradingStrategy_.load();
+    if (!strategy) {
+        return;
+    }
+
+    strategy->setOrderSender([this](const OrderRequest &orderRequest) {
         return placeOrder(orderRequest);
+    });
+}
+
+void ConnectionManager::setOrderSenderResultCallback() {
+    std::shared_ptr<OrderSender> orderSender;
+    {
+        std::lock_guard lock(orderSenderMutex_);
+        orderSender = orderSender_;
+    }
+    if (!orderSender) {
+        return;
+    }
+
+    orderSender->setOrderResultCallback([this](const OrderRequestResult &result) {
+        BaseTradingStrategy *strategy = tradingStrategy_.load();
+        if (strategy) {
+            strategy->setOrderRequestResult(result);
+        }
     });
 }
 

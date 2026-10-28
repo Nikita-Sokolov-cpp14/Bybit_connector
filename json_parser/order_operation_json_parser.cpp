@@ -20,6 +20,13 @@ TypeOrderOperation OrderOperationParser::geOperation() const {
 }
 
 void OrderOperationParser::parse() {
+    std::string_view reqIdStr = getFieldValue("reqId", string_);
+    if (reqIdStr.empty()) {
+        //! Обратная совместимость: раньше код отправлял req_id в snake_case.
+        reqIdStr = getFieldValue("req_id", string_);
+    }
+    orderOperation_->reqId = reqIdStr.empty() ? 0 : convertTo<uint64_t>(reqIdStr);
+
     orderOperation_->retCode = convertTo<int>(getFieldValue("retCode", string_));
     orderOperation_->retMsg = getFieldValue("retMsg", string_);
     orderOperation_->op = geOperation();

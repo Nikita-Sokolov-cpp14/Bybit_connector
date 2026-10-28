@@ -30,6 +30,7 @@ public:
     void setPublicTradeData(const PublicTrade &publicTrade) override;
     void setOrder(const OrderHFT &order) override;
     void setPosition(const PositionHFT &position) override;
+    void setOrderRequestResult(const OrderRequestResult &result) override;
 
 protected:
     void onMarketUpdate() override;
@@ -39,6 +40,7 @@ private:
     //! в потоке стратегии, чтобы не было гонок с checkCurrentPrice()/makeTrade().
     std::mutex orderQueueMutex_;
     std::vector<OrderEvent> orderQueue_;
+    std::vector<OrderRequestResult> orderRequestResults_;
 
     std::atomic<float> disbalanceAverage_;
     std::atomic<bool> orderbookIsUpdate_;
@@ -75,4 +77,5 @@ private:
     void checkSignalTotal();
     void logData();
     void drainOrderUpdates();
+    void drainOrderRequestResults();
 };

@@ -52,6 +52,11 @@ static const uint8_t leverage = 50;
 // Отступ лимитной цены для лимитного ордера при входе в сделку
 static const double spaceToLimitPrice = 0.0001 / 100.0;
 
+//! Минимальный шаг цены инструмента (Bybit instruments-info -> priceFilter.tickSize).
+//! Для BTCUSDT linear сейчас 0.10. Если меняется символ/категория, значение
+//! нужно брать из instruments-info, иначе биржа отклонит ордер по цене.
+static const double priceTickSize = 0.1;
+
 static const std::chrono::milliseconds waitOpenLimitOrderTime = std::chrono::milliseconds(5000);
 static const std::chrono::milliseconds waitCloseLimitOrderTime = std::chrono::milliseconds(5000);
 

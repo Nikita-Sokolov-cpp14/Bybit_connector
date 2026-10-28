@@ -1,5 +1,7 @@
 #include "order_sender.h"
 #include "p999_latency/check_latency.h"
+
+#include <cstdio>
 #include <optional>
 
 DECLARE_LATENCY_MEMBERS(1000)
@@ -7,6 +9,24 @@ DECLARE_LATENCY_MEMBERS(1000)
 namespace {
 
 const std::string_view retCodeFieldName = "retCode";
+
+//! Bybit принимает цену/количество строкой. Убираем лишние нули, чтобы
+//! не отдавать значения вида "111234.700000".
+std::string formatDecimal(double value) {
+    char buffer[64] = {};
+    std::snprintf(buffer, sizeof(buffer), "%.10f", value);
+    std::string result(buffer);
+    const auto dot = result.find('.');
+    if (dot != std::string::npos) {
+        while (!result.empty() && result.back() == '0') {
+            result.pop_back();
+        }
+        if (!result.empty() && result.back() == '.') {
+            result.pop_back();
+        }
+    }
+    return result;
+}
 
 }
 
@@ -17,6 +37,10 @@ order_queue_cancel_(maxQueueSize),
 order_queue_replace_(maxQueueSize),
 order_queue_new_(maxQueueSize),
 orderOperationParser_(&orderOperation_) {
+}
+
+void OrderSender::setOrderResultCallback(OrderResultCallback callback) {
+    orderResultCallback_ = std::move(callback);
 }
 
 bool OrderSender::placeOrder(const OrderRequest &orderRequest) {
@@ -146,13 +170,10 @@ void OrderSender::onRead(beast::error_code ec, std::size_t bytesTransferred) {
             case TypeOrderOperation_Auth:
                 checkStatus();
                 break;
-            //! TODO: Подумать, что делать при получении ответа на размещение ордера
             case TypeOrderOperation_Cancel:
-                break;
             case TypeOrderOperation_Create:
-                checkCreate();
-                break;
             case TypeOrderOperation_Amend:
+                handleOrderResponse();
                 break;
             default:
                 std::cout << "OrderSender::onRead: Unknown message type " << std::endl;
@@ -218,6 +239,10 @@ void OrderSender::sendNext() {
 }
 
 void OrderSender::sendOrder(const OrderRequest &order) {
+    if (order.req_id != 0) {
+        pendingRequests_[order.req_id] = order;
+    }
+
     switch (order.typeOrderRequest) {
         case TypeOrderRequest_New:
             serialize_order(write_buffer_, order);
@@ -250,8 +275,8 @@ void OrderSender::serialize_order(std::string &buffer, const OrderRequest &order
             std::chrono::system_clock::now().time_since_epoch())
                        .count();
 
-    // Начало JSON: операция и req_id
-    buffer += "{\"req_id\":";
+    // Начало JSON: операция и уникальный reqId запроса
+    buffer += "{\"reqId\":";
     buffer += std::to_string(order.req_id);
     buffer += ",\"header\":{";
     buffer += "\"X-BAPI-TIMESTAMP\":\"";
@@ -294,13 +319,13 @@ void OrderSender::serialize_order(std::string &buffer, const OrderRequest &order
     }
 
     buffer += "\",\"qty\":\"";
-    buffer += std::to_string((order.qty)); // TODO сделать более быстрый перевод double в строку
+    buffer += formatDecimal(order.qty);
     buffer += "\"";
 
     // Цена (для лимитных ордеров)
     if (order.order_type != OrderType_Market && order.price > 0) {
         buffer += ",\"price\":\"";
-        buffer += std::to_string(order.price);
+        buffer += formatDecimal(order.price);
         buffer += "\"";
     }
 
@@ -360,8 +385,8 @@ void OrderSender::serialize_cancel_order(std::string &buffer, const OrderRequest
             std::chrono::system_clock::now().time_since_epoch())
                        .count();
 
-    // Начало JSON: операция и req_id
-    buffer += "{\"req_id\":";
+    // Начало JSON: операция и уникальный reqId запроса
+    buffer += "{\"reqId\":";
     buffer += std::to_string(order.req_id);
     buffer += ",\"header\":{";
     buffer += "\"X-BAPI-TIMESTAMP\":\"";
@@ -392,7 +417,7 @@ void OrderSender::serialize_replace_order(std::string &buffer, const OrderReques
             std::chrono::system_clock::now().time_since_epoch())
                        .count();
 
-    buffer += "{\"req_id\":";
+    buffer += "{\"reqId\":";
     buffer += std::to_string(order.req_id);
     buffer += ",\"header\":{";
     buffer += "\"X-BAPI-TIMESTAMP\":\"";
@@ -416,13 +441,13 @@ void OrderSender::serialize_replace_order(std::string &buffer, const OrderReques
 
     if (order.price > 0) {
         buffer += ",\"price\":\"";
-        buffer += std::to_string(order.price);
+        buffer += formatDecimal(order.price);
         buffer += "\"";
     }
 
     if (order.qty > 0) {
         buffer += ",\"qty\":\"";
-        buffer += std::to_string(order.qty);
+        buffer += formatDecimal(order.qty);
         buffer += "\"";
     }
 
@@ -443,8 +468,36 @@ void OrderSender::on_write(beast::error_code ec) {
     sendNext();
 }
 
-void OrderSender::checkCreate() {
-    if (orderOperation_.retCode != 0) {
-        std::cout << "OrderSender::checkCreate: error: " << orderOperation_.retMsg << std::endl;
+void OrderSender::handleOrderResponse() {
+    if (orderOperation_.reqId == 0) {
+        std::cout << "OrderSender::handleOrderResponse: response without reqId, retCode="
+                  << orderOperation_.retCode << " retMsg=" << orderOperation_.retMsg << std::endl;
+        return;
+    }
+
+    auto it = pendingRequests_.find(orderOperation_.reqId);
+    if (it == pendingRequests_.end()) {
+        std::cout << "OrderSender::handleOrderResponse: unknown reqId "
+                  << orderOperation_.reqId << std::endl;
+        return;
+    }
+
+    OrderRequestResult result;
+    result.request = it->second;
+    result.success = orderOperation_.retCode == 0;
+    result.retCode = orderOperation_.retCode;
+    result.retMsg = std::string(orderOperation_.retMsg);
+    result.exchangeOrderId = std::string(orderOperation_.orderId);
+    result.exchangeOrderLinkId = std::string(orderOperation_.orderLinkId);
+    pendingRequests_.erase(it);
+
+    if (!result.success) {
+        std::cout << "OrderSender: request failed reqId=" << orderOperation_.reqId
+                  << " op=" << orderOperation_.op << " retCode=" << result.retCode
+                  << " retMsg=" << result.retMsg << std::endl;
+    }
+
+    if (orderResultCallback_) {
+        orderResultCallback_(result);
     }
 }

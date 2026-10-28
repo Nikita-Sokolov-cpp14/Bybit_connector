@@ -40,6 +40,10 @@ struct Trade {
     uint64_t tradeNumber;
     uint64_t currentTradeNumber;
 
+    //! Уникальный reqId для WS-запросов cancel/replace. Не должен совпадать
+    //! с reqId предыдущих запросов, иначе Bybit вернёт 20006.
+    uint64_t nextWsRequestId = 1'000'000'000'000ULL;
+
     double takeProfitPrice;
     double stopLossPrice;
 
@@ -68,4 +72,5 @@ struct Trade {
     OrderType getOrderType(const uint64_t orderLinkId);
 
     uint64_t makeReqId(const OrderType &orderType);
+    uint64_t makeWsRequestId();
 };

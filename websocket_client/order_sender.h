@@ -6,6 +6,8 @@
 #include "json_parser/order_operation_json_parser.h"
 
 #include <boost/lockfree/queue.hpp>
+#include <functional>
+#include <unordered_map>
 
 // Класс WebSocket клиента для Bybit
 class OrderSender : public PrivateConnector {
@@ -15,6 +17,9 @@ public:
             const std::string &api_secret, const std::string_view userAgent);
 
     bool placeOrder(const OrderRequest &orderRequest);
+
+    using OrderResultCallback = std::function<void(const OrderRequestResult &)>;
+    void setOrderResultCallback(OrderResultCallback callback);
 
 private:
     static const size_t maxQueueSize = 1000;
@@ -28,6 +33,11 @@ private:
 
     OrderOperation orderOperation_;
     OrderOperationParser orderOperationParser_;
+
+    OrderResultCallback orderResultCallback_;
+    std::unordered_map<uint64_t, OrderRequest> pendingRequests_;
+
+    void handleOrderResponse();
 
     // Обработчик завершения WebSocket handshake
     void onHandshake(beast::error_code ec) override;

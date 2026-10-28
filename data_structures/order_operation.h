@@ -11,9 +11,10 @@ enum TypeOrderOperation {
 };
 
 struct OrderOperation {
-    int retCode;
+    uint64_t reqId = 0;
+    int retCode = 0;
     std::string_view retMsg;
-    TypeOrderOperation op;
+    TypeOrderOperation op = TypeOrderOperation_Unknown;
     std::string_view connId;
 
     std::string_view orderId;

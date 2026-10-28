@@ -28,6 +28,9 @@ public:
     virtual void setPosition(const PositionHFT &position) {
         std::cout << "BaseTradingStrategy::setPosition" << std::endl;
     }
+    virtual void setOrderRequestResult(const OrderRequestResult &result) {
+        std::cout << "BaseTradingStrategy::setOrderRequestResult" << std::endl;
+    }
 
     // Управление жизненным циклом
     void start();

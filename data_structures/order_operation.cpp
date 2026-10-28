@@ -5,6 +5,7 @@
 void OrderOperation::print() {
     std::cout << " === struct OrderOperation === " << std::endl;
 
+    std::cout << "reqId: " << reqId << std::endl;
     std::cout << "retCode: " << retCode << std::endl;
     std::cout << "retMsg: " << retMsg << std::endl;
     std::cout << "op: " << op << std::endl;

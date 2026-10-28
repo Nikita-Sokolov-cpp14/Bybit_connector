@@ -138,7 +138,7 @@ bool Trade::checkOrderStatus() {
 bool Trade::cancelOrder(const uint64_t orderId) {
     orderCancel.typeOrderRequest = TypeOrderRequest_Cancel;
     orderCancel.typeOrderId_ = TypeOrderId_OrderLinkId;
-    orderCancel.req_id = orderId;
+    orderCancel.req_id = makeWsRequestId();
     orderCancel.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                        .count();
@@ -163,13 +163,15 @@ bool Trade::sendOrder(const OrderRequest &order) {
 }
 
 bool Trade::replaceLimitOpenOrder(double price) {
-    openLimitOrder.typeOrderRequest = TypeOrderRequest_Replace;
-    openLimitOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
-    openLimitOrder.price = price;
-    std::snprintf(openLimitOrder.order_link_id, sizeof(openLimitOrder.order_link_id), "%llu",
+    OrderRequest replaceOrder = openLimitOrder;
+    replaceOrder.typeOrderRequest = TypeOrderRequest_Replace;
+    replaceOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
+    replaceOrder.req_id = makeWsRequestId();
+    replaceOrder.price = price;
+    std::snprintf(replaceOrder.order_link_id, sizeof(replaceOrder.order_link_id), "%llu",
             static_cast<unsigned long long>(openLimitOrder.req_id));
 
-    return sendOrder(openLimitOrder);
+    return sendOrder(replaceOrder);
 }
 
 Trade::OrderType Trade::getOrderType(const uint64_t orderLinkId) {
@@ -189,6 +191,10 @@ Trade::OrderType Trade::getOrderType(const uint64_t orderLinkId) {
     }
 
     return OrderType_Unknown;
+}
+
+uint64_t Trade::makeWsRequestId() {
+    return nextWsRequestId++;
 }
 
 uint64_t Trade::makeReqId(const OrderType &orderType) {

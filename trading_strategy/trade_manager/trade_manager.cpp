@@ -3,6 +3,7 @@
 #include "json_parser/base_json_parser.h"
 
 #include <chrono>
+#include <cmath>
 #include <string>
 
 namespace {
@@ -24,6 +25,7 @@ int countLimitCloseFilled = 0;
 int countCloseMarket = 0;
 
 constexpr double qtyEpsilon = 1e-12;
+constexpr auto closeRetryInterval = std::chrono::seconds(1);
 
 const char *sideToString(Side side) {
     switch (side) {
@@ -110,12 +112,24 @@ uint64_t systemTimeMs() {
             .count();
 }
 
+inline double roundToTick(const double price, const Side &side) {
+    if (settings::priceTickSize <= 0.0) {
+        return price;
+    }
+
+    const double ticks = price / settings::priceTickSize;
+    const double epsilon = 1e-9;
+    const double roundedTicks = (side == Side_Buy) ? std::floor(ticks + epsilon)
+                                                   : std::ceil(ticks - epsilon);
+    return roundedTicks * settings::priceTickSize;
+}
+
 inline double CalcLimitPrice(const double price, const Side &side) {
     double delta = settings::spaceToLimitPrice * price;
     if (side == Side_Buy) {
         delta *= -1.0;
     }
-    return price + delta;
+    return roundToTick(price + delta, side);
 }
 
 } // namespace
@@ -195,6 +209,80 @@ void TradeManager::setOrder(const OrderEvent &order) {
             break;
         case Trade::OrderType_CloseMarketOrder:
             handleCloseMarketOrder(order);
+            break;
+        default:
+            break;
+    }
+}
+
+void TradeManager::onOrderRequestResult(const OrderRequestResult &result) {
+    uint64_t targetOrderId = result.request.req_id;
+    if (result.request.typeOrderRequest == TypeOrderRequest_Cancel ||
+            result.request.typeOrderRequest == TypeOrderRequest_Replace) {
+        targetOrderId = convertTo<uint64_t>(std::string_view(result.request.order_link_id));
+    }
+
+    auto it = currentTrade_.ordersStatus.find(targetOrderId);
+    if (it == currentTrade_.ordersStatus.end()) {
+        std::cout << "TradeManager: request result for unknown order " << targetOrderId << std::endl;
+        return;
+    }
+
+    const Trade::OrderType orderType = currentTrade_.getOrderType(targetOrderId);
+
+    if (result.success) {
+        return;
+    }
+
+    std::cout << "[ORDER REQUEST FAILED] op="
+              << static_cast<int>(result.request.typeOrderRequest) << " order=" << targetOrderId
+              << " retCode=" << result.retCode << " retMsg=" << result.retMsg << std::endl;
+
+    if (!currentTradeSide_.has_value()) {
+        return;
+    }
+
+    switch (orderType) {
+        case Trade::OrderType_OpenLimitOrder:
+            if (waitOpenLimitOrder_) {
+                //! Лимитный ордер не был принят биржей. Считаем сделку не
+                //! состоявшейся, чтобы не копить "вечно ожидающий" ордер.
+                countLimitOpenMiss++;
+                resetTradeState();
+                currentTradeSide_ = std::nullopt;
+            } else if (waitCancelOpenLimitOrder_) {
+                //! Отмена не принята. Не сбрасываем сделку: ордер может быть
+                //! ещё жив. checkCurrentPrice повторит отмену.
+                std::cout << "TradeManager: open limit cancel was rejected, will retry"
+                          << std::endl;
+            }
+            break;
+        case Trade::OrderType_OpenMarketOrder:
+            if (waitOpenMarketOrder_) {
+                resetTradeState();
+                currentTradeSide_ = std::nullopt;
+            }
+            break;
+        case Trade::OrderType_CloseLimitOrder:
+            if (waitCloseLimitOrder_ || waitCancelCloseLimitOrder_) {
+                //! Закрывающий лимит не создан/не отменён. Закрываем остаток
+                //! рынком; reduceOnly не даст перевернуть позицию.
+                waitCloseLimitOrder_ = false;
+                waitCancelCloseLimitOrder_ = false;
+                const double remaining = openQty - closePartiallyFilledQty;
+                if (remaining > qtyEpsilon) {
+                    sendCloseMarket(remaining);
+                } else {
+                    finishTrade();
+                }
+            }
+            break;
+        case Trade::OrderType_CloseMarketOrder:
+            if (waitCloseMarketOrder_) {
+                //! Дадим checkCurrentPrice повторить закрытие.
+                waitCloseMarketOrder_ = false;
+                timePlaceCloseOrder_ = std::chrono::steady_clock::now();
+            }
             break;
         default:
             break;
@@ -281,6 +369,7 @@ void TradeManager::closeTrade(CloseReason reason) {
     const double limitPrice = CalcLimitPrice(currentPrice, side);
     if (!currentTrade_.makeCloseLimitOrder(limitPrice, side, pendingCloseQty)) {
         logOrderSent(currentTrade_.closeLimitOrder, "close_limit", false);
+        timePlaceCloseOrder_ = std::chrono::steady_clock::now();
         std::cout << "TradeManager::closeTrade: can't place close limit order" << std::endl;
         return;
     }
@@ -343,6 +432,15 @@ void TradeManager::checkCurrentPrice(const double price) {
             timePlaceCloseOrder_ = now;
             logOrderSent(currentTrade_.orderCancel, "cancel_close_limit", true);
         }
+        return;
+    }
+
+    //! Предыдущая попытка закрытия не удалась (например, order.create отклонён).
+    //! Повторяем её независимо от TP/SL, иначе timeout-закрытие может потеряться.
+    if (!isCloseInProgress() && closeReason_ != CloseReason_None &&
+            (now - timePlaceCloseOrder_ > closeRetryInterval)) {
+        std::cout << "TradeManager: retrying close after failed attempt" << std::endl;
+        retryClose();
         return;
     }
 
@@ -565,6 +663,7 @@ void TradeManager::sendCloseMarket(double qty) {
     const Side side = (currentTradeSide_ == Side_Buy) ? Side_Sell : Side_Buy;
     if (!currentTrade_.makeCloseMarketOrder(side, qty)) {
         logOrderSent(currentTrade_.closeMarketOrder, "close_market", false);
+        timePlaceCloseOrder_ = std::chrono::steady_clock::now();
         std::cout << "TradeManager: can't send market close order" << std::endl;
         return;
     }
@@ -655,6 +754,24 @@ void TradeManager::cancelCloseLimitOrder() {
     waitCancelCloseLimitOrder_ = true;
     timePlaceCloseOrder_ = std::chrono::steady_clock::now();
     logOrderSent(currentTrade_.orderCancel, "cancel_close_limit", true);
+}
+
+void TradeManager::retryClose() {
+    if (!tradeIsOpen_ || isCloseInProgress()) {
+        return;
+    }
+
+    const double remaining = openQty - closePartiallyFilledQty;
+    if (remaining <= qtyEpsilon) {
+        finishTrade();
+        return;
+    }
+
+    if (closeReason_ == CloseReason_StopLoss) {
+        sendCloseMarket(remaining);
+    } else {
+        closeTrade(closeReason_);
+    }
 }
 
 void TradeManager::checkSLTP() {

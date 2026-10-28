@@ -102,6 +102,27 @@ void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
     notifyNewData();
 }
 
+void ImbalanceAndLarge::setOrderRequestResult(const OrderRequestResult &result) {
+    {
+        std::lock_guard lock(orderQueueMutex_);
+        orderRequestResults_.push_back(result);
+    }
+
+    notifyNewData();
+}
+
+void ImbalanceAndLarge::drainOrderRequestResults() {
+    std::vector<OrderRequestResult> results;
+    {
+        std::lock_guard lock(orderQueueMutex_);
+        results.swap(orderRequestResults_);
+    }
+
+    for (const OrderRequestResult &result : results) {
+        tradeManager_.onOrderRequestResult(result);
+    }
+}
+
 void ImbalanceAndLarge::drainOrderUpdates() {
     std::vector<OrderEvent> events;
     {
@@ -127,6 +148,7 @@ void ImbalanceAndLarge::onMarketUpdate() {
     //! Сначала применяем подтверждения ордеров, затем проверяем TP/SL и только
     //! после этого рассматриваем новый сигнал. Так checkCurrentPrice() реально
     //! вызывается каждые ~20 мс, а не только при появлении сигнала.
+    drainOrderRequestResults();
     drainOrderUpdates();
 
     const double midPrice = currentMidPrice_.load();
