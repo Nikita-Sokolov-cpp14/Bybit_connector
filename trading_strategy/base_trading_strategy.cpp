@@ -14,10 +14,21 @@ void BaseTradingStrategy::start() {
 
 void BaseTradingStrategy::stop() {
     running_ = false;
+    {
+        std::lock_guard lock(dataMutex_);
+    }
     dataCV_.notify_all();
     if (strategyThread_ && strategyThread_->joinable()) {
         strategyThread_->join();
     }
+}
+
+void BaseTradingStrategy::notifyNewData() {
+    {
+        std::lock_guard lock(dataMutex_);
+        newData_.store(true);
+    }
+    dataCV_.notify_all();
 }
 
 void BaseTradingStrategy::setOrderSender(Trade::OrderSender orderSender) {
@@ -28,13 +39,12 @@ void BaseTradingStrategy::work() {
     while (running_) {
         // Ждем новые данные
         std::unique_lock lock(dataMutex_);
-        dataCV_.wait(lock, [this] { return newData_.load(); });
-        lock.unlock();
-
-        if (!running_)
+        dataCV_.wait(lock, [this] { return newData_.load() || !running_.load(); });
+        if (!running_) {
             break;
-
+        }
         newData_.store(false);
+        lock.unlock();
 
         // Вызываем торговую логику
         try {

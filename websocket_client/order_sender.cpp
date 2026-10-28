@@ -45,40 +45,14 @@ bool OrderSender::placeOrder(const OrderRequest &orderRequest) {
         return false;
     }
 
-    // Атомарно проверяем и устанавливаем флаг
+    //! Все операции с websocket-потоком должны выполняться в его io_context.
+    //! placeOrder() вызывается из потока стратегии, поэтому sendNext() не
+    //! вызываем напрямую, а планируем в io_context.
     bool expected = false;
     if (startSending_.compare_exchange_strong(expected, true)) {
-        // Отправка не активна - запускаем
-        sendNext();
+        auto self = static_cast<OrderSender *>(this);
+        net::post(ioc_, [self]() { self->sendNext(); });
     }
-
-    // TODO
-    // sendNext() может быть вызван из двух мест:
-
-    // Из placeOrder() (поток стратегии)
-    // Из on_write() (поток io_context)
-    // А startSending_ сбрасывается только в sendNext() когда очередь пуста. Но что если:
-    // Поток A вызывает placeOrder() → видит startSending_=false → запускает sendNext()
-    // sendNext() забирает ордер, вызывает sendOrder() → async_write
-    // В этот момент очередь пустеет, но async_write еще не завершился
-    // Поток B вызывает placeOrder() с новым ордером → видит startSending_=true (еще не сброшен) → НЕ запускает отправку
-    // on_write() вызывает sendNext(), который забирает новый ордер → все работает
-
-    // Повторная проверка после сброса флага
-    // startSending_.store(false, std::memory_order_release);
-
-    // Если кто-то добавил ордер прямо перед сбросом флага,
-    // он увидит startSending_=false и запустит отправку заново
-    // Но для надежности - еще одна проверка:
-    // if (!order_queue_cancel_.empty() ||
-    //     !order_queue_replace_.empty() ||
-    //     !order_queue_new_.empty()) {
-    //     // Есть ордера, но флаг уже false - нужно перезапустить
-    //     bool expected = false;
-    //     if (startSending_.compare_exchange_strong(expected, true)) {
-    //         sendNext();
-    //     }
-    // }
 
     return true;
 }
@@ -230,6 +204,17 @@ void OrderSender::sendNext() {
 
     // Очереди пусты - сбрасываем флаг
     startSending_.store(false, std::memory_order_release);
+
+    //! Проверяем гонку: ордер мог быть добавлен между pop() и сбросом флага.
+    //! В этом случае placeOrder() увидел startSending_=true и не запустил отправку.
+    if (!order_queue_cancel_.empty() || !order_queue_replace_.empty() ||
+            !order_queue_new_.empty()) {
+        bool expected = false;
+        if (startSending_.compare_exchange_strong(expected, true)) {
+            auto self = static_cast<OrderSender *>(this);
+            net::post(ioc_, [self]() { self->sendNext(); });
+        }
+    }
 }
 
 void OrderSender::sendOrder(const OrderRequest &order) {
@@ -339,8 +324,10 @@ void OrderSender::serialize_order(std::string &buffer, const OrderRequest &order
         buffer += "\"";
     }
 
-    // Reduce only (опционально)
-    // buffer += ",\"reduceOnly\":false";
+    // Reduce only: закрывающий ордер не должен переворачивать позицию.
+    if (order.reduceOnly) {
+        buffer += ",\"reduceOnly\":true";
+    }
 
     // Close on trigger (опционально)
     // buffer += ",\"closeOnTrigger\":false";
@@ -447,6 +434,7 @@ void OrderSender::on_write(beast::error_code ec) {
         std::cerr << "Order send error: " << ec.message() << std::endl;
         startSending_.store(false, std::memory_order_release);
         scheduleReconnect();
+        return;
     }
 
     std::cout << "ордер отправлен" << std::endl;

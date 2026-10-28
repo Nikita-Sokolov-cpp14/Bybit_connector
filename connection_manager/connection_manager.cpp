@@ -83,9 +83,11 @@ void ConnectionManager::reconnectOrderSender() {
     //! TODO: Очередь ордеров на отправку пропадает. А нужна ли она в новом подключении?
     // Подумать, нужно ли переносить очередь ордеров.
 
-    orderSender_ = std::move(newOrderSender);
+    {
+        std::lock_guard lock(orderSenderMutex_);
+        orderSender_ = std::move(newOrderSender);
+    }
     setOrderSenderReconnectCallback();
-    setStrategyOrderSender();
 }
 
 void ConnectionManager::reconnectPublicHandler() {
@@ -108,11 +110,15 @@ void ConnectionManager::reconnectPrivateHandler() {
 }
 
 bool ConnectionManager::placeOrder(const OrderRequest &orderRequest) {
-    //! TODO: Добавить проверку на переподключение.
-    if (!orderSender_) {
+    std::shared_ptr<OrderSender> orderSender;
+    {
+        std::lock_guard lock(orderSenderMutex_);
+        orderSender = orderSender_;
+    }
+    if (!orderSender) {
         return false;
     }
-    return orderSender_->placeOrder(orderRequest);
+    return orderSender->placeOrder(orderRequest);
 }
 
 void ConnectionManager::subscribeStrategy(BaseTradingStrategy *tradingStrategy) {
@@ -161,12 +167,28 @@ void ConnectionManager::setPrivateReconnectCallback() {
 }
 
 void ConnectionManager::setOrderSenderReconnectCallback() {
-    orderSender_->setReconnectCallback([this]() {
+    std::shared_ptr<OrderSender> orderSender;
+    {
+        std::lock_guard lock(orderSenderMutex_);
+        orderSender = orderSender_;
+    }
+    if (!orderSender) {
+        return;
+    }
+
+    orderSender->setReconnectCallback([this]() {
         std::cout << "setOrderSenderReconnectCallback: in callback orderSender_ " << std::endl;
         net::post(orderSenderIoc_, [this]() {
             reconnectOrderSender();
-            orderSender_->connect(connectionConfig_.host, connectionConfig_.port,
-                    connectionConfig_.targetTrade);
+            std::shared_ptr<OrderSender> newOrderSender;
+            {
+                std::lock_guard lock(orderSenderMutex_);
+                newOrderSender = orderSender_;
+            }
+            if (newOrderSender) {
+                newOrderSender->connect(connectionConfig_.host, connectionConfig_.port,
+                        connectionConfig_.targetTrade);
+            }
         });
     });
 }
@@ -219,8 +241,7 @@ void ConnectionManager::setupPrivateDataCallbacks() {
 
 void ConnectionManager::setStrategyOrderSender() {
     tradingStrategy_->setOrderSender([this](const OrderRequest &orderRequest) {
-        std::cout << "send order to  orderSender_" << std::endl;
-        return orderSender_->placeOrder(orderRequest);
+        return placeOrder(orderRequest);
     });
 }
 

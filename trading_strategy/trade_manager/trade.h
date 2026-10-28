@@ -52,8 +52,8 @@ struct Trade {
 
     bool makeTradeByLimitOrder(const double price, const Side &side);
     bool makeTradeByMarketOrder(const Side &side);
-    bool makeCloseLimitOrder(const double price, const Side &side);
-    bool makeCloseMarketOrder(const Side &side);
+    bool makeCloseLimitOrder(const double price, const Side &side, double qty);
+    bool makeCloseMarketOrder(const Side &side, double qty);
 
     void calcSLTP(double price, const Side &side);
 

@@ -47,6 +47,14 @@ public:
 
     Side getSignal();
 
+    /**
+     * @brief Версия сигнала. Увеличивается на каждом пересчёте интервала,
+     * даже если значение сигнала не изменилось.
+     * @details Нужна стратегии, чтобы отличать новый сигнал от повторного
+     * чтения того же значения в цикле onMarketUpdate().
+     */
+    uint64_t getSignalVersion() const;
+
 private:
     //! Последняя известная мид-цена (обновляется из стакана).
     std::atomic<double> midPrice_;
@@ -77,6 +85,7 @@ private:
     bool volOk_;
 
     std::atomic<Side> signal_;
+    std::atomic<uint64_t> signalVersion_ {0};
 
     Logger loger_;
 

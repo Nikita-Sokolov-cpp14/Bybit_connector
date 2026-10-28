@@ -8,7 +8,7 @@
 
 Trade::Trade() :
 orderSender(),
-tradeNumber(22510),
+tradeNumber(25010),
 currentTradeNumber(0),
 takeProfitPrice(0.0),
 stopLossPrice(0.0),
@@ -29,6 +29,7 @@ orderIsFilled(false) {
     closeLimitOrder.typeOrderRequest = TypeOrderRequest_New;
     closeLimitOrder.order_type = OrderType_Limit;
     closeLimitOrder.qty = settings::defaultQty;
+    closeLimitOrder.reduceOnly = true;
     closeLimitOrder.leverage = settings::leverage;
     strcpy(closeLimitOrder.symbol, "BTCUSDT");
 
@@ -39,6 +40,7 @@ orderIsFilled(false) {
     closeMarketOrder.typeOrderRequest = TypeOrderRequest_New;
     closeMarketOrder.order_type = OrderType_Market;
     closeMarketOrder.qty = settings::defaultQty;
+    closeMarketOrder.reduceOnly = true;
     closeMarketOrder.leverage = settings::leverage;
     strcpy(closeMarketOrder.symbol, "BTCUSDT");
 }
@@ -53,6 +55,7 @@ bool Trade::makeTradeByLimitOrder(const double price, const Side &side) {
     ordersStatus.clear();
 
     openLimitOrder.typeOrderRequest = TypeOrderRequest_New;
+    openLimitOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
     openLimitOrder.req_id = makeReqId(OrderType_OpenLimitOrder); // Открывающий лимитный ордер +1
     openLimitOrder.side = side;
     openLimitOrder.price = price;
@@ -69,6 +72,7 @@ bool Trade::makeTradeByMarketOrder(const Side &side) {
     // текущая сделка с точки зрения ordersStatus продолжается.
 
     openMarketOrder.typeOrderRequest = TypeOrderRequest_New;
+    openMarketOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
     openMarketOrder.req_id = makeReqId(OrderType_OpenMarketOrder); // Открывающий рыночный ордер +1
     openMarketOrder.side = side;
     openMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -79,10 +83,13 @@ bool Trade::makeTradeByMarketOrder(const Side &side) {
     return sendOrder(openMarketOrder);
 }
 
-bool Trade::makeCloseLimitOrder(const double price, const Side &side) {
+bool Trade::makeCloseLimitOrder(const double price, const Side &side, double qty) {
+    closeLimitOrder.typeOrderRequest = TypeOrderRequest_New;
+    closeLimitOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
     closeLimitOrder.req_id = makeReqId(OrderType_CloseLimitOrder);
     closeLimitOrder.side = side;
     closeLimitOrder.price = price;
+    closeLimitOrder.qty = qty;
     closeLimitOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                            .count();
@@ -91,9 +98,12 @@ bool Trade::makeCloseLimitOrder(const double price, const Side &side) {
     return sendOrder(closeLimitOrder);
 }
 
-bool Trade::makeCloseMarketOrder(const Side &side) {
+bool Trade::makeCloseMarketOrder(const Side &side, double qty) {
+    closeMarketOrder.typeOrderRequest = TypeOrderRequest_New;
+    closeMarketOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
     closeMarketOrder.req_id = makeReqId(OrderType_CloseMarketOrder);
     closeMarketOrder.side = side;
+    closeMarketOrder.qty = qty;
     closeMarketOrder.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                             .count();
@@ -126,6 +136,9 @@ bool Trade::checkOrderStatus() {
 }
 
 bool Trade::cancelOrder(const uint64_t orderId) {
+    orderCancel.typeOrderRequest = TypeOrderRequest_Cancel;
+    orderCancel.typeOrderId_ = TypeOrderId_OrderLinkId;
+    orderCancel.req_id = orderId;
     orderCancel.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now().time_since_epoch())
                                        .count();
@@ -151,7 +164,10 @@ bool Trade::sendOrder(const OrderRequest &order) {
 
 bool Trade::replaceLimitOpenOrder(double price) {
     openLimitOrder.typeOrderRequest = TypeOrderRequest_Replace;
+    openLimitOrder.typeOrderId_ = TypeOrderId_OrderLinkId;
     openLimitOrder.price = price;
+    std::snprintf(openLimitOrder.order_link_id, sizeof(openLimitOrder.order_link_id), "%llu",
+            static_cast<unsigned long long>(openLimitOrder.req_id));
 
     return sendOrder(openLimitOrder);
 }

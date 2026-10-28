@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <mutex>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -70,6 +71,7 @@ private:
     std::shared_ptr<PublicDataHandler> publicDataHandler_;
     std::shared_ptr<PrivateDataHandler> privateDataHandler_;
     std::shared_ptr<OrderSender> orderSender_;
+    std::mutex orderSenderMutex_;
 
     std::unique_ptr<std::jthread> publicThread_;
     std::unique_ptr<std::jthread> privateThread_;

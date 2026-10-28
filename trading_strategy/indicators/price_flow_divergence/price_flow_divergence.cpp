@@ -76,6 +76,10 @@ Side PriceFlowDivergence::getSignal() {
     return signal_.load();
 }
 
+uint64_t PriceFlowDivergence::getSignalVersion() const {
+    return signalVersion_.load(std::memory_order_relaxed);
+}
+
 void PriceFlowDivergence::maybeRollInterval(uint64_t now) {
     if (lastCalcTime_ == 0) {
         lastCalcTime_ = now;
@@ -235,6 +239,7 @@ void PriceFlowDivergence::checkSignal() {
     }
 
     signal_.store(confirmedSignal);
+    signalVersion_.fetch_add(1, std::memory_order_relaxed);
 }
 
 bool PriceFlowDivergence::isBuy(const PublicTrade::Data &trade) {

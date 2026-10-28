@@ -29,26 +29,29 @@ enum TypeOrderId {
 // TimeInForce time_in_force = TimeInForce_GTC;  // значение по умолчанию
 
 struct OrderRequest {
-    uint64_t req_id; // свой ID для трекинга
-    TypeOrderId typeOrderId_; // С помощью чего управлять ордером: order_id ли order_link_id?
-    char order_id[64];         // ID ордера ОТ БИРЖИ (для cancel/replace, пусто для new)
-    char order_link_id[64];         // ID ордера ОТ БИРЖИ (для cancel/replace, пусто для new)
+    uint64_t req_id = 0; // свой ID для трекинга
+    TypeOrderId typeOrderId_ = TypeOrderId_Unknown; // С помощью чего управлять ордером: order_id ли order_link_id?
+    char order_id[64] = {};         // ID ордера ОТ БИРЖИ (для cancel/replace, пусто для new)
+    char order_link_id[64] = {};    // ID ордера ОТ БИРЖИ (для cancel/replace, пусто для new)
     // char category[16]; // TODO добавить
-    char symbol[16];
-    Side side;
-    OrderType order_type; // "Limit", "Market"
-    double qty;
-    double price; // пусто для market ?
+    char symbol[16] = {};
+    Side side = Side_Unknown;
+    OrderType order_type = OrderType_Unknown; // "Limit", "Market"
+    double qty = 0.0;
+    double price = 0.0; // пусто для market ?
     uint16_t leverage = 1;
+
+    //! Для закрывающих ордеров: запретить бирже увеличивать/переворачивать позицию.
+    bool reduceOnly = false;
 
     // Нужно для указания стоп лосса. Для лонга triggerPrice < текущей и triggerSide = Sell
     bool closeOnTrigger = false; // Условный ордер - нужно для стоп лосса
-    double triggerPrice;
-    Side triggerSide; // Сериализируется как 1 — цена растет до триггера, 2 — цена падает до триггера
+    double triggerPrice = 0.0;
+    Side triggerSide = Side_Unknown; // Сериализируется как 1 — цена растет до триггера, 2 — цена падает до триггера
 
-    // служебная инфа. Не сериализируется
-    TypeOrderRequest typeOrderRequest;
-    uint64_t enqueue_time; // нужно для измерения задержки
+    // служебная инфа. Не сериализуется
+    TypeOrderRequest typeOrderRequest = TypeOrderRequest_Unknown;
+    uint64_t enqueue_time = 0; // нужно для измерения задержки
     // order.enqueue_time = std::chrono::duration_cast<std::chrono::microseconds>(
     //         std::chrono::steady_clock::now().time_since_epoch())
     //                              .count();

@@ -1,13 +1,14 @@
 #include "imbalance_and_large.h"
 
-#include <iostream>
 #include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <utility>
 
 #include "settings.h"
 #include "data_structures/public_trade.h"
 
 ImbalanceAndLarge::ImbalanceAndLarge() :
-orderMainData_(),
 disbalanceAverage_(0),
 orderbookIsUpdate_(false),
 publicTradeIsUpdate_(false),
@@ -32,7 +33,15 @@ loger_("../log_files/total_signals.csv") {
     loger_.endStr();
 }
 
+ImbalanceAndLarge::~ImbalanceAndLarge() {
+    stop();
+}
+
 void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
+    if (orderbook.asks.empty() || orderbook.bids.empty()) {
+        return;
+    }
+
     // orderBookImbalance_.setOrderbook(orderbook);
     currentMidPrice_.store((orderbook.asks.begin()->first + orderbook.bids.begin()->first) / 2.0);
     currentBestAskPrice_.store(orderbook.asks.begin()->first);
@@ -43,8 +52,7 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
 
     needCheckCurPrice_.store(true);
 
-    newData_.store(true);
-    dataCV_.notify_all();
+    notifyNewData();
 }
 
 void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
@@ -56,8 +64,7 @@ void ImbalanceAndLarge::setPublicTradeData(const PublicTrade &publicTrade) {
     // информация не поступит.
     // publicTrades_.push_back(std::move(publicTradeData));
     publicTradeIsUpdate_.store(true);
-    newData_.store(true);
-    dataCV_.notify_all();
+    notifyNewData();
 }
 
 void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
@@ -69,19 +76,42 @@ void ImbalanceAndLarge::setOrder(const OrderHFT &order) {
     // std::cout << "orderType " << order.orderType << std::endl;
     // std::cout << "price " << order.price << std::endl;
     // std::cout << "qty " << order.qty << std::endl;
-    // tradeManager_.setOrder(order);
+
+    OrderEvent orderEvent;
+    orderEvent.orderLinkId = std::string(order.orderLinkId);
+    orderEvent.orderId = std::string(order.orderId);
+    orderEvent.side = order.side;
+    orderEvent.status = order.orderStatus;
+    orderEvent.price = order.price;
+    orderEvent.qty = order.qty;
+    orderEvent.avgPrice = order.avgPrice;
+    orderEvent.cumExecQty = order.cumExecQty;
+    orderEvent.cumExecFee = order.cumExecFee;
+    orderEvent.leavesQty = order.leavesQty;
+    orderEvent.updatedTime = order.updatedTime;
+    orderEvent.recvTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+                                    .count();
 
     {
-        std::lock_guard lg(orderMt_);
-        orderMainData_.orderId = order.orderId;
-        orderMainData_.orderLinkId = order.orderLinkId;
-        orderMainData_.side = order.side;
-        orderMainData_.orderStatus = order.orderStatus;
+        std::lock_guard lock(orderQueueMutex_);
+        orderQueue_.push_back(std::move(orderEvent));
     }
 
-    newData_.store(true);
     orderIsUpdate_.store(true);
-    dataCV_.notify_all();
+    notifyNewData();
+}
+
+void ImbalanceAndLarge::drainOrderUpdates() {
+    std::vector<OrderEvent> events;
+    {
+        std::lock_guard lock(orderQueueMutex_);
+        events.swap(orderQueue_);
+    }
+
+    for (const OrderEvent &event : events) {
+        tradeManager_.setOrder(event);
+    }
 }
 
 void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
@@ -94,6 +124,25 @@ void ImbalanceAndLarge::setPosition(const PositionHFT &position) {
 }
 
 void ImbalanceAndLarge::onMarketUpdate() {
+    //! Сначала применяем подтверждения ордеров, затем проверяем TP/SL и только
+    //! после этого рассматриваем новый сигнал. Так checkCurrentPrice() реально
+    //! вызывается каждые ~20 мс, а не только при появлении сигнала.
+    drainOrderUpdates();
+
+    const double midPrice = currentMidPrice_.load();
+    if (midPrice > 0.0) {
+        tradeManager_.checkCurrentPrice(midPrice);
+    }
+
+    //! PFD хранит последний сигнал до следующего пересчёта интервала.
+    //! Без проверки версии onMarketUpdate() (20 мс) открывал бы сделку или
+    //! продлевал её на каждом обновлении стакана.
+    const uint64_t signalVersion = priceFlowDivergence_.getSignalVersion();
+    if (signalVersion == lastSignalVersion_) {
+        return;
+    }
+    lastSignalVersion_ = signalVersion;
+
     // signalTfi_ = tradeFlowImbalance_.getSignal();
     // signalObi_ = orderBookImbalance_.getSignal();
     signalPfd_ = priceFlowDivergence_.getSignal();
@@ -105,7 +154,7 @@ void ImbalanceAndLarge::onMarketUpdate() {
     }
 
     if (signalTotal_.value() == Side_Buy) {
-        tradeManager_.makeTrade(currentBestBidPrice_, Side_Buy);
+        tradeManager_.makeTrade(currentBestAskPrice_, Side_Buy);
     } else {
         tradeManager_.makeTrade(currentBestBidPrice_, Side_Sell);
     }

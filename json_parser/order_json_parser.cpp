@@ -92,6 +92,9 @@ void OrderJsonParser::parseData(std::string_view dataStr) {
     cusrsor = dataStr.find("cumExecQty", cusrsor);
     orderHFT_->cumExecQty = convertToDouble(getFieldValue("cumExecQty", dataStr, cusrsor));
 
+    cusrsor = dataStr.find("cumExecFee", cusrsor);
+    orderHFT_->cumExecFee = convertToDouble(getFieldValue("cumExecFee", dataStr, cusrsor));
+
     cusrsor = dataStr.find("orderType", cusrsor);
     orderHFT_->orderType = getFieldValue("orderType", dataStr, cusrsor);
 

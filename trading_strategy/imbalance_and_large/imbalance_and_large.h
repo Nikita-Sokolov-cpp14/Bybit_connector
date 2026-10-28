@@ -4,8 +4,11 @@
 
 #include <atomic>
 #include <boost/circular_buffer.hpp>
+#include <deque>
+#include <mutex>
 #include <optional>
 #include <numeric>
+#include <vector>
 #include "indicators/order_book_imbalance/order_book_imbalance.h"
 #include "indicators/trade_flow_imbalance/trade_flow_imbalance.h"
 #include "indicators/price_flow_divergence/price_flow_divergence.h"
@@ -21,6 +24,7 @@
 class ImbalanceAndLarge : public BaseTradingStrategy {
 public:
     ImbalanceAndLarge();
+    ~ImbalanceAndLarge() override;
 
     void setOrderbook(const OrderBook &orderbook) override;
     void setPublicTradeData(const PublicTrade &publicTrade) override;
@@ -31,8 +35,10 @@ protected:
     void onMarketUpdate() override;
 
 private:
-    TradeManager::OrderMainData orderMainData_;
-    std::mutex orderMt_;
+    //! Обновления ордеров приходят из IO-потока. Копим их и обрабатываем
+    //! в потоке стратегии, чтобы не было гонок с checkCurrentPrice()/makeTrade().
+    std::mutex orderQueueMutex_;
+    std::vector<OrderEvent> orderQueue_;
 
     std::atomic<float> disbalanceAverage_;
     std::atomic<bool> orderbookIsUpdate_;
@@ -58,6 +64,7 @@ private:
     // std::optional<Side> signalObi_;
     std::optional<Side> signalPfd_;
     std::optional<Side> signalTotal_;
+    uint64_t lastSignalVersion_ = 0;
 
     PriceFlowDivergence priceFlowDivergence_;
     // OrderBookImbalance orderBookImbalance_;
@@ -67,4 +74,5 @@ private:
 
     void checkSignalTotal();
     void logData();
+    void drainOrderUpdates();
 };

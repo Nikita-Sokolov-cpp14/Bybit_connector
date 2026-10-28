@@ -136,6 +136,7 @@ public:
     double avgPrice;               // 13. Средняя цена исполнения
     double leavesQty;              // 15. Остаток к исполнению
     double cumExecQty;             // 14. Исполненное количество
+    double cumExecFee;             // 19. Комиссия по исполненной части ордера
 
     std::string_view orderType;    // 10. Market/Limit
 

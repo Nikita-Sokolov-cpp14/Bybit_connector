@@ -48,6 +48,13 @@ protected:
         std::cout << "BaseTradingStrategy::onMarketUpdate" << std::endl;
     }
 
+    /**
+     * @brief Разбудить поток стратегии.
+     * @details Флаг newData_ меняется под dataMutex_, чтобы не потерять notify
+     * между проверкой предиката и входом в wait.
+     */
+    void notifyNewData();
+
 private:
     // Данные
     mutable std::mutex dataMutex_;
