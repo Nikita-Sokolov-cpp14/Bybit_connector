@@ -73,6 +73,34 @@ to 60.7% and median Sharpe to 0.94 (baseline 0.51) and slightly lowers max DD,
 but mean net/fold falls from +1.684% to +1.344%. Loose trails are equivalent
 to the baseline. Details are in `PFD_REPORT.txt` section 4.9.
 
+Volatility-adaptive TP research:
+
+```bash
+python research_adaptive_tp.py --data ../aggregated_1s/aggregated_1s.csv \
+  --out output/research
+```
+
+It tests the rule "calm -> TP 1.5%, volatile -> TP 2.0%, SL 0.5%" using ATR
+ratio and PFD `vol_ratio`. Best simple rule: `vol_ratio < 1.0 -> TP 1.5%,
+else TP 2.0%`. On the 44-day file (7 folds):
+
+| Variant | Trades | Win rate | Mean net/fold | Median net | Median Sharpe | Median DD |
+|---|---:|---:|---:|---:|---:|---:|
+| fixed TP 2% | 27 | 51.9% | +1.332% | +1.332% | 0.514 | 0.913% |
+| fixed TP 1.5% | 28 | 57.1% | +1.093% | +1.540% | 0.340 | 0.820% |
+| dynamic vol_ratio<1.0 | 27 | 55.6% | +1.371% | +2.383% | 0.925 | 0.820% |
+
+The hypothesis is supported in aggregate: adaptive TP improves median net,
+Sharpe and win rate, and slightly improves mean net. Details are in
+`PFD_REPORT.txt` section 4.10.
+
+However, a threshold-stability scan (`research_vol_thresholds.py`, section
+4.11) shows that the improvement is concentrated in one fold: at T=1.00 fold 2
+improves, fold 1 and fold 3 get worse, other folds are unchanged; the worst
+fold is unchanged. The 0.95-1.05 range is a plateau, not a robust new edge.
+If one threshold is needed, use T=1.00 as the centre of the plateau (or 0.95
+for slightly higher mean), but treat adaptive TP as an unproven hypothesis.
+
 ## PFD logic (matches C++)
 
 For each `interval_sec` bucket:

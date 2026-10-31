@@ -84,6 +84,8 @@ def run_backtest(
     exit_score: Optional[np.ndarray] = None,
     exit_score_px: Optional[np.ndarray] = None,
     exit_score_threshold: float = 0.0,
+    take_profit_arr: Optional[np.ndarray] = None,
+    stop_loss_arr: Optional[np.ndarray] = None,
 ) -> BacktestResult:
     """
     Event-driven backtest.
@@ -103,6 +105,9 @@ def run_backtest(
     comb or pz). For a long, exit if score <= -threshold; for a short, exit if
     score >= +threshold. The exit price is ``exit_score_px`` at that interval.
     TP/SL always win if they happen in the same or an earlier second.
+
+    ``take_profit_arr`` / ``stop_loss_arr`` allow per-signal TP/SL (e.g. a
+    volatility-adaptive rule). They must have the same length as ``sig_dir``.
     """
     n_signals = len(sig_dir)
     if n_signals == 0:
@@ -115,6 +120,14 @@ def run_backtest(
     n1 = len(ts1)
     if n1 == 0:
         return EMPTY_RESULT
+
+    if take_profit_arr is not None or stop_loss_arr is not None:
+        if take_profit_arr is None or stop_loss_arr is None:
+            raise ValueError("take_profit_arr and stop_loss_arr must be provided together")
+        if len(take_profit_arr) != n_signals or len(stop_loss_arr) != n_signals:
+            raise ValueError("take_profit_arr/stop_loss_arr must match sig_dir length")
+        take_profit_arr = np.asarray(take_profit_arr, dtype=np.float64)
+        stop_loss_arr = np.asarray(stop_loss_arr, dtype=np.float64)
 
     if exit_score is not None:
         if exit_score_ts is None or exit_score_px is None:
@@ -173,14 +186,16 @@ def run_backtest(
             h = high1[e0:e1]
             l = low1[e0:e1]
 
+            tp = float(take_profit_arr[j]) if take_profit_arr is not None else take_profit
+            sl = float(stop_loss_arr[j]) if stop_loss_arr is not None else stop_loss
             if direction == 1:
-                tp_thr = e_px * (1.0 + take_profit)
-                sl_thr = e_px * (1.0 - stop_loss)
+                tp_thr = e_px * (1.0 + tp)
+                sl_thr = e_px * (1.0 - sl)
                 tp_hits = h >= tp_thr
                 sl_hits = l <= sl_thr
             else:
-                tp_thr = e_px * (1.0 - take_profit)
-                sl_thr = e_px * (1.0 + stop_loss)
+                tp_thr = e_px * (1.0 - tp)
+                sl_thr = e_px * (1.0 + sl)
                 tp_hits = l <= tp_thr
                 sl_hits = h >= sl_thr
 

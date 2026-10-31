@@ -165,3 +165,33 @@ else: signal = 0
 - Вывод: для максимального net лучше фиксированный TP/SL. Trailing имеет
   смысл только как риск-менеджмент. Следующий шаг - partial TP + trailing.
 - Скрипт: research_on_data/pfd_optimizer/research_trailing.py
+
+Дополнение по адаптивному TP/SL (2026-10-31):
+- Гипотеза: в спокойном режиме TP 1.5%, в волатильном TP 2.0%, SL 0.5%.
+- Проверены ATR ratio и PFD vol_ratio. Лучшее простое правило:
+  vol_ratio < 1.0 -> TP 1.5%, иначе TP 2.0%; SL 0.5%.
+- Новый файл 44 дня, 7 фолдов:
+    fixed TP2:   27 сделок, win 51.9%, mean net +1.332%, median net +1.332%,
+                 median Sharpe 0.514, median DD 0.913%.
+    fixed TP1.5: 28 сделок, win 57.1%, mean net +1.093%, median net +1.540%,
+                 median Sharpe 0.340, median DD 0.820%.
+    dynamic:     27 сделок, win 55.6%, mean net +1.371%, median net +2.383%,
+                 median Sharpe 0.925, median DD 0.820%.
+- Гипотеза подтверждается: median net/Sharpe/win rate улучшаются, mean net
+  растет умеренно. Эффект небольшой, выборка 27 сделок.
+- Непрерывный ATR-scaled TP (clip 1-3%) работает хуже; лучше дискретное
+  переключение 1.5/2.0.
+- Скрипт: research_on_data/pfd_optimizer/research_adaptive_tp.py
+
+Дополнение по стабильности порогов vol_ratio (2026-10-31):
+- Сканировались T=0.80...1.50 для правила vol_ratio<T -> TP1.5%, иначе TP2%.
+- Плато T=0.95-1.05 по агрегатам: T=0.95 mean net +1.442%, T=1.00 +1.371%,
+  T=1.05 +1.299% против fixed TP2 +1.332%; median net 2.04-2.38%.
+- Но улучшение сосредоточено в одном фолде (fold 2). При T=0.95 fold1
+  ухудшается, при T=1.00 fold1 и fold3 ухудшаются, остальные фолды не
+  меняются; худший фолд -1.64% не исправляется.
+- Новые фолды 6-7 не улучшаются (last2 mean 0.45% для T<=1.0, 0.20% для T>=1.05).
+- Вывод: стабильного улучшения по всем фолдам нет. Если нужен один порог,
+  брать T=1.00 (центр плато) или 0.95, но считать гипотезой, а не edge.
+- Скрипт: research_on_data/pfd_optimizer/research_vol_thresholds.py
+- Результаты: pfd_optimizer/output/research/vol_thresholds/
