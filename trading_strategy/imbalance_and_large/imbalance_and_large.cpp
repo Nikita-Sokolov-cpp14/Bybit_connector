@@ -27,8 +27,8 @@ signalTotal_(std::nullopt),
 loger_("../log_files/total_signals.csv") {
     loger_.recordValue("ts");
     loger_.recordValue("mid_price");
-    loger_.recordValue("signal_obi");
-    loger_.recordValue("signal_tfi");
+    // loger_.recordValue("signal_obi");
+    // loger_.recordValue("signal_tfi");
     loger_.recordValue("signal_combined");
     loger_.endStr();
 }

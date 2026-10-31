@@ -219,7 +219,7 @@ void ConnectionManager::notifyTradeUpdate() {
     BaseTradingStrategy *strategy = tradingStrategy_.load();
     if (strategy) {
         strategy->setPublicTradeData(publicTrade_);
-        logPublicTrades(publicTrade_);
+        // logPublicTrades(publicTrade_);
     }
 }
 
