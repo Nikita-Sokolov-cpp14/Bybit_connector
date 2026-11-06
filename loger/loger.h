@@ -26,7 +26,7 @@ public:
      * Если файла нет, то он будет создан.
      * Если файл создать нельзя, то будет выдано исключение.
      */
-    Logger(const std::string &pathToTargetFile);
+    explicit Logger(const std::string &pathToTargetFile, bool flushAfterRow = false);
 
     /**
      * @brief Деструктор.
@@ -43,8 +43,11 @@ public:
 
     void endStr();
 
+    void flush();
+
 protected:
     std::ofstream file_; //!< Целевой *.csv файл.
+    bool flushAfterRow_; //!< Сбрасывать буфер после каждой строки.
 };
 
 template<typename T>

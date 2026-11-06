@@ -139,8 +139,8 @@ TradeManager::TradeManager(bool enableLogs) {
         return;
     }
 
-    ordersLoger_ = std::make_unique<Logger>("../log_files/orders.csv");
-    tradesLoger_ = std::make_unique<Logger>("../log_files/trades.csv");
+    ordersLoger_ = std::make_unique<Logger>("../log_files/orders.csv", true);
+    tradesLoger_ = std::make_unique<Logger>("../log_files/trades.csv", true);
 
     ordersLoger_->recordValue("ts_local_ms");
     ordersLoger_->recordValue("trade_number");
