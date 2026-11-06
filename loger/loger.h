@@ -26,7 +26,8 @@ public:
      * Если файла нет, то он будет создан.
      * Если файл создать нельзя, то будет выдано исключение.
      */
-    explicit Logger(const std::string &pathToTargetFile, bool flushAfterRow = false);
+    explicit Logger(const std::string &pathToTargetFile, bool flushAfterRow = false,
+            bool append = false);
 
     /**
      * @brief Деструктор.
@@ -45,9 +46,18 @@ public:
 
     void flush();
 
+    /**
+     * @brief Был ли файл пустым/отсутствующим при открытии.
+     * @details Нужно, чтобы записывать заголовок CSV только в новый файл.
+     */
+    bool isEmptyAtOpen() const {
+        return fileWasEmpty_;
+    }
+
 protected:
     std::ofstream file_; //!< Целевой *.csv файл.
     bool flushAfterRow_; //!< Сбрасывать буфер после каждой строки.
+    bool fileWasEmpty_ = true; //!< Файл отсутствовал или был пустым.
 };
 
 template<typename T>

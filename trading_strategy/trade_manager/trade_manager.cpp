@@ -139,46 +139,51 @@ TradeManager::TradeManager(bool enableLogs) {
         return;
     }
 
-    ordersLoger_ = std::make_unique<Logger>("../log_files/orders.csv", true);
-    tradesLoger_ = std::make_unique<Logger>("../log_files/trades.csv", true);
+    ordersLoger_ = std::make_unique<Logger>("../log_files/orders.csv", true, true);
+    tradesLoger_ = std::make_unique<Logger>("../log_files/trades.csv", true, true);
 
-    ordersLoger_->recordValue("ts_local_ms");
-    ordersLoger_->recordValue("trade_number");
-    ordersLoger_->recordValue("event");
-    ordersLoger_->recordValue("role");
-    ordersLoger_->recordValue("order_link_id");
-    ordersLoger_->recordValue("exchange_order_id");
-    ordersLoger_->recordValue("side");
-    ordersLoger_->recordValue("order_type");
-    ordersLoger_->recordValue("status");
-    ordersLoger_->recordValue("requested_price");
-    ordersLoger_->recordValue("qty");
-    ordersLoger_->recordValue("avg_fill_price");
-    ordersLoger_->recordValue("cum_exec_qty");
-    ordersLoger_->recordValue("leaves_qty");
-    ordersLoger_->recordValue("cum_fee");
-    ordersLoger_->recordValue("exchange_updated_ms");
-    ordersLoger_->recordValue("local_recv_ms");
-    ordersLoger_->recordValue("latency_us");
-    ordersLoger_->endStr();
+    if (ordersLoger_->isEmptyAtOpen()) {
+        ordersLoger_->recordValue("ts_local_ms");
+        ordersLoger_->recordValue("trade_number");
+        ordersLoger_->recordValue("event");
+        ordersLoger_->recordValue("role");
+        ordersLoger_->recordValue("order_link_id");
+        ordersLoger_->recordValue("exchange_order_id");
+        ordersLoger_->recordValue("side");
+        ordersLoger_->recordValue("order_type");
+        ordersLoger_->recordValue("status");
+        ordersLoger_->recordValue("requested_price");
+        ordersLoger_->recordValue("qty");
+        ordersLoger_->recordValue("avg_fill_price");
+        ordersLoger_->recordValue("cum_exec_qty");
+        ordersLoger_->recordValue("leaves_qty");
+        ordersLoger_->recordValue("cum_fee");
+        ordersLoger_->recordValue("exchange_updated_ms");
+        ordersLoger_->recordValue("local_recv_ms");
+        ordersLoger_->recordValue("latency_us");
+        ordersLoger_->endStr();
+    }
 
-    tradesLoger_->recordValue("trade_number");
-    tradesLoger_->recordValue("side");
-    tradesLoger_->recordValue("open_time_ms");
-    tradesLoger_->recordValue("close_time_ms");
-    tradesLoger_->recordValue("hold_ms");
-    tradesLoger_->recordValue("entry_type");
-    tradesLoger_->recordValue("close_reason");
-    tradesLoger_->recordValue("open_price");
-    tradesLoger_->recordValue("close_price");
-    tradesLoger_->recordValue("qty");
-    tradesLoger_->recordValue("notional_usdt");
-    tradesLoger_->recordValue("gross_pnl");
-    tradesLoger_->recordValue("fees");
-    tradesLoger_->recordValue("net_pnl");
-    tradesLoger_->recordValue("net_pnl_pct");
-    tradesLoger_->recordValue("total_net_pnl");
-    tradesLoger_->endStr();
+    if (tradesLoger_->isEmptyAtOpen()) {
+        tradesLoger_->recordValue("trade_number");
+        tradesLoger_->recordValue("side");
+        tradesLoger_->recordValue("open_time_ms");
+        tradesLoger_->recordValue("close_time_ms");
+        tradesLoger_->recordValue("hold_ms");
+        tradesLoger_->recordValue("entry_type");
+        tradesLoger_->recordValue("close_reason");
+        tradesLoger_->recordValue("open_price");
+        tradesLoger_->recordValue("close_price");
+        tradesLoger_->recordValue("qty");
+        tradesLoger_->recordValue("notional_usdt");
+        tradesLoger_->recordValue("gross_pnl");
+        tradesLoger_->recordValue("fees");
+        tradesLoger_->recordValue("net_pnl");
+        tradesLoger_->recordValue("net_pnl_pct");
+        tradesLoger_->recordValue("total_net_pnl");
+        tradesLoger_->endStr();
+    }
+
 }
 
 void TradeManager::setOrderSender(Trade::OrderSender orderSender) {
