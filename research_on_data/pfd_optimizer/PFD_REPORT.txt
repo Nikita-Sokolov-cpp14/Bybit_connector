@@ -619,6 +619,69 @@ SL оставлять 0.5%. Проверялись два определения
 Результаты: output/research/vol_thresholds/vol_threshold_summary.csv
              output/research/vol_thresholds/vol_threshold_fold_metrics.csv
 
+
+4.12. Повторный подбор на 51 дне (2026-11-06)
+
+Данные: 3 013 991 строк, 51 календарный день.
+Схема: 8 фолдов rolling 6/6, objective=expectancy, ограничения
+PF >= 1.2, maxDD <= 2%, total_test_trades >= 20, min_trades >= 3.
+Сетка: 10 368 конфигураций, 82 944 бэктеста, ~2m21s.
+
+ВАЖНО: per-fold выбор на train (честный walk-forward) дал плохой агрегат:
+    mean net -0.345% на фолд, 37.5% прибыльных фолдов.
+Это значит, что выбор "лучшей" конфигурации на train нестабилен, а
+таблицы top-10 ниже - это ex-post кандидаты, а не доказанный OOS-edge.
+
+Текущий рабочий вариант (TP 2% / SL 0.5%):
+    28 сделок, mean net +1.063%, median +1.221%,
+    mean win 42.9%, median win 55.0%, 62.5% прибыльных фолдов,
+    median Sharpe 0.486, median DD 0.866%.
+
+Лучший ex-post по mean test expectancy:
+    W=120, sigma=2.0, confirm=1, trend_ema_span=360,
+    intz_weight=0.5, vol_ratio >= 0.8,
+    TP=2.0%, SL=1.0%, hold=24h.
+    26 сделок, mean net +1.451%, median +0.805%,
+    mean win 57.1%, median win 50.0%, 87.5% прибыльных фолдов,
+    median Sharpe 0.274, median DD 1.32%.
+    Это более агрессивный вариант: шире SL, ниже median net/Sharpe,
+    выше DD; в одном фолде 0 сделок. Не выглядит лучше текущего по
+    риск-скорректированной доходности.
+
+Лучший ex-post по median test expectancy:
+    W=360, sigma=2.5, confirm=1, trend=0, intz_weight=1.0,
+    vol_ratio <= 1.2, TP=1.5%, SL=1.0%, hold=24h.
+    34 сделки, mean net +0.344%, median +1.004%,
+    mean win 59.8%, median win 70.8%, 62.5% прибыльных фолдов,
+    median Sharpe 0.554, median DD 1.459%.
+    Больше сделок и высокий median win, но крупные убыточные фолды
+    (-2.30%, -3.34%) и больший DD.
+
+Текущий TP2/SL0.5 остается лучшим по median net (1.221%) и median
+Sharpe (0.486%) среди вариантов с SL=0.5%, и лучшим по median net
+среди всех отфильтрованных конфигураций.
+
+Адаптивный TP на 51 дне (8 фолдов):
+    fixed TP2:      mean +1.063%, median +1.221%, Sharpe 0.486
+    T=0.95 dynamic: mean +1.159%, median +1.858%, Sharpe 0.719, DD 0.820
+    T=1.00 dynamic: mean +1.097%, median +1.608%, Sharpe 0.645, DD 0.820
+Улучшение все еще есть в агрегате, но last2 mean = +0.027% для всех
+вариантов: новые фолды 7-8 не улучшаются. Эффект по-прежнему держится
+на старых фолдах и не является доказанным.
+
+Вывод:
+    - Более прибыльный по mean вариант появился (Candidate A), но он
+      менее устойчив по median/Sharpe/DD и использует SL 1.0%.
+    - Более устойчивого и одновременно более прибыльного варианта,
+      который доминировал бы текущий TP2/SL0.5 по median net/Sharpe,
+      не появилось.
+    - Текущий вариант остается базовым. Candidate A и adaptive TP
+      (T=0.95-1.0) - кандидаты для forward-теста, не для замены.
+
+Файлы: output/research/reopt51/
+    summary.json, results_per_fold.csv, aggregate_test.csv,
+    top10_expectancy.csv, top10_configs.csv, candidate_per_fold.csv
+
 --------------------------------------------------------------------------------
 5. ПАРАМЕТРЫ ВАРИАНТОВ
 --------------------------------------------------------------------------------

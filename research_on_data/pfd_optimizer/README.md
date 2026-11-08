@@ -238,6 +238,30 @@ It is saved in `config_expectancy_best.yaml`. This is an ex-post evaluation
 on 36 days; fold 4 is negative and the sample is small, so out-of-sample
 validation is required.
 
+## Re-optimization on the 51-day file (2026-11-06)
+
+The expectancy grid was re-run with 8 rolling 6/6 folds (10,368 configs,
+82,944 backtests, ~2m21s). The true per-fold train-selected walk-forward was
+poor (mean net -0.345%/fold, 37.5% profitable folds), so the top-10 tables are
+ex-post candidates, not a proven OOS edge.
+
+- Current TP 2% / SL 0.5%: 28 trades, mean net +1.063%, median +1.221%,
+  median Sharpe 0.486, 62.5% profitable folds.
+- Best ex-post by mean: W=120, sigma=2.0, trend=360, intz_weight=0.5,
+  TP 2% / SL 1.0%: mean +1.451%, median +0.805%, median Sharpe 0.274,
+  DD 1.32%. More aggressive and less stable.
+- Best ex-post by median expectancy: W=360, sigma=2.5, vol<=1.2,
+  TP 1.5% / SL 1.0%: 34 trades, median net +1.004%, mean +0.344%,
+  median Sharpe 0.554, but large losing folds.
+- Adaptive TP on 51 days: T=0.95 gives mean +1.159%, median +1.858%,
+  Sharpe 0.719 vs fixed TP2 +1.063% / 1.221% / 0.486, but the last two folds
+  are unchanged (+0.027%) and the gain is still concentrated in old folds.
+
+Conclusion: no variant that is both more robust and more profitable than the
+current TP 2% / SL 0.5% has appeared. Candidate A and adaptive TP T=0.95-1.0
+are forward-test candidates, not replacements. Details: `PFD_REPORT.txt`
+section 4.12 and `output/research/reopt51/`.
+
 ## Regime-filter test results (original comb, intz_weight = 1.0)
 
 A separate 5-fold rolling run on the 35-day file tested 62,208 configurations

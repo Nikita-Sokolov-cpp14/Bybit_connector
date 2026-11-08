@@ -195,3 +195,25 @@ else: signal = 0
   брать T=1.00 (центр плато) или 0.95, но считать гипотезой, а не edge.
 - Скрипт: research_on_data/pfd_optimizer/research_vol_thresholds.py
 - Результаты: pfd_optimizer/output/research/vol_thresholds/
+
+Дополнение по повторному подбору на 51 дне (2026-11-06):
+- Схема: 8 фолдов rolling 6/6, objective=expectancy, PF>=1.2, maxDD<=2%,
+  total_test_trades>=20. 10 368 конфигов, 82 944 бэктеста.
+- Честный per-fold train-выбор дал mean net -0.345%/фолд и 37.5% прибыльных
+  фолдов: подбор на train нестабилен, top-10 - ex-post кандидаты.
+- Текущий TP2/SL0.5: 28 сделок, mean net +1.063%, median +1.221%,
+  median Sharpe 0.486, 62.5% прибыльных фолдов.
+- Лучший ex-post по mean: W120 sigma2 trend360 intz0.5 TP2/SL1.0:
+  mean +1.451%, median +0.805%, Sharpe 0.274, DD 1.32% - агрессивнее,
+  менее устойчив.
+- Лучший ex-post по median expectancy: W360 sigma2.5 vol<=1.2 TP1.5/SL1.0:
+  34 сделки, mean +0.344%, median +1.004%, Sharpe 0.554, но крупные
+  убыточные фолды и DD 1.459%.
+- Adaptive TP на 51 дне: T=0.95 mean +1.159%, median +1.858%, Sharpe 0.719
+  против fixed TP2 +1.063%/+1.221%/0.486; но last2 mean +0.027% для всех,
+  улучшение по-прежнему на старых фолдах.
+- Вывод: варианта, который одновременно устойчивее и прибыльнее текущего
+  TP2/SL0.5, не появилось. Candidate A и adaptive TP T=0.95-1.0 - только
+  кандидаты для forward-теста.
+- Результаты: pfd_optimizer/output/research/reopt51/
+  Отчет: PFD_REPORT.txt, раздел 4.12.
