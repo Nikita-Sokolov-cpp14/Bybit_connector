@@ -48,7 +48,11 @@ void ImbalanceAndLarge::setOrderbook(const OrderBook &orderbook) {
     currentBestBidPrice_.store(orderbook.bids.begin()->first);
     midPrices_.push_back(currentMidPrice_.load());
     // tradeFlowImbalance_.setMidPrice(currentMidPrice_.load());
-    priceFlowDivergence_.setMidPrice(currentMidPrice_.load());
+    //! Цена PFD берётся только из publicTrade (last-second VWAP). Здесь
+    //! передаём только часы для закрытия фиксированного UTC-интервала.
+    const uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+    priceFlowDivergence_.advanceTime(now);
 
     needCheckCurPrice_.store(true);
 

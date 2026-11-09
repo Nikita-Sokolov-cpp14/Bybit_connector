@@ -1,27 +1,32 @@
 #pragma once
 
-#include "data_structures/orderbook.h"
+#include "data_structures/common_data.h"
 #include "data_structures/public_trade.h"
-#include "data_structures/order_request.h"
-#include "data_structures/order.h"
-#include "data_structures/position.h"
-#include "trade_manager/trade_manager.h"
 
 #include <atomic>
 #include <cstdint>
+#include <map>
+#include <mutex>
 #include <boost/circular_buffer.hpp>
 #include "loger/loger.h"
 
 /**
  * @brief Дивергенция цены и потока: comb = pz - intz.
  * @details
- *  - intz = t-статистика накопленного потока за окно W:
- *           intz = mean(flow) * sqrt(W) / std(flow);
+ *  - intz = t-статистика потока за W интервалов, исключая текущий:
+ *           intz = mean(flow[i-W:i]) * sqrt(W) / std(flow[i-W:i]);
  *  - pz   = нормированный моментум цены за окно W:
  *           pz = (curPrice / price(t-W) - 1) / (std(ret) * sqrt(W));
  *  - comb = pz - intz.
  *  Моментум-интерпретация:
  *   comb >= +pfdSigma -> Buy; comb <= -pfdSigma -> Sell.
+ *
+ *  Источники данных и агрегация соответствуют Python-research:
+ *  - publicTrade.ts группирует сделки в 1-секундные бары;
+ *  - цена интервала - VWAP последней доступной секунды;
+ *  - интервалы - фиксированные UTC-бакеты pfdIntervalStep;
+ *  - пустые интервалы не создаются;
+ *  - sigPxSeries включает нулевые warmup-значения, как pandas rolling.
  *
  *  Дополнительно (параметры в settings.h):
  *  - pfdConfirmIntervals: сигнал подтверждается, если предыдущие N сырых
@@ -31,17 +36,16 @@
  *    Торгуем только если текущий sigPx находится в заданном диапазоне
  *    относительно rolling-медианы sigPx за pfdVolWindowSize интервалов.
  *    Пока окно не заполнено, сигналы подавляются (warmup).
- *
- *  ВАЖНО: offline-исследование использовало price_source=vwap
- *  (VWAP последней секунды интервала). В C++ используется mid-price из
- *  стакана (setMidPrice), поэтому live-сигналы могут отличаться.
  */
 class PriceFlowDivergence {
 public:
     PriceFlowDivergence();
 
     void setPublicTrade(const PublicTrade &publicTrade);
-    void setMidPrice(double price);
+
+    //! Закрывает активный UTC-интервал при переходе now на следующий.
+    //! Цена из стакана в индикатор не передаётся и в расчёте не участвует.
+    void advanceTime(uint64_t now);
 
     bool hasSignal();
 
@@ -56,23 +60,34 @@ public:
     uint64_t getSignalVersion() const;
 
 private:
-    //! Последняя известная мид-цена (обновляется из стакана).
-    std::atomic<double> midPrice_;
+    struct SecondAggregate {
+        double priceVolume = 0.0;
+        double volume = 0.0;
+    };
+
     //! Накопленные объёмы за текущий интервал (для нормированного потока).
     double buyVolAccum_;
     double sellVolAccum_;
-    //! Время последнего пересчёта интервала, мс.
-    uint64_t lastCalcTime_;
+
+    //! Текущий фиксированный UTC-интервал и его 1-секундные бары.
+    uint64_t currentIntervalStart_;
+    uint64_t lastRolledIntervalStart_;
+    bool intervalActive_;
+    bool hasRolledInterval_;
+    std::map<uint64_t, SecondAggregate> secondBars_;
+    //! setPublicTrade и advanceTime могут вызываться из разных потоков.
+    std::mutex aggregationMutex_;
 
     //! capacity = pfdWindowSize + 1: цены закрытия интервалов [t-W, t].
     boost::circular_buffer<double> priceSeries_;
     //! Нормированный поток ((buyVol - sellVol) / (buyVol + sellVol)) за интервал.
     boost::circular_buffer<double> flowSeries_;
-    //! История sigPx для режимного фильтра волатильности.
+    //! История sigPx для режимного фильтра волатильности, включая warmup-нули.
     boost::circular_buffer<double> sigPxSeries_;
     //! История сырых сигналов для подтверждения (N предыдущих интервалов).
     boost::circular_buffer<Side> rawSignalSeries_;
 
+    double priceVwap_;
     double tr_;
     double sigPx_;
     double stdFlow_;
@@ -80,6 +95,7 @@ private:
     double pz_;
     double intz_;
     double comb_;
+    double volRatio_;
 
     //! Разрешена ли торговля текущим режимом волатильности.
     bool volOk_;
@@ -89,16 +105,16 @@ private:
 
     Logger loger_;
 
-    void maybeRollInterval(uint64_t now);
     void rollInterval();
 
-    void calcLastStats(const boost::circular_buffer<double> &buf, size_t count, double &mean,
+    //! W значений, заканчивающихся предыдущим интервалом (текущий исключён).
+    void calcPreviousStats(const boost::circular_buffer<double> &buf, size_t count, double &mean,
             double &stdv);
 
     void updateVolatilityRegime();
     void checkSignal();
 
-    bool isBuy(const PublicTrade::Data &trade);
+    Side getTradeSide(const PublicTrade::Data &trade) const;
 
     void logData();
 };

@@ -322,6 +322,10 @@ Recommendations before trusting a 70% target:
 There is no standalone test suite, but the following were checked manually:
 
 - Python PFD components match a direct naive implementation of the C++ loops.
+- C++ was synchronized with this reference on 2026-11-08: `publicTrade.ts`,
+  last-second VWAP, fixed UTC intervals, previous-W flow and pandas-compatible
+  volatility warmup. Synthetic (1300 minutes) and real-data replay (first
+  200,000 1s bars) matched all PFD fields and signals within Logger precision.
 - The NumPy backtester matches a row-by-row reference implementation on
   synthetic data (TP/SL/timeout, conservative same-bar rule, long/short PnL).
 - Short PnL now uses the correct sign.

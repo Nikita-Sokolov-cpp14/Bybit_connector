@@ -73,10 +73,9 @@ static const double tradeFlowCountSigmaSell = -0.65;
 //!   vol_ratio >= 0.8 (rolling median 720 интервалов),
 //!   direction=both, intz_weight=1.0, TP=2%, SL=0.5%, hold=24h.
 //!
-//! ВАЖНО: offline-исследование использовало price_source=vwap
-//! (VWAP последней секунды интервала). В C++ индикатор получает mid-price
-//! из стакана через setMidPrice(), поэтому live-сигналы могут отличаться.
-//! Для точного совпадения с research нужен отдельный источник last-second VWAP.
+//! C++ синхронизирован с research: publicTrade.ts группируется в 1s-бары,
+//! цена интервала - VWAP последней доступной секунды, интервалы - фиксированные
+//! UTC-бакеты. Flow для intz исключает текущий интервал: flow[i-W:i].
 
 //! Шаг выборки индикатора.
 static const std::chrono::milliseconds pfdIntervalStep = std::chrono::milliseconds(60 * 1000);
@@ -98,9 +97,8 @@ static const size_t pfdConfirmIntervals = 1;
 static const size_t pfdVolWindowSize = 720;
 static const double pfdVolRatioMin = 0.8;
 static const double pfdVolRatioMax = 1e9;
-//! Warmup: W+1 интервалов для PFD + pfdVolWindowSize валидных sigPx,
-//! т.е. около 14 часов при interval=60s. До заполнения окна сигналов нет.
-//! Offline-исследование включало нули warmup-периода в rolling-медиану;
-//! в C++ используются только валидные sigPx, поэтому старт чуть позже.
+//! Warmup как в pandas research: pfdVolWindowSize значений sigPx, включая
+//! нули до заполнения W+1 цен. При interval=60s первая rolling-медиана доступна
+//! через 720 интервалов (12 часов); до этого сигналы подавляются.
 
 } // namespace settings

@@ -5,7 +5,9 @@ decoder_PFD.py — валидация индикатора Price-Flow Divergence
 по живому логу стратегии log_files/price_flow_divergence.csv.
 
 Лог содержит готовые фичи индикатора на минутных барах (после прогревного окна):
-  ts, mid_price, pz, intz, comb, tr, sig_px, std_flow, signal
+  ts, mid_price, pz, intz, comb, tr, sig_px, std_flow, vol_ratio, signal
+  Колонка mid_price сохранена для совместимости decoder; после синхронизации
+  C++ и Python она содержит VWAP последней доступной секунды интервала.
   signal: 0=Unknown, 1=Buy, 2=Sell (Side_Unknown=0, Side_Buy=1, Side_Sell=2).
 
 Что проверяется (без заглядывания вперёд):
